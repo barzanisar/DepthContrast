@@ -1,4 +1,4 @@
-resume: false
+resume: true
 test_only: false
 num_workers: 10
 
@@ -9,12 +9,12 @@ log2tb: true
 allow_double_bs: false
 seed: 0
 distributed: false
-test_freq: 10
+test_freq: 1
 print_freq: 5
 
 dataset:
   DATASET_NAMES: [waymo]
-  DATA_PATHS: ['/path/to/waymo.npy']
+  DATA_PATHS: ['data/waymo/ImageSets/waymo.npy']
   BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: sample_index
   DATA_TYPE: points
