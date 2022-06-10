@@ -129,7 +129,7 @@ def main_worker(gpu, ngpus, args, cfg):
     for epoch in range(start_epoch, end_epoch):
         if (epoch % 10) == 0:
             ckp_manager.save(epoch, model=model, train_criterion=train_criterion, optimizer=optimizer, filename='checkpoint-ep{}.pth.tar'.format(epoch))
-            logger.add_line(f'Saved checkpoint {ckp_manager.last_checkpoint_fn()} for epoch {epoch}')
+            logger.add_line(f'Saved checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
 
         if args.multiprocessing_distributed:
             train_loader.sampler.set_epoch(epoch)
@@ -142,7 +142,7 @@ def main_worker(gpu, ngpus, args, cfg):
 
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
             ckp_manager.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
-            logger.add_line(f'Saved checkpoint for testing {ckp_manager.last_checkpoint_fn()} for epoch {epoch}')
+            logger.add_line(f'Saved checkpoint for testing {ckp_manager.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
 
 
 def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter):
