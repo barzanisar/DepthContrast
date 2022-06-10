@@ -9,12 +9,12 @@ log2tb: true
 allow_double_bs: false
 seed: 0
 distributed: false
-test_freq: 1
-print_freq: 5
+test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
+print_freq: 10 # print progress after processing every <freq> iters or batches
 
 dataset:
   DATASET_NAMES: [waymo]
-  DATA_PATHS: ['data/waymo/ImageSets/waymo.npy']
+  DATA_PATHS: ['data/waymo/ImageSets/waymo_short.npy']
   BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: sample_index
   DATA_TYPE: points
@@ -41,7 +41,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: False
-  num_epochs: 1000
+  num_epochs: 10
   lr:
     name: "cosine"
     base_lr: 0.12
