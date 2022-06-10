@@ -11,20 +11,65 @@ import torch
 import numpy as np
 import torch.distributed as dist
 import datetime
-from torch._six import container_abcs
+import collections.abc as container_abcs
 from utils.logger import Logger
 
 from datasets import build_dataset, get_loader
+import torch.multiprocessing as mp
 
 def initialize_distributed_backend(args, ngpus_per_node):
     if args.multiprocessing_distributed:
         # For multiprocessing distributed training, rank needs to be the
         # global rank among all the processes
-        if args.dist_url == "env://" and args.rank == -1:
-            args.rank = int(os.environ["RANK"])
-        args.rank = args.rank * ngpus_per_node + args.gpu
-        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
-                                world_size=args.world_size, rank=args.rank)
+        print('Initialize_distributed_backend')
+        if args.launcher == 'fair':
+            if args.dist_url == "env://" and args.rank == -1:
+                args.rank = int(os.environ["RANK"])
+            # now they change arg.rank definition from rank of node to global rank of gpu
+            args.rank = args.rank * ngpus_per_node + args.gpu
+            dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
+                                    world_size=args.world_size, rank=args.rank)
+        elif args.launcher == 'slurm':
+            if mp.get_start_method(allow_none=True) is None:
+                mp.set_start_method('spawn')
+            proc_id = int(os.environ['SLURM_PROCID'])
+            ntasks = int(os.environ['SLURM_NTASKS'])
+            node_list = os.environ['SLURM_NODELIST']
+            assert ngpus_per_node == torch.cuda.device_count(), torch.cuda.device_count()
+            num_gpus = torch.cuda.device_count()
+            torch.cuda.set_device(proc_id % num_gpus)
+            addr = subprocess.getoutput('scontrol show hostname {} | head -n1'.format(node_list))
+            os.environ['MASTER_PORT'] = str(args.tcp_port)
+            os.environ['MASTER_ADDR'] = addr
+            os.environ['WORLD_SIZE'] = str(ntasks)
+            os.environ['RANK'] = str(proc_id)
+            dist.init_process_group(backend=args.dist_backend)
+
+            args.world_size = dist.get_world_size()
+            args.gpu = str(proc_id % num_gpus) #local rank
+            args.rank = dist.get_rank() # global rank
+
+            print(f'args.gpu = {args.gpu}')
+            print(f'args.world_size = {args.world_size}')
+        elif args.launcher == 'pytorch':
+            if mp.get_start_method(allow_none=True) is None:
+                mp.set_start_method('spawn')
+
+            num_gpus = torch.cuda.device_count()
+            torch.cuda.set_device(args.gpu % num_gpus)
+            dist.init_process_group(
+                backend=args.dist_backend,
+                init_method='tcp://127.0.0.1:%d' % args.tcp_port,
+                rank=args.gpu,
+                world_size=num_gpus
+            )
+            args.world_size = dist.get_world_size()
+            args.gpu = dist.get_rank()  # local rank
+            args.rank = dist.get_rank()  # global rank
+            print(f'args.gpu = {args.gpu}')
+            print(f'args.rank = {args.rank}')
+            print(f'args.world_size = {args.world_size}')
+
 
     if args.rank == -1:
         args.rank = 0
@@ -157,7 +202,7 @@ def distribute_model_to_cuda(models, args):
             if args.gpu is not None:
                 torch.cuda.set_device(args.gpu)
                 models[i].cuda(args.gpu)
-                models[i] = torch.nn.parallel.DistributedDataParallel(models[i], device_ids=[args.gpu])
+                models[i] = torch.nn.parallel.DistributedDataParallel(models[i], device_ids=[args.gpu]) #% torch.cuda.device_count()
             else:
                 models[i].cuda()
                 # DistributedDataParallel will divide and allocate batch_size to all
@@ -243,7 +288,7 @@ class CheckpointManager(object):
         self.checkpoint_dir = checkpoint_dir
         self.rank = rank
         self.best_metric = 0.
-        self.dist = dist
+        self.dist = dist #distributed
 
     def save(self, epoch, filename=None, eval_metric=0., **kwargs):
         if self.rank != 0:
