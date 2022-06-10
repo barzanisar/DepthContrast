@@ -56,13 +56,13 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         self.eval_mode = None  # this is just informational
         self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
         self.trunk = self._get_trunk()
-        self.m = 0.999 ### Can be tuned
-        self.model_input = model_config["model_input"]
-        self.model_feature = model_config["model_feature"]
+        self.m = 0.999 ### Can be tuned momentum parameter for momentum update
+        self.model_input = model_config["model_input"] #['points', 'points_moco']
+        self.model_feature = model_config["model_feature"] #['fp2', 'fp2']
         
     def multi_input_with_head_mapping_forward(self, batch):
         all_outputs = []
-        for input_idx in range(len(self.model_input)):
+        for input_idx in range(len(self.model_input)): #['points', 'points_moco']
             input_key = self.model_input[input_idx]
             feature_names = self.model_feature[input_idx]
             if "moco" in input_key:
@@ -299,6 +299,12 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                     logger.add_line(str(model))
                     logger.add_line("=" * 30 + "   Parameters   " + "=" * 30)
                     logger.add_line(parameter_description(model))
+
+                    """
+                    SA_modules.0.mlps.0.0.weight                     (layer 1)             | Trainable  | 16 x 4 x 1 x 1 (size of weight)| 64 (product of size)
+                    SA_modules.0.mlps.0.1.weight                    (batch norm)           | Trainable  | 16                             | 16
+                    SA_modules.0.mlps.0.1.bias                                             | Trainable  | 16                             | 16
+                    """
         return trunks
 
     def _print_state_dict_shapes(self, state_dict):

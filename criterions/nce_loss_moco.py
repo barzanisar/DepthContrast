@@ -117,7 +117,7 @@ class NCELossMoco(nn.Module):
                 normalized_output3 = nn.functional.normalize(output[2], dim=1, p=2)
                 normalized_output4 = nn.functional.normalize(output[3], dim=1, p=2)
 
-        # positive logits: Nx1
+        # positive logits: Nx1 = batch size of positive examples x 1
         l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1)
         
         # negative logits: NxK
@@ -156,7 +156,7 @@ class NCELossMoco(nn.Module):
         
         labels = torch.zeros(
             logits.shape[0], device=logits.device, dtype=torch.int64
-        )
+        ) # because zero'th class is the true class
         
         loss_npid = self.xe_criterion(torch.squeeze(logits), labels)
 

@@ -27,16 +27,20 @@ class PointNet2MSG(nn.Module):
         input_channels = 4
         
         self.SA_modules = nn.ModuleList()
-        channel_in = input_channels - 3
+        channel_in = input_channels - 3 #  C
 
         self.num_points_each_layer = []
         skip_channel_list = [input_channels - 3]
         SA_CONFIG = {'NPOINTS': [4096, 1024, 256, 64], 'RADIUS': [[0.1, 0.5], [0.5, 1.0], [1.0, 2.0], [2.0, 4.0]], 'NSAMPLE': [[16, 32], [16, 32], [16, 32], [16, 32]], 'MLPS': [[[16, 16, 32], [32, 32, 64]], [[64, 64, 128], [64, 96, 128]], [[128, 196, 256], [128, 196, 256]], [[256, 256, 512], [256, 384, 512]]]}
+        # (MSG) Multiscale SA(K=4096, r=[0.1, 0.5], PointNets (for r = 0.1 and r = 0.5 respectively) = [[16, 16, 32], [32, 32, 64]])
 
-        FP_MLPS = [[128, 128], [256, 256], [512, 512], [512, 512]]
-        
+        FP_MLPS = [[128, 128], [256, 256], [512, 512], [512, 512]] #[last FP= [1+256, 128, 128], second last fp = [96+512, 256, 256], fp = [256+512, 512, 512], fp=[512 + 1024, 512, 512]]
+        # The correct order of FP1 = [Cin = Cout of SA second last level + Cout of SA last = 512 + 1024, 512, 512]
+        # -> FP2 = [Cin = Cout of SA 3rd last level + Cout of FP1 = 256+512, 512, 512]
+        # -> FP3 = [Cin = Cout of SA 4th last level + Cout of FP2 = 96+512, 256, 256]
+        # -> FP4 = [Cin = Cout of SA 1st level + Cout of FP3 = 1+256, 128, 128]
         for k in range(SA_CONFIG["NPOINTS"].__len__()):
-            mlps = SA_CONFIG["MLPS"][k].copy()
+            mlps = SA_CONFIG["MLPS"][k].copy() #SA1 = sample 4096 centroids, group points that fall within radius of 0.1 for each centroid, group for r= 0.5, mlps = [for r=0.1->[16, 16, 32], for r=0.5 -> [32, 32, 64]]
             channel_out = 0
             for idx in range(mlps.__len__()):
                 mlps[idx] = [channel_in] + mlps[idx]
@@ -51,6 +55,10 @@ class PointNet2MSG(nn.Module):
                     use_xyz=True,
                 )
             )
+            # mlps for SA1 becomes [Cin = xyz+(Cout of previous layer or 1 (intensity)) = 3+1 = 4, 16, 16, 32], [3+1, 32, 32, 64]
+            # Cout of SA1 = 32 (feature vector for r = 0.1) + 64 (feature vector for r = 0.5) = 96
+
+            #mlps for SA2 becomes [Cin=xyz+96 = 99, 64,64,128], [64, 96, 128], Cout = 128+128 = 256
             skip_channel_list.append(channel_out)
             channel_in = channel_out
 
@@ -64,7 +72,7 @@ class PointNet2MSG(nn.Module):
                 )
             )
 
-        self.num_point_features = FP_MLPS[0][-1]
+        self.num_point_features = FP_MLPS[0][-1] # 128
         
         self.all_feat_names = [
             "fp2",
@@ -72,7 +80,7 @@ class PointNet2MSG(nn.Module):
 
         if use_mlp:
             self.use_mlp = True
-            self.head = MLP(mlp_dim)
+            self.head = MLP(mlp_dim) # projection head
 
             
     def break_up_pc(self, pc):
@@ -114,7 +122,7 @@ class PointNet2MSG(nn.Module):
             )  # (B, C, N)
             assert l_features[i - 1].is_contiguous()
 
-        point_features = l_features[0]
+        point_features = l_features[0] #(B=8, 128, num points = 16384)
         
         end_points = {}
         end_points['fp2_features'] = point_features
@@ -122,8 +130,9 @@ class PointNet2MSG(nn.Module):
         out_feats = [None] * len(out_feat_keys)
         for key in out_feat_keys:
             feat = end_points[key+"_features"]
-            nump = feat.shape[-1]
-            
+            nump = feat.shape[-1] # num points original
+
+            # get one feature vector of dim 128 for the entire point cloud
             feat = torch.squeeze(F.max_pool1d(feat, nump))
             if self.use_mlp:
                 feat = self.head(feat)
