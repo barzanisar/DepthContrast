@@ -330,13 +330,13 @@ class CheckpointManager(object):
         ckp = torch.load(checkpoint_fn, map_location={'cuda:0': 'cpu'})
         start_epoch = ckp['epoch']
         for k in kwargs:
-            if (k == 'model') and (self.dist == False):
-                newparam = {}
-                for tempk in ckp[k]:
-                    newparam[tempk[7:]] = ckp[k][tempk]
-                ### Fix the module issue
-                kwargs[k].load_state_dict(newparam)
-            else:
+            # if (k == 'model') and (self.dist == False):
+            #     newparam = {}
+            #     for tempk in ckp[k]:
+            #         newparam[tempk[7:]] = ckp[k][tempk]
+            #     ### Fix the module issue
+            #     kwargs[k].load_state_dict(newparam)
+            # else:
                 kwargs[k].load_state_dict(ckp[k])
         return start_epoch
 
