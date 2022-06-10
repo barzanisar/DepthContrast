@@ -147,7 +147,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
     # switch to train mode
     model.train(phase == 'train')
-
+    # ['points', 'points_moco']
     end = time.time()
     device = args.gpu if args.gpu is not None else 0
     for i, sample in enumerate(loader):
@@ -175,11 +175,11 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             optimizer.step()
 
         # measure elapsed time
-        batch_time.update(time.time() - end)
+        batch_time.update(time.time() - end) # This is printed as Time
         end = time.time()
 
         # print to terminal and tensorboard
-        step = epoch * len(loader) + i
+        step = epoch * len(loader) + i #sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
         if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
             progress.display(i+1)
 

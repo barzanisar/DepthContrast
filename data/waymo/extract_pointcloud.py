@@ -10,16 +10,17 @@ import tensorflow as tf
 import numpy as np
 import glob 
 from open3d import *
+import tqdm
 
-tf.enable_eager_execution()
+#tf.enable_eager_execution()
 
 from waymo_open_dataset.utils import frame_utils
 from waymo_open_dataset import dataset_pb2 as open_dataset
 
 
 debug = False
-K = 5
-SCALE_FACTOR = 2
+SAMPLING_RATE = 100
+WAYMO_PROCESSED_DIR = 'waymo_processed_data_10'
 segments = glob.glob(sys.argv[1]+"/*")
 datalist = []
 
@@ -47,7 +48,7 @@ def extract(i):
   
   all_static_pc = []
   for frame_cnt, data in enumerate(dataset):
-    if frame_cnt % 2 != 0: continue ### Set the sampling rate here
+    if frame_cnt % SAMPLING_RATE != 0: continue ### Set the sampling rate here
     
     print('frame ', frame_cnt)
     frame = open_dataset.Frame()
@@ -79,7 +80,7 @@ def extract(i):
 
     # lidar point cloud 
     
-    (range_images, camera_projections, range_image_top_pose) = \
+    (range_images, camera_projections, _, range_image_top_pose) = \
         frame_utils.parse_range_image_and_camera_projection(frame)
     points, cp_points = frame_utils.convert_range_image_to_point_cloud(
                                                                       frame,
@@ -93,6 +94,11 @@ def extract(i):
     datalist.append(os.path.abspath('%s/frame_%03d.npy' % (out_base_dir, frame_cnt)))
     
 if __name__ == '__main__':
-  for i in range(len(segments)):
-      extract(i)
-  np.save(sys.argv[3], datalist)
+  # for i in range(len(segments)):
+  #     extract(i)
+
+  datalist = sorted(glob.glob(sys.argv[1] + "/*/*.npy"))
+  for i, path in enumerate(datalist):
+      datalist[i] = WAYMO_PROCESSED_DIR + path.split(WAYMO_PROCESSED_DIR)[-1]
+
+  np.save(sys.argv[3], datalist) # only store paths as "waymo_processed_data_10/seq_name/frame.npy"
