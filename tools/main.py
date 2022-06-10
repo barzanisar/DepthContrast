@@ -21,6 +21,7 @@ from torch.multiprocessing import Pool, Process, set_start_method
 try:
      set_start_method('spawn')
 except RuntimeError:
+    print('ERROR: cant spawn')
     pass
 
 import torch.multiprocessing as mp
@@ -30,28 +31,28 @@ from utils import main_utils
 
 parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training in 3D')
 
-parser.add_argument('cfg', help='model directory')
+parser.add_argument('--cfg', type=str, default=None, help='specify the config for training')
 parser.add_argument('--quiet', action='store_true')
 
 parser.add_argument('--world-size', default=-1, type=int,
-                    help='number of nodes for distributed training')
+                    help='number of nodes for distributed training') #remove, ws is total no. of gpus, NOT nodes!
 parser.add_argument('--rank', default=-1, type=int,
-                    help='node rank for distributed training')
+                    help='node rank for distributed training') #remove
 parser.add_argument('--dist-url', default='tcp://localhost:15475', type=str,
-                    help='url used to set up distributed training')
+                    help='url used to set up distributed training') #tc port
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--gpu', default=0, type=int,
-                    help='GPU id to use.')
+                    help='GPU id to use.') #local_rank = 0
 parser.add_argument('--ngpus', default=8, type=int,
-                    help='number of GPUs to use.')
+                    help='number of GPUs to use.') #not needed
 parser.add_argument('--multiprocessing-distributed', action='store_true',
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
-                         'multi node data parallel training')
+                         'multi node data parallel training') #launcher?
 
 
 def main():
@@ -70,7 +71,7 @@ def main():
 
     ngpus_per_node = args.ngpus
     if args.multiprocessing_distributed:
-        args.world_size = ngpus_per_node * args.world_size
+        args.world_size = ngpus_per_node * args.world_size #total number of gpus
         mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, cfg))
     else:
         # Simply call main_worker function
