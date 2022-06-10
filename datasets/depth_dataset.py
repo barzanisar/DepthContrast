@@ -8,6 +8,7 @@ import logging
 import os
 
 import numpy as np
+from pathlib import Path
 
 from datasets.transforms.augment3d import get_transform3d
 
@@ -20,9 +21,17 @@ except:
     
 try:
     try:
-        from spconv.utils import VoxelGeneratorV2 as VoxelGenerator
+        try:
+            from spconv.utils import VoxelGeneratorV2 as VoxelGenerator
+            SPCONV_VER = 1
+        except:
+            from spconv.utils import VoxelGenerator
+            SPCONV_VER = 1
     except:
-        from spconv.utils import VoxelGenerator
+        #from spconv.utils import Point2VoxelCPU3d as VoxelGenerator
+        #from spconv.utils import Point2VoxelGPU3d as VoxelGenerator
+        from spconv.pytorch.utils import PointToVoxel as VoxelGenerator
+        SPCONV_VER = 2
 except:
     pass
 
@@ -49,7 +58,9 @@ class DepthContrastDataset(Dataset):
         self.AUGMENT_COORDS_TO_FEATS = False #optional
         self._labels_init = False
         self._get_data_files("train")
-        self.data_objs = np.load(self.data_paths[0]) ### Only load the first one for now
+        self.root_path = (Path(__file__) / '../..').resolve() # DepthContrast
+        self.root_data_path = self.root_path / Path(self.data_paths[0].split('ImageSets')[0]) # DepthContrast/data/waymo
+        self.data_objs = np.load(self.root_path / Path(self.data_paths[0])) ### Only load the first one for now
 
         #### Add the voxelizer here
         if ("Lidar" in cfg) and cfg["VOX"]:
@@ -58,12 +69,21 @@ class DepthContrastDataset(Dataset):
             self.point_cloud_range = POINT_RANGE#np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
             self.MAX_POINTS_PER_VOXEL = 5
             self.MAX_NUMBER_OF_VOXELS = 16000
-            self.voxel_generator = VoxelGenerator(
-                voxel_size=self.VOXEL_SIZE,
-                point_cloud_range=self.point_cloud_range,
-                max_num_points=self.MAX_POINTS_PER_VOXEL,
-                max_voxels=self.MAX_NUMBER_OF_VOXELS
-            )
+            if SPCONV_VER == 1:
+                self.voxel_generator = VoxelGenerator(
+                    voxel_size=self.VOXEL_SIZE,
+                    point_cloud_range=self.point_cloud_range,
+                    max_num_points=self.MAX_POINTS_PER_VOXEL,
+                    max_voxels=self.MAX_NUMBER_OF_VOXELS
+                )
+            else:
+                self.voxel_generator = VoxelGenerator(
+                    vsize_xyz=self.VOXEL_SIZE,
+                    coors_range_xyz=self.point_cloud_range,
+                    num_point_features = 3,
+                    max_num_points_per_voxel=self.MAX_POINTS_PER_VOXEL,
+                    max_num_voxels=self.MAX_NUMBER_OF_VOXELS
+                )
             grid_size = (self.point_cloud_range[3:6] - self.point_cloud_range[0:3]) / np.array(self.VOXEL_SIZE)
             self.grid_size = np.round(grid_size).astype(np.int64)
             self.voxel_size = self.VOXEL_SIZE
@@ -127,7 +147,10 @@ class DepthContrastDataset(Dataset):
 
     def toVox(self, coords, feats, labels):
         if "Lidar" in self.cfg:
-            voxel_output = self.voxel_generator.generate(coords)
+            if SPCONV_VER==1:
+                voxel_output = self.voxel_generator.generate(coords)
+            else:
+                voxel_output = self.voxel_generator(torch.from_numpy(coords).contiguous())
             if isinstance(voxel_output, dict):
                 voxels, coordinates, num_points = \
                                                   voxel_output['voxels'], voxel_output['coordinates'], voxel_output['num_points_per_voxel']
@@ -159,15 +182,16 @@ class DepthContrastDataset(Dataset):
 
     def load_data(self, idx):
         is_success = True
-        point_path = self.data_objs[idx]
+        point_path = self.root_data_path / Path(self.data_objs[idx])
         try:
             if "Lidar" in self.cfg:
-                #point = np.load(point_path)
-                point = np.fromfile(str(point_path), dtype=np.float32).reshape(-1, 4)#np.load(point_path)
-                if point.shape[1] != 4:
-                    temp = np.zeros((point.shape[0],4))
-                    temp[:,:3] = point
-                    point = np.copy(temp)
+                point = np.load(point_path)
+                #point = np.fromfile(str(point_path), dtype=np.float32).reshape(-1, 4)
+                # if point.shape[1] != 4:
+                #     temp = np.zeros((point.shape[0],4))
+                #     temp[:,:3] = point
+                #     point = np.copy(temp)
+                #     b=1
 
                 upper_idx = np.sum((point[:,0:3] <= POINT_RANGE[3:6]).astype(np.int32), 1) == 3
                 lower_idx = np.sum((point[:,0:3] >= POINT_RANGE[0:3]).astype(np.int32), 1) == 3
@@ -186,7 +210,7 @@ class DepthContrastDataset(Dataset):
             )
             point = np.zeros([50000, 7])
             is_success = False
-        return point, is_success
+        return point[:,:4], is_success
 
     def __getitem__(self, idx):
 
