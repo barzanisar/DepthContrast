@@ -10,6 +10,7 @@ import tensorflow as tf
 import numpy as np
 import glob 
 from open3d import *
+from pathlib import Path
 import tqdm
 
 #tf.enable_eager_execution()
@@ -21,6 +22,8 @@ from waymo_open_dataset import dataset_pb2 as open_dataset
 debug = False
 SAMPLING_RATE = 100
 WAYMO_PROCESSED_DIR = 'waymo_processed_data_10'
+TRAIN_SPLIT = './ImageSets/train_clear_short.txt'
+READ_SPLIT = True
 segments = glob.glob(sys.argv[1]+"/*")
 datalist = []
 
@@ -97,8 +100,15 @@ if __name__ == '__main__':
   # for i in range(len(segments)):
   #     extract(i)
 
-  datalist = sorted(glob.glob(sys.argv[1] + "/*/*.npy"))
-  for i, path in enumerate(datalist):
-      datalist[i] = WAYMO_PROCESSED_DIR + path.split(WAYMO_PROCESSED_DIR)[-1]
+  if READ_SPLIT:
+      seq_list = [x.strip().split('.')[0] for x in open(TRAIN_SPLIT).readlines()]
+      for seq in seq_list:
+          datalist += sorted(glob.glob(sys.argv[1] + f"/{seq}/*.npy"))
+      for i, path in enumerate(datalist):
+          datalist[i] = WAYMO_PROCESSED_DIR + path.split(WAYMO_PROCESSED_DIR)[-1]
+  else:
+      datalist = sorted(glob.glob(sys.argv[1] + "/*/*.npy"))
+      for i, path in enumerate(datalist):
+          datalist[i] = WAYMO_PROCESSED_DIR + path.split(WAYMO_PROCESSED_DIR)[-1]
 
   np.save(sys.argv[3], datalist) # only store paths as "waymo_processed_data_10/seq_name/frame.npy"
