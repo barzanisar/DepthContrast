@@ -15,7 +15,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # Default Command line args
 # main.py script parameters
 CFG_FILE=configs/point_within_lidar_template.yaml
-DIST=true
+DIST=false
 TCP_PORT=18888
 LAUNCHER='pytorch'
 #WORLD_SIZE='default'
