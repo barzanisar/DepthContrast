@@ -44,8 +44,8 @@ parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
-parser.add_argument('--gpu', default=0, type=int,
-                    help='GPU id to use.') #local_rank = 0
+parser.add_argument('--local_rank', default=0, type=int,
+                    help='local_process id i.e. GPU id to use.') #local_rank = 0
 parser.add_argument('--ngpus', default=8, type=int,
                     help='number of GPUs to use.') #not needed
 parser.add_argument('--multiprocessing-distributed', action='store_true',
