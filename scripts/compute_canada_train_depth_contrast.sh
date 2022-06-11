@@ -15,7 +15,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # Default Command line args
 # main.py script parameters
 CFG_FILE=configs/point_within_lidar_template.yaml
-DIST=false
+DIST="true"
 TCP_PORT=18888
 LAUNCHER='pytorch'
 #WORLD_SIZE='default'
@@ -228,22 +228,21 @@ $SING_IMG
 "
 
 TRAIN_CMD=$BASE_CMD
-TRAIN_CMD+="python /DepthContrast/tools/main.py --cfg /DepthContrast/$CFG_FILE"
 
-#if [ $DIST != "true" ]
-#then
-#    TRAIN_CMD+="python /DepthContrast/tools/main.py
-#"
-#else
-#    TRAIN_CMD+="python -m torch.distributed.launch
-#    --nproc_per_node=$NUM_GPUS
-#    /DepthContrast/tools/main_dist.py
-#    --launcher pytorch
-#    --tcp_port $TCP_PORT"
-#fi
-#TRAIN_CMD+="
-#    --cfg /DepthContrast/$CFG_FILE
-#"
+if [ $DIST != "true" ]
+then
+    TRAIN_CMD+="python /DepthContrast/tools/main.py
+"
+else
+    TRAIN_CMD+="python -m torch.distributed.launch
+    --nproc_per_node=$NUM_GPUS
+    /DepthContrast/tools/main_dist.py
+    --launcher pytorch
+    --tcp_port $TCP_PORT"
+fi
+TRAIN_CMD+="
+    --cfg /DepthContrast/$CFG_FILE
+"
 
 echo "Running training and evaluation"
 echo "$TRAIN_CMD"
