@@ -232,18 +232,17 @@ TRAIN_CMD=$BASE_CMD
 
 if [ $DIST != "true" ]
 then
-    TRAIN_CMD+="python /DepthContrast/tools/main.py
+    TRAIN_CMD+="python /DepthContrast/tools/main.py --cfg /DepthContrast/$CFG_FILE
 "
 else
-    TRAIN_CMD+="python -m torch.distributed.launch
-    --nproc_per_node=$NUM_GPUS
-    /DepthContrast/tools/main_dist.py
-    --launcher pytorch
-    --tcp_port $TCP_PORT --multiprocessing-distributed"
+    TRAIN_CMD+= "python scripts/multinode-wrapper.py tools/main_dist.py /DepthContrast/$CFG_FILE"
+#    TRAIN_CMD+="python -m torch.distributed.launch
+#    --nproc_per_node=$NUM_GPUS
+#    /DepthContrast/tools/main_dist.py
+#    --launcher pytorch
+#    --tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE"
 fi
-TRAIN_CMD+="
-    --cfg /DepthContrast/$CFG_FILE
-"
+
 
 echo "Running training and evaluation"
 echo "$TRAIN_CMD"
