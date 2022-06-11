@@ -50,7 +50,7 @@ parser.add_argument('--local_rank', default=0, type=int,
                     help='local process id i.e. GPU id to use.') #local_rank = 0
 parser.add_argument('--ngpus', default=8, type=int,
                     help='number of GPUs to use.') #not needed
-parser.add_argument('--multiprocessing-distributed', action='store_true',
+parser.add_argument('--multiprocessing-distributed', action='store_true', default=True,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
