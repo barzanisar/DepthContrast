@@ -37,8 +37,8 @@ LAUNCHER='pytorch'
 
 # Additional parameters
 DATASET=waymo
-DATA_DIR=/home/$USER/projects/def-swasland-ab/Datasets/Waymo
-INFOS_DIR=/home/$USER/projects/def-swasland-ab/Datasets/Waymo/Infos
+DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
+INFOS_DIR='not needed' #/home/$USER/projects/rrg-swasland/Datasets/Waymo/Infos
 SING_IMG=/home/$USER/projects/rrg-swasland/singularity/depth_contrast.sif
 DIST=true
 TEST_ONLY=false
@@ -177,13 +177,13 @@ for file in $DATA_DIR/*.zip; do
 done
 echo "Done extracting data"
 
-# Extract dataset infos
-echo "Extracting dataset infos"
-for file in $INFOS_DIR/*.zip; do
-    echo "Unzipping $file to $TMP_DATA_DIR"
-    unzip -qq $file -d $TMP_DATA_DIR
-done
-echo "Done extracting dataset infos"
+## Extract dataset infos
+#echo "Extracting dataset infos"
+#for file in $INFOS_DIR/*.zip; do
+#    echo "Unzipping $file to $TMP_DATA_DIR"
+#    unzip -qq $file -d $TMP_DATA_DIR
+#done
+#echo "Done extracting dataset infos"
 
 # Load Singularity
 module load StdEnv/2020 #??
