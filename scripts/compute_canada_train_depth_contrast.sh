@@ -235,7 +235,7 @@ then
     TRAIN_CMD+="python /DepthContrast/tools/main.py --cfg /DepthContrast/$CFG_FILE
 "
 else
-    TRAIN_CMD+= "python scripts/multinode-wrapper.py tools/main_dist.py /DepthContrast/$CFG_FILE"
+    TRAIN_CMD+= "python /DepthContrast/scripts/multinode-wrapper.py /DepthContrast/tools/main_dist.py /DepthContrast/$CFG_FILE"
 #    TRAIN_CMD+="python -m torch.distributed.launch
 #    --nproc_per_node=$NUM_GPUS
 #    /DepthContrast/tools/main_dist.py
