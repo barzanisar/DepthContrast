@@ -239,6 +239,7 @@ else
     /DepthContrast/tools/main_dist.py
     --launcher pytorch
     --tcp_port $TCP_PORT"
+    --multiprocessing-distributed
 fi
 TRAIN_CMD+="
     --cfg /DepthContrast/$CFG_FILE

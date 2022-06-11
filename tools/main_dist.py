@@ -196,9 +196,8 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
         # print to terminal and tensorboard
         step = epoch * len(loader) + i #sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
-        if args.rank == 0:
-            if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
-                progress.display(i+1)
+        if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
+            progress.display(i+1)
 
     # Sync metrics across all GPUs and print final averages
     if args.multiprocessing_distributed:
