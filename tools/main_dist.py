@@ -38,7 +38,7 @@ parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training') #remove, ws is total no. of gpus, NOT nodes!
 parser.add_argument('--rank', default=-1, type=int,
                     help='node rank for distributed training') #remove
-parser.add_argument('--launcher', choices=['pytorch', 'slurm', 'fair'], default='pytorch')
+parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'fair'], default='none')
 parser.add_argument('--tcp_port', type=int, default=18888, help='tcp port for distrbuted training')
 parser.add_argument('--dist-url', default='tcp://127.0.0.1:29500', type=str,
                     help='url used to set up distributed training') #tc port
@@ -75,8 +75,12 @@ def main():
     if args.multiprocessing_distributed:
         assert args.launcher in ['pytorch', 'slurm', 'fair']
         if args.launcher == 'fair':
+            num_nodes = int(os.environ['SLURM_NNODES'])
+            args.rank = int(os.environ['SLURM_NODEID'])
+            node0 = 'gra' + os.environ['SLURM_NODELIST'][10:14]
+            args.dist_url = f"tcp://{node0}:1234" #'tcp://127.0.0.1:29500' "tcp://gra1154:29500"
             ngpus_per_node = args.ngpus
-            args.world_size = ngpus_per_node * args.world_size #total number of gpus
+            args.world_size = ngpus_per_node * num_nodes #total number of gpus
             mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, cfg))
         else:
             args.ngpus = torch.cuda.device_count()  # remove for fair
