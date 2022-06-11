@@ -13,6 +13,7 @@ import torch.distributed as dist
 import datetime
 import collections.abc as container_abcs
 from utils.logger import Logger
+import subprocess
 
 from datasets import build_dataset, get_loader
 import torch.multiprocessing as mp
@@ -21,7 +22,6 @@ def initialize_distributed_backend(args, ngpus_per_node):
     if args.multiprocessing_distributed:
         # For multiprocessing distributed training, rank needs to be the
         # global rank among all the processes
-        print('Initialize_distributed_backend')
         if args.launcher == 'fair':
             if args.dist_url == "env://" and args.rank == -1:
                 args.rank = int(os.environ["RANK"])
@@ -66,10 +66,6 @@ def initialize_distributed_backend(args, ngpus_per_node):
             args.world_size = dist.get_world_size()
             args.local_rank = dist.get_rank()  # local rank
             args.rank = dist.get_rank()  # global rank
-            print(f'args.local_rank = {args.local_rank}')
-            print(f'args.rank = {args.rank}')
-            print(f'args.world_size = {args.world_size}')
-
 
     if args.rank == -1:
         args.rank = 0
