@@ -64,8 +64,7 @@ def initialize_distributed_backend(args, ngpus_per_node):
                 world_size=num_gpus
             )
             args.world_size = dist.get_world_size()
-            args.local_rank = dist.get_rank()  # local rank
-            args.rank = dist.get_rank()  # global rank
+            args.rank = dist.get_rank()  # dist.get_rank() returns global rank
 
     if args.rank == -1:
         args.rank = 0
