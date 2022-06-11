@@ -17,12 +17,12 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
 
-from torch.multiprocessing import Pool, Process, set_start_method
-try:
-     set_start_method('spawn')
-except RuntimeError:
-    print('ERROR: cant spawn')
-    pass
+#from torch.multiprocessing import Pool, Process, set_start_method
+# try:
+#      set_start_method('spawn')
+# except RuntimeError:
+#     print('ERROR: cant spawn')
+#     pass
 
 import torch.multiprocessing as mp
   
@@ -93,6 +93,10 @@ def main_worker(gpu, ngpus, args, cfg):
     # Setup environment
     args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
     logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
+    logger.add_line("=" * 30 + "   DDP   " + "=" * 30)
+    logger.add_line(f"world_size: {args.world_size}")
+    logger.add_line(f"local_rank: {args.local_rank}")
+    logger.add_line(f"rank: {args.rank}")
 
     # Define model
     model = main_utils.build_model(cfg['model'], logger)
@@ -192,8 +196,9 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
         # print to terminal and tensorboard
         step = epoch * len(loader) + i #sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
-        if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
-            progress.display(i+1)
+        if args.rank == 0:
+            if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
+                progress.display(i+1)
 
     # Sync metrics across all GPUs and print final averages
     if args.multiprocessing_distributed:
