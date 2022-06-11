@@ -228,20 +228,22 @@ $SING_IMG
 "
 
 TRAIN_CMD=$BASE_CMD
-if [ $DIST != "true" ]
-then
-    TRAIN_CMD+="python /DepthContrast/tools/main.py
-"
-else
-    TRAIN_CMD+="python -m torch.distributed.launch
-    --nproc_per_node=$NUM_GPUS
-    /DepthContrast/tools/main_dist.py
-    --launcher pytorch
-    --tcp_port $TCP_PORT"
-fi
-TRAIN_CMD+="
-    --cfg /DepthContrast/$CFG_FILE
-"
+TRAIN_CMD+="python /DepthContrast/tools/main.py --cfg /DepthContrast/$CFG_FILE"
+
+#if [ $DIST != "true" ]
+#then
+#    TRAIN_CMD+="python /DepthContrast/tools/main.py
+#"
+#else
+#    TRAIN_CMD+="python -m torch.distributed.launch
+#    --nproc_per_node=$NUM_GPUS
+#    /DepthContrast/tools/main_dist.py
+#    --launcher pytorch
+#    --tcp_port $TCP_PORT"
+#fi
+#TRAIN_CMD+="
+#    --cfg /DepthContrast/$CFG_FILE
+#"
 
 echo "Running training and evaluation"
 echo "$TRAIN_CMD"
