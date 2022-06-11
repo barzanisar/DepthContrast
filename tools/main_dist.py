@@ -77,11 +77,11 @@ def main():
         if args.launcher == 'fair':
             num_nodes = int(os.environ['SLURM_NNODES'])
             args.rank = int(os.environ['SLURM_NODEID'])
-            node0 = 'gra' + os.environ['SLURM_NODELIST'][10:14]
+            node0 = 'gra' + os.environ['SLURM_NODELIST'][4:8]
             print("=" * 30 + "   DDP   " + "=" * 30)
             print(f"node0 : {node0}")
             print(f"num_nodes : {num_nodes}")
-            args.dist_url = 'tcp://127.0.0.1:29500' #f"tcp://{node0}:1234" #'tcp://127.0.0.1:29500' "tcp://gra1154:29500"
+            args.dist_url = f"tcp://{node0}:1234" #'tcp://127.0.0.1:29500' "tcp://gra1154:29500"
             ngpus_per_node = args.ngpus
             args.world_size = ngpus_per_node * num_nodes #total number of gpus
             mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, cfg))
