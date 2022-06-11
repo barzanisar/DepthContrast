@@ -40,7 +40,7 @@ parser.add_argument('--rank', default=-1, type=int,
                     help='node rank for distributed training') #remove
 parser.add_argument('--launcher', choices=['pytorch', 'slurm', 'fair'], default='pytorch')
 parser.add_argument('--tcp_port', type=int, default=18888, help='tcp port for distrbuted training')
-parser.add_argument('--dist-url', default='tcp://localhost:15475', type=str,
+parser.add_argument('--dist-url', default='tcp://127.0.0.1:29500', type=str,
                     help='url used to set up distributed training') #tc port
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
@@ -48,13 +48,13 @@ parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--local_rank', default=0, type=int,
                     help='local process id i.e. GPU id to use.') #local_rank = 0
-parser.add_argument('--ngpus', default=8, type=int,
+parser.add_argument('--ngpus', default=4, type=int,
                     help='number of GPUs to use.') #not needed
 parser.add_argument('--multiprocessing-distributed', action='store_true', default=True,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
-                         'multi node data parallel training') #launcher?
+                         'multi node data parallel training')
 
 
 def main():
@@ -93,10 +93,10 @@ def main_worker(gpu, ngpus, args, cfg):
     # Setup environment
     args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
     logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
-    logger.add_line("=" * 30 + "   DDP   " + "=" * 30)
-    logger.add_line(f"world_size: {args.world_size}")
-    logger.add_line(f"local_rank: {args.local_rank}")
-    logger.add_line(f"rank: {args.rank}")
+    print("=" * 30 + "   DDP   " + "=" * 30)
+    print(f"world_size: {args.world_size}")
+    print(f"local_rank: {args.local_rank}")
+    print(f"rank: {args.rank}")
 
     # Define model
     model = main_utils.build_model(cfg['model'], logger)
@@ -168,7 +168,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     device = args.local_rank if args.local_rank is not None else 0
     for i, sample in enumerate(loader):
         # measure data loading time
-        data_time.update(time.time() - end)
+        data_time.update(time.time() - end) # Time to load one batch
 
         if phase == 'train':
             embedding = model(sample)
@@ -191,7 +191,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             optimizer.step()
 
         # measure elapsed time
-        batch_time.update(time.time() - end) # This is printed as Time
+        batch_time.update(time.time() - end) # This is printed as Time # Time to train one batch
         end = time.time()
 
         # print to terminal and tensorboard
