@@ -238,8 +238,7 @@ else
     --nproc_per_node=$NUM_GPUS
     /DepthContrast/tools/main_dist.py
     --launcher pytorch
-    --tcp_port $TCP_PORT"
-    --multiprocessing-distributed
+    --tcp_port $TCP_PORT --multiprocessing-distributed"
 fi
 TRAIN_CMD+="
     --cfg /DepthContrast/$CFG_FILE
