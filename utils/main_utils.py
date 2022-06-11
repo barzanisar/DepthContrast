@@ -26,7 +26,7 @@ def initialize_distributed_backend(args, ngpus_per_node):
             if args.dist_url == "env://" and args.rank == -1:
                 args.rank = int(os.environ["RANK"])
             # now they change arg.rank definition from rank of node to global rank of gpu
-            args.rank = args.rank * ngpus_per_node + args.gpu
+            args.rank = args.rank * ngpus_per_node + args.local_rank
             dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                     world_size=args.world_size, rank=args.rank)
         elif args.launcher == 'slurm':
@@ -46,27 +46,27 @@ def initialize_distributed_backend(args, ngpus_per_node):
             dist.init_process_group(backend=args.dist_backend)
 
             args.world_size = dist.get_world_size()
-            args.gpu = str(proc_id % num_gpus) #local rank
+            args.local_rank = str(proc_id % num_gpus) #local rank
             args.rank = dist.get_rank() # global rank
 
-            print(f'args.gpu = {args.gpu}')
+            print(f'args.local_rank = {args.local_rank}')
             print(f'args.world_size = {args.world_size}')
         elif args.launcher == 'pytorch':
             if mp.get_start_method(allow_none=True) is None:
                 mp.set_start_method('spawn')
 
             num_gpus = torch.cuda.device_count()
-            torch.cuda.set_device(args.gpu % num_gpus)
+            torch.cuda.set_device(args.local_rank % num_gpus)
             dist.init_process_group(
                 backend=args.dist_backend,
                 init_method='tcp://127.0.0.1:%d' % args.tcp_port,
-                rank=args.gpu,
+                rank=args.local_rank,
                 world_size=num_gpus
             )
             args.world_size = dist.get_world_size()
-            args.gpu = dist.get_rank()  # local rank
+            args.local_rank = dist.get_rank()  # local rank
             args.rank = dist.get_rank()  # global rank
-            print(f'args.gpu = {args.gpu}')
+            print(f'args.local_rank = {args.local_rank}')
             print(f'args.rank = {args.rank}')
             print(f'args.world_size = {args.world_size}')
 
@@ -199,18 +199,18 @@ def distribute_model_to_cuda(models, args):
             # For multiprocessing distributed, DistributedDataParallel constructor
             # should always set the single device scope, otherwise,
             # DistributedDataParallel will use all available devices.
-            if args.gpu is not None:
-                torch.cuda.set_device(args.gpu)
-                models[i].cuda(args.gpu)
-                models[i] = torch.nn.parallel.DistributedDataParallel(models[i], device_ids=[args.gpu]) #% torch.cuda.device_count()
+            if args.local_rank is not None:
+                torch.cuda.set_device(args.local_rank)
+                models[i].cuda(args.local_rank)
+                models[i] = torch.nn.parallel.DistributedDataParallel(models[i], device_ids=[args.local_rank % torch.cuda.device_count()]) #
             else:
                 models[i].cuda()
                 # DistributedDataParallel will divide and allocate batch_size to all
                 # available GPUs if device_ids are not set
                 models[i] = torch.nn.parallel.DistributedDataParallel(models[i])
-        elif args.gpu is not None:
-            torch.cuda.set_device(args.gpu)
-            models[i] = models[i].cuda(args.gpu)
+        elif args.local_rank is not None:
+            torch.cuda.set_device(args.local_rank)
+            models[i] = models[i].cuda(args.local_rank)
         else:
             # DataParallel will divide and allocate batch_size to all available GPUs
             # Careful!!! DataParallel does not work for vox

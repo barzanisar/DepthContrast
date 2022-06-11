@@ -23,7 +23,7 @@ LAUNCHER='pytorch'
 #DIST_URL='default'
 #DIST_BACKEND='default'
 #SEED=None
-#GPU='default' #local rank
+#LOCAL_RANK='default' #local rank
 #NGPUS='default' #num of gpus per node
 
 #CKPT=None

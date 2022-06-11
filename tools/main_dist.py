@@ -80,14 +80,14 @@ def main():
             mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, cfg))
         else:
             args.ngpus = torch.cuda.device_count()  # remove for fair
-            main_worker(args.gpu, args.ngpus, args, cfg)
+            main_worker(args.local_rank, args.ngpus, args, cfg)
     else:
         args.ngpus = torch.cuda.device_count()  # remove for fair
         # Simply call main_worker function
-        main_worker(args.gpu, args.ngpus, args, cfg)
+        main_worker(args.local_rank, args.ngpus, args, cfg)
     
 def main_worker(gpu, ngpus, args, cfg):
-    args.gpu = gpu
+    args.local_rank = gpu
     ngpus_per_node = ngpus
     
     # Setup environment
@@ -161,7 +161,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     model.train(phase == 'train')
     # ['points', 'points_moco']
     end = time.time()
-    device = args.gpu if args.gpu is not None else 0
+    device = args.local_rank if args.local_rank is not None else 0
     for i, sample in enumerate(loader):
         # measure data loading time
         data_time.update(time.time() - end)
@@ -197,7 +197,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
     # Sync metrics across all GPUs and print final averages
     if args.multiprocessing_distributed:
-        progress.synchronize_meters(args.gpu)
+        progress.synchronize_meters(args.local_rank)
         progress.display(len(loader)*args.world_size)
 
     if tb_writter is not None:
