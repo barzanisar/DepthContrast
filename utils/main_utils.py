@@ -45,7 +45,7 @@ def initialize_distributed_backend(args, ngpus_per_node):
             print(f"proc_id: {proc_id}")
             addr = 'gra' + os.environ['SLURM_NODELIST'][4:8] if int(os.environ['SLURM_NNODES']) > 1 else os.environ['SLURM_NODELIST']
             os.environ['MASTER_PORT'] = str(args.tcp_port) #29500
-            os.environ['MASTER_ADDR'] = addr #'gra' + os.environ['SLURM_NODELIST'][4:8] #'127.0.0.1'#addr
+            os.environ['MASTER_ADDR'] = '127.0.0.1' #addr #'gra' + os.environ['SLURM_NODELIST'][4:8] #'127.0.0.1'#addr
             addr = os.environ['MASTER_ADDR']
             os.environ['WORLD_SIZE'] = str(ntasks)
             os.environ['RANK'] = str(proc_id)
