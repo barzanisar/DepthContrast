@@ -49,8 +49,6 @@ def initialize_distributed_backend(args, ngpus_per_node):
             args.local_rank = str(proc_id % num_gpus) #local rank
             args.rank = dist.get_rank() # global rank
 
-            print(f'args.local_rank = {args.local_rank}')
-            print(f'args.world_size = {args.world_size}')
         elif args.launcher == 'pytorch':
             if mp.get_start_method(allow_none=True) is None:
                 mp.set_start_method('spawn')
@@ -197,7 +195,7 @@ def distribute_model_to_cuda(models, args):
             if args.local_rank is not None:
                 torch.cuda.set_device(args.local_rank)
                 models[i].cuda(args.local_rank)
-                models[i] = torch.nn.parallel.DistributedDataParallel(models[i], device_ids=[args.local_rank % torch.cuda.device_count()]) #
+                models[i] = torch.nn.parallel.DistributedDataParallel(models[i], device_ids=[args.local_rank % torch.cuda.device_count()]) #device_ids should always be local_rank!
             else:
                 models[i].cuda()
                 # DistributedDataParallel will divide and allocate batch_size to all
