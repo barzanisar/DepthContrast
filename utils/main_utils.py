@@ -32,13 +32,17 @@ def initialize_distributed_backend(args, ngpus_per_node):
         elif args.launcher == 'slurm':
             if mp.get_start_method(allow_none=True) is None:
                 mp.set_start_method('spawn')
-            proc_id = int(os.environ['SLURM_PROCID'])
+            proc_id = int(os.environ['SLURM_PROCID']) # global rank
             ntasks = int(os.environ['SLURM_NNODES']) * ngpus_per_node
             node_list = os.environ['SLURM_NODELIST']
             assert ngpus_per_node == torch.cuda.device_count(), torch.cuda.device_count()
             num_gpus = torch.cuda.device_count()
             torch.cuda.set_device(proc_id % num_gpus)
             addr = subprocess.getoutput('scontrol show hostname {} | head -n1'.format(node_list))
+            print(f"node_list: {node_list}")
+            print(f"addr: {addr}")
+            print(f"ntasks: {ntasks}")
+            print(f"proc_id: {proc_id}")
             os.environ['MASTER_PORT'] = str(args.tcp_port)
             os.environ['MASTER_ADDR'] = addr
             os.environ['WORLD_SIZE'] = str(ntasks)
