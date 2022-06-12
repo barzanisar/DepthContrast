@@ -44,7 +44,7 @@ def initialize_distributed_backend(args, ngpus_per_node):
             print(f"ntasks: {ntasks}")
             print(f"proc_id: {proc_id}")
             os.environ['MASTER_PORT'] = str(args.tcp_port)
-            os.environ['MASTER_ADDR'] = addr
+            os.environ['MASTER_ADDR'] = '127.0.0.1'#addr
             os.environ['WORLD_SIZE'] = str(ntasks)
             os.environ['RANK'] = str(proc_id)
             dist.init_process_group(backend=args.dist_backend)
