@@ -52,10 +52,11 @@ def initialize_distributed_backend(args, ngpus_per_node):
                 key: os.environ[key]
                 for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE")
             }
+            print(env_dict)
             print("LAUNCHING!")
             dist.init_process_group(backend=args.dist_backend, rank=proc_id, world_size=int(os.environ['WORLD_SIZE']),
                                     init_method=f'tcp://{addr}:{args.tcp_port}')
-
+            print("LAUNCHed!")
             args.world_size = dist.get_world_size()
             args.local_rank = str(proc_id % num_gpus) #local rank
             args.rank = dist.get_rank() # global rank
