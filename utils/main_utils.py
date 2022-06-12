@@ -56,7 +56,12 @@ def initialize_distributed_backend(args, ngpus_per_node):
         elif args.launcher == 'pytorch':
             if mp.get_start_method(allow_none=True) is None:
                 mp.set_start_method('spawn')
-
+            env_dict = {
+                key: os.environ[key]
+                for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE")
+            }
+            print("LAUNCHING!")
+            print(env_dict)
             num_gpus = torch.cuda.device_count()
             torch.cuda.set_device(args.local_rank % num_gpus)
             dist.init_process_group(

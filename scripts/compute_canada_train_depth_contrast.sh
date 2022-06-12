@@ -229,13 +229,45 @@ $SING_IMG
 "
 
 TRAIN_CMD=$BASE_CMD
-TRAIN_CMD+="python -u /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$CFG_FILE --launcher slurm"
 
+if [ $DIST != "true" ]
+then
+    TRAIN_CMD+="python /DepthContrast/tools/main.py --cfg /DepthContrast/$CFG_FILE
+"
+else
+    TRAIN_CMD+="python -m torch.distributed.launch
+    --nnodes=2 --node_rank=0
+    --nproc_per_node=$NUM_GPUS
+    /DepthContrast/tools/main_dist.py
+    --launcher pytorch
+    --tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE"
+fi
 
-echo "Running training and evaluation"
+echo "Running training and evaluation for NODE 0"
 echo "$TRAIN_CMD"
 eval $TRAIN_CMD
 echo "Done training and evaluation"
+
+TRAIN_CMD=$BASE_CMD
+
+if [ $DIST != "true" ]
+then
+    TRAIN_CMD+="python /DepthContrast/tools/main.py --cfg /DepthContrast/$CFG_FILE
+"
+else
+    TRAIN_CMD+="python -m torch.distributed.launch
+    --nnodes=2 --node_rank=1
+    --nproc_per_node=$NUM_GPUS
+    /DepthContrast/tools/main_dist.py
+    --launcher pytorch
+    --tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE"
+fi
+
+echo "Running training and evaluation for NODE 1"
+echo "$TRAIN_CMD"
+eval $TRAIN_CMD
+echo "Done training and evaluation"
+
 
 ## Additional arguments if necessary
 #if [ $TRAIN_BATCH_SIZE != "default" ]
