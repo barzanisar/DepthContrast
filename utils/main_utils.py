@@ -43,8 +43,8 @@ def initialize_distributed_backend(args, ngpus_per_node):
             print(f"addr: {addr}")
             print(f"ntasks: {ntasks}")
             print(f"proc_id: {proc_id}")
-            os.environ['MASTER_PORT'] = str(args.tcp_port)
-            os.environ['MASTER_ADDR'] = '127.0.0.1'#addr
+            os.environ['MASTER_PORT'] = str(args.tcp_port) #29500
+            os.environ['MASTER_ADDR'] = 'gra' + os.environ['SLURM_NODELIST'][4:8] #'127.0.0.1'#addr
             os.environ['WORLD_SIZE'] = str(ntasks)
             os.environ['RANK'] = str(proc_id)
             dist.init_process_group(backend=args.dist_backend)
