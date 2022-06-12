@@ -33,7 +33,7 @@ def initialize_distributed_backend(args, ngpus_per_node):
             if mp.get_start_method(allow_none=True) is None:
                 mp.set_start_method('spawn')
             proc_id = int(os.environ['SLURM_PROCID'])
-            ntasks = int(os.environ['SLURM_NTASKS'])
+            ntasks = int(os.environ['SLURM_NNODES']) * ngpus_per_node
             node_list = os.environ['SLURM_NODELIST']
             assert ngpus_per_node == torch.cuda.device_count(), torch.cuda.device_count()
             num_gpus = torch.cuda.device_count()
