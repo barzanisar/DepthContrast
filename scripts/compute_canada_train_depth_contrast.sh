@@ -229,7 +229,7 @@ $SING_IMG
 "
 
 TRAIN_CMD=$BASE_CMD
-TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$CFG_FILE --launcher slurm"
+TRAIN_CMD+="python -u /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$CFG_FILE --launcher slurm"
 
 
 echo "Running training and evaluation"
