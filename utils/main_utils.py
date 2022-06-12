@@ -38,16 +38,23 @@ def initialize_distributed_backend(args, ngpus_per_node):
             assert ngpus_per_node == torch.cuda.device_count(), torch.cuda.device_count()
             num_gpus = torch.cuda.device_count()
             torch.cuda.set_device(proc_id % num_gpus)
-            addr = subprocess.getoutput('scontrol show hostname {} | head -n1'.format(node_list))
+            addr = subprocess.getoutput('scontrol show hostname {} | head -n 1'.format(node_list))
             print(f"node_list: {node_list}")
             print(f"addr: {addr}")
             print(f"ntasks: {ntasks}")
             print(f"proc_id: {proc_id}")
             os.environ['MASTER_PORT'] = str(args.tcp_port) #29500
             os.environ['MASTER_ADDR'] = 'gra' + os.environ['SLURM_NODELIST'][4:8] #'127.0.0.1'#addr
+            addr = os.environ['MASTER_ADDR']
             os.environ['WORLD_SIZE'] = str(ntasks)
             os.environ['RANK'] = str(proc_id)
-            dist.init_process_group(backend=args.dist_backend)
+            env_dict = {
+                key: os.environ[key]
+                for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE")
+            }
+            print("LAUNCHING!")
+            dist.init_process_group(backend=args.dist_backend, rank=proc_id, world_size=int(os.environ['WORLD_SIZE']),
+                                    init_method=f'tcp://{addr}:{args.tcp_port}')
 
             args.world_size = dist.get_world_size()
             args.local_rank = str(proc_id % num_gpus) #local rank
