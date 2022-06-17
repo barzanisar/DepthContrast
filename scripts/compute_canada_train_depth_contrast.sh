@@ -3,7 +3,6 @@
 #SBATCH --job-name=DepthContrast-train
 #SBATCH --account=rrg-swasland
 #SBATCH --cpus-per-task=8             # CPU cores/threads
-#SBATCH --nodes=2
 #SBATCH --gres=gpu:t4:4                # Number of GPUs (per node)
 #SBATCH --mem=64000M                   # memory per node
 #SBATCH --output=./output/log/%x-%j.out   # STDOUT
@@ -233,7 +232,7 @@ TRAIN_CMD=$BASE_CMD
 
 if [ $DIST != "true" ]
 then
-    TRAIN_CMD+="python /DepthContrast/tools/main.py --cfg /DepthContrast/$CFG_FILE
+    TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$CFG_FILE
 "
 else
     TRAIN_CMD+="python -m torch.distributed.launch

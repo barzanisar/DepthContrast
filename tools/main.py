@@ -38,7 +38,9 @@ parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training') #remove, ws is total no. of gpus, NOT nodes!
 parser.add_argument('--rank', default=-1, type=int,
                     help='node rank for distributed training') #remove
-parser.add_argument('--dist-url', default='tcp://localhost:15475', type=str,
+parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'fair'], default='none')
+parser.add_argument('--tcp_port', type=int, default=18888, help='tcp port for distrbuted training')
+parser.add_argument('--dist-url', default='tcp://127.0.0.1:29500', type=str,
                     help='url used to set up distributed training') #tc port
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
@@ -46,13 +48,13 @@ parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--local_rank', default=0, type=int,
                     help='local_process id i.e. GPU id to use.') #local_rank = 0
-parser.add_argument('--ngpus', default=8, type=int,
+parser.add_argument('--ngpus', default=1, type=int,
                     help='number of GPUs to use.') #not needed
-parser.add_argument('--multiprocessing-distributed', action='store_true',
+parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
-                         'multi node data parallel training') #launcher?
+                         'multi node data parallel training')
 
 
 def main():

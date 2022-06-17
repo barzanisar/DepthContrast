@@ -73,5 +73,5 @@ loss:
       NORM_EMBEDDING: True
       TEMPERATURE: 0.1
       LOSS_TYPE: cross_entropy
-      NUM_NEGATIVES: 65536
+      NUM_NEGATIVES: 65536 # has to be divisble by batch size or num voxels in each point cloud
       EMBEDDING_DIM: 128

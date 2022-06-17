@@ -23,4 +23,4 @@ mkdir -p $LOG_PATH
 
 export PYTHONPATH=$PWD:$PYTHONPATH
 
-srun --output=${LOG_PATH}/%j.out --error=${LOG_PATH}/%j.err --label python scripts/multinode-wrapper.py main.py $1
+srun --output=${LOG_PATH}/%j.out --error=${LOG_PATH}/%j.err --label python scripts/multinode-wrapper.py tools/main.py $1

@@ -1,6 +1,6 @@
 resume: false
 test_only: false
-num_workers: 10
+num_workers: 8
 
 required_devices: 1
 no_test: false
@@ -14,8 +14,8 @@ print_freq: 5
 
 dataset:
   DATASET_NAMES: [waymo]
-  DATA_PATHS: ['/path/to/waymo.npy']
-  BATCHSIZE_PER_REPLICA: 32
+  DATA_PATHS: ['data/waymo/ImageSets/waymo.npy']
+  BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: sample_index
   DATA_TYPE: point_vox
   Lidar: True
