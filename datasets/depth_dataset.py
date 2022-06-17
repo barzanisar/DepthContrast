@@ -39,8 +39,9 @@ from torch.utils.data import Dataset
 import torch
 
 ### Waymo lidar range
-#POINT_RANGE = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
-POINT_RANGE = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32)#np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32) ### KITTI
+WAYMO_POINT_RANGE = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
+# KITTI and DENSE range
+DENSE_POINT_RANGE = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32)
 
 class DepthContrastDataset(Dataset):
     """Base Self Supervised Learning Dataset Class."""
@@ -65,8 +66,12 @@ class DepthContrastDataset(Dataset):
         #### Add the voxelizer here
         if ("Lidar" in cfg) and cfg["VOX"]:
             self.VOXEL_SIZE = [0.1, 0.1, 0.2]
-       
-            self.point_cloud_range = POINT_RANGE#np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
+
+            if "waymo" in self.dataset_names:
+                self.point_cloud_range = WAYMO_POINT_RANGE
+            elif "dense" in self.dataset_names:
+                self.point_cloud_range = DENSE_POINT_RANGE
+
             self.MAX_POINTS_PER_VOXEL = 5
             self.MAX_NUMBER_OF_VOXELS = 16000
             if SPCONV_VER == 1:
@@ -80,7 +85,7 @@ class DepthContrastDataset(Dataset):
                 self.voxel_generator = VoxelGenerator(
                     vsize_xyz=self.VOXEL_SIZE,
                     coors_range_xyz=self.point_cloud_range,
-                    num_point_features = 3,
+                    num_point_features = 4,
                     max_num_points_per_voxel=self.MAX_POINTS_PER_VOXEL,
                     max_num_voxels=self.MAX_NUMBER_OF_VOXELS
                 )
@@ -148,9 +153,9 @@ class DepthContrastDataset(Dataset):
     def toVox(self, coords, feats, labels):
         if "Lidar" in self.cfg:
             if SPCONV_VER==1:
-                voxel_output = self.voxel_generator.generate(coords)
+                voxel_output = self.voxel_generator.generate(np.concatenate((coords, feats), 1))
             else:
-                voxel_output = self.voxel_generator(torch.from_numpy(coords).contiguous())
+                voxel_output = self.voxel_generator(torch.from_numpy(np.concatenate((coords, feats), 1)).contiguous())
             if isinstance(voxel_output, dict):
                 voxels, coordinates, num_points = \
                                                   voxel_output['voxels'], voxel_output['coordinates'], voxel_output['num_points_per_voxel']
@@ -181,11 +186,15 @@ class DepthContrastDataset(Dataset):
             return (coords, feats, labels)
 
     def load_data(self, idx):
+        #returns x,y,z,intensity pointcloud within point cloud range
         is_success = True
         point_path = self.root_data_path / Path(self.data_objs[idx])
         try:
             if "Lidar" in self.cfg:
-                point = np.load(point_path)
+                if "waymo" in self.dataset_names:
+                    point = np.load(point_path) #check if float32
+                elif "dense" in self.dataset_names:
+                    point = np.fromfile(str(point_path), dtype=np.float32).reshape(-1, 5)
                 #point = np.fromfile(str(point_path), dtype=np.float32).reshape(-1, 4)
                 # if point.shape[1] != 4:
                 #     temp = np.zeros((point.shape[0],4))

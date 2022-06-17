@@ -15,6 +15,14 @@ from models.trunks.mlp import MLP
 
 from .spconv_backbone import post_act_block
 
+def replace_feature(out, new_features):
+    if "replace_feature" in out.__dir__():
+        # spconv 2.x behaviour
+        return out.replace_feature(new_features)
+    else:
+        out.features = new_features
+        return out
+
 class SparseBasicBlock(spconv.SparseModule):
     expansion = 1
 
@@ -38,17 +46,17 @@ class SparseBasicBlock(spconv.SparseModule):
         assert x.features.dim() == 2, 'x.features.dim()=%d' % x.features.dim()
 
         out = self.conv1(x)
-        out.features = self.bn1(out.features)
-        out.features = self.relu(out.features)
+        out = replace_feature(out, self.bn1(out.features))
+        out = replace_feature(out, self.relu(out.features))
 
         out = self.conv2(out)
-        out.features = self.bn2(out.features)
+        out = replace_feature(out, self.bn2(out.features))
 
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        out.features += identity
-        out.features = self.relu(out.features)
+        out = replace_feature(out, out.features + identity)
+        out = replace_feature(out, self.relu(out.features))
 
         return out
 
@@ -67,11 +75,11 @@ class UNetV2_concat(nn.Module):
         voxel_size = [0.1, 0.1, 0.2]
         point_cloud_range = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
 
-        grid_size = (point_cloud_range[3:6] - point_cloud_range[0:3]) / np.array(voxel_size)
+        grid_size = (point_cloud_range[3:6] - point_cloud_range[0:3]) / np.array(voxel_size) #[ 750 1500   30]
         grid_size = np.round(grid_size).astype(np.int64)
         model_cfg = {'NAME': 'UNetV2', 'RETURN_ENCODED_TENSOR': False}
         
-        self.sparse_shape = grid_size[::-1] + [1, 0, 0]
+        self.sparse_shape = grid_size[::-1] + [1, 0, 0] #z,y,x grid size
         self.voxel_size = voxel_size
         self.point_cloud_range = point_cloud_range
 
@@ -147,10 +155,10 @@ class UNetV2_concat(nn.Module):
     def UR_block_forward(self, x_lateral, x_bottom, conv_t, conv_m, conv_inv):
         x_trans = conv_t(x_lateral)
         x = x_trans
-        x.features = torch.cat((x_bottom.features, x_trans.features), dim=1)
+        x = replace_feature(x, torch.cat((x_bottom.features, x_trans.features), dim=1))
         x_m = conv_m(x)
         x = self.channel_reduction(x, x_m.features.shape[1])
-        x.features = x_m.features + x.features
+        x = replace_feature(x, x_m.features + x.features)
         x = conv_inv(x)
         return x
 
@@ -168,7 +176,7 @@ class UNetV2_concat(nn.Module):
         n, in_channels = features.shape
         assert (in_channels % out_channels == 0) and (in_channels >= out_channels)
 
-        x.features = features.view(n, out_channels, -1).sum(dim=2)
+        x = replace_feature(x, features.view(n, out_channels, -1).sum(dim=2))
         return x
 
     def forward(self, x, out_feat_keys=None):
@@ -227,7 +235,7 @@ class UNetV2_concat(nn.Module):
         
         end_points = {}
 
-        end_points['conv4_features'] = [x_up4.features, x_up3.features, x_up2.features, x_up1.features]#.view(batch_size, -1, 64).permute(0, 2, 1).contiguous()
+        end_points['conv4_features'] = [x_up4.features, x_up3.features, x_up2.features, x_up1.features]
         end_points['indice'] = [x_up4.indices, x_up3.indices, x_up2.indices, x_up1.indices]
         
         out_feats = [None] * len(out_feat_keys)
@@ -241,9 +249,9 @@ class UNetV2_concat(nn.Module):
                 for idx in range(len(end_points['indice'])):
                     temp_idx = end_points['indice'][idx][:,0] == i
                     temp_f = end_points['conv4_features'][idx][temp_idx].unsqueeze(0).permute(0, 2, 1).contiguous()
-                    tempfeat.append(F.max_pool1d(temp_f, temp_f.shape[-1]).squeeze(-1))
-                featlist.append(torch.cat(tempfeat, -1))
-            feat = torch.cat(featlist, 0)
+                    tempfeat.append(F.max_pool1d(temp_f, temp_f.shape[-1]).squeeze(-1)) #(1, 64, numvox in one pc for that conv block idx= 4096)-->(1, 64) max pool to get one vector for on pc
+                featlist.append(torch.cat(tempfeat, -1)) # featlist.append((1, 128) feature for pc 0)
+            feat = torch.cat(featlist, 0) #(8 pcs, 128) -->change to (num big voxels, 128)
             if self.use_mlp:
                 feat = self.head(feat)
             out_feats[out_feat_keys.index(key)] = feat ### Just use smlp
