@@ -93,7 +93,7 @@ def main():
             print(f"args.launcher : {args.launcher}")
             main_worker(args.local_rank, args.ngpus, args, cfg)
     else:
-        args.ngpus = torch.cuda.device_count()  # remove for fair
+        args.ngpus = torch.cuda.device_count()
         # Simply call main_worker function
         main_worker(args.local_rank, args.ngpus, args, cfg)
     
@@ -183,13 +183,13 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         data_time.update(time.time() - end) # Time to load one batch
 
         if phase == 'train':
-            embedding = model(sample)
+            embedding, coords = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
         else:
             with torch.no_grad():
                 embedding = model(sample)
 
         # compute loss
-        loss, loss_debug = criterion(embedding)
+        loss, loss_debug = criterion(embedding, coords)
         loss_meter.update(loss.item(), embedding[0].size(0))
         # loss_meter_npid1.update(loss_debug[0].item(), embedding[0].size(0))
         # loss_meter_npid2.update(loss_debug[1].item(), embedding[0].size(0))

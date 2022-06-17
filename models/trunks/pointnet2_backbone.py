@@ -10,6 +10,7 @@ import torch.nn.functional as F
 
 import os
 import sys
+import numpy as np
 
 from models.trunks.mlp import MLP
 
@@ -19,6 +20,49 @@ ROOT_DIR = os.path.dirname(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
 
 from ops.pointnet2.pointnet2_batch import pointnet2_modules
+try:
+    try:
+        try:
+            from spconv.utils import VoxelGeneratorV2 as VoxelGenerator
+            SPCONV_VER = 1
+        except:
+            from spconv.utils import VoxelGenerator
+            SPCONV_VER = 1
+    except:
+        #from spconv.utils import Point2VoxelCPU3d as VoxelGenerator
+        #from spconv.utils import Point2VoxelGPU3d as VoxelGenerator
+        from spconv.pytorch.utils import PointToVoxel as VoxelGenerator
+        SPCONV_VER = 2
+except:
+    pass
+
+def point_to_voxel_func(device = torch.device("cpu:0")):
+    VOXEL_SIZE = [5.0, 5.0, 6.0]
+    ### Waymo lidar range
+    #POINT_RANGE = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
+    POINT_RANGE = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32) ### KITTI and DENSE
+    MAX_POINTS_PER_VOXEL = 2000
+    MAX_NUMBER_OF_VOXELS = 400
+    NUM_POINT_FEATURES= 3+128
+    if SPCONV_VER == 1:
+        voxel_generator = VoxelGenerator(
+            voxel_size=VOXEL_SIZE,
+            point_cloud_range=POINT_RANGE,
+            max_num_points=MAX_POINTS_PER_VOXEL,
+            max_voxels=MAX_NUMBER_OF_VOXELS,
+            device = device
+        )
+    else:
+        voxel_generator = VoxelGenerator(
+            vsize_xyz=VOXEL_SIZE,
+            coors_range_xyz=POINT_RANGE,
+            num_point_features=NUM_POINT_FEATURES,
+            max_num_points_per_voxel=MAX_POINTS_PER_VOXEL,
+            max_num_voxels=MAX_NUMBER_OF_VOXELS,
+            device = device
+        )
+
+    return voxel_generator
 
 class PointNet2MSG(nn.Module):
     def __init__(self, use_mlp=False, mlp_dim=None):
@@ -31,7 +75,10 @@ class PointNet2MSG(nn.Module):
 
         self.num_points_each_layer = []
         skip_channel_list = [input_channels - 3]
-        SA_CONFIG = {'NPOINTS': [4096, 1024, 256, 64], 'RADIUS': [[0.1, 0.5], [0.5, 1.0], [1.0, 2.0], [2.0, 4.0]], 'NSAMPLE': [[16, 32], [16, 32], [16, 32], [16, 32]], 'MLPS': [[[16, 16, 32], [32, 32, 64]], [[64, 64, 128], [64, 96, 128]], [[128, 196, 256], [128, 196, 256]], [[256, 256, 512], [256, 384, 512]]]}
+        SA_CONFIG = {'NPOINTS': [4096, 1024, 256, 64],
+                     'RADIUS': [[0.1, 0.5], [0.5, 1.0], [1.0, 2.0], [2.0, 4.0]],
+                     'NSAMPLE': [[16, 32], [16, 32], [16, 32], [16, 32]],
+                     'MLPS': [[[16, 16, 32], [32, 32, 64]], [[64, 64, 128], [64, 96, 128]], [[128, 196, 256], [128, 196, 256]], [[256, 256, 512], [256, 384, 512]]]}
         # (MSG) Multiscale SA(K=4096, r=[0.1, 0.5], PointNets (for r = 0.1 and r = 0.5 respectively) = [[16, 16, 32], [32, 32, 64]])
 
         FP_MLPS = [[128, 128], [256, 256], [512, 512], [512, 512]] #[last FP= [1+256, 128, 128], second last fp = [96+512, 256, 256], fp = [256+512, 512, 512], fp=[512 + 1024, 512, 512]]
@@ -123,19 +170,38 @@ class PointNet2MSG(nn.Module):
             assert l_features[i - 1].is_contiguous()
 
         point_features = l_features[0] #(B=8, 128, num points = 16384)
-        
+        xyz_point_features = torch.cat([xyz, point_features.permute(0, 2, 1).contiguous()], 2)
+        batch_voxel_features_list = []
+        coords = []
+        #Make changes here: Voxelize pointcloud and max pool each
+        voxel_generator = point_to_voxel_func(device=xyz_point_features.device)
+        for pc_idx in range(batch_size):
+            voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_point_features[pc_idx])
+            coords.append(np.pad(coordinates.cpu(), ((0, 0), (1, 0)), mode='constant', constant_values=pc_idx))
+            # Mean VFE: find mean of point features in each voxel # try max as well
+            points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False)
+            normalizer = torch.clamp_min(voxel_num_points.view(-1, 1), min=1.0).type_as(voxel_features)
+            points_mean = points_mean / normalizer
+            voxel_features = points_mean.contiguous()
+            batch_voxel_features_list.append(voxel_features[:, 3:]) #only append features, not mean x,y,z, points
+
+            #Or max pool point features inside each voxel to get vfe
+            #voxel_features = F.max_pool1d(voxel_features.permute(0, 2, 1).contiguous(), voxel_features.shape[1])
+            #batch_voxel_features_list.append(voxel_features)
+
+        batch_voxel_feats = torch.cat(batch_voxel_features_list, 0)
+        coords = np.concatenate(coords, axis=0) #(num vox, 4) [batch_idx, z_idx,y_idx,x_idx]
         end_points = {}
-        end_points['fp2_features'] = point_features
+        end_points['fp2_features'] = batch_voxel_feats #point_features
     
         out_feats = [None] * len(out_feat_keys)
         for key in out_feat_keys:
             feat = end_points[key+"_features"]
-            nump = feat.shape[-1] # num points original
+            #nump = feat.shape[-1] # num points original
 
             # get one feature vector of dim 128 for the entire point cloud
-            feat = torch.squeeze(F.max_pool1d(feat, nump))
+            #feat = torch.squeeze(F.max_pool1d(feat, nump))
             if self.use_mlp:
                 feat = self.head(feat)
             out_feats[out_feat_keys.index(key)] = feat
-        
-        return out_feats
+        return out_feats, coords
