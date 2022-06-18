@@ -134,4 +134,5 @@ RUN mkdir checkpoints &&  \
     mkdir scripts &&  \
     mkdir tools &&  \
     mkdir utils &&  \
-    mkdir output
+    mkdir output && \
+    mkdir wandb

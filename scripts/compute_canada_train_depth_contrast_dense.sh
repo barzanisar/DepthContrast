@@ -223,6 +223,7 @@ singularity exec
 --bind $PROJ_DIR/utils:/DepthContrast/utils
 --bind $TMP_DATA_DIR:/DepthContrast/data/$DATASET
 --bind $PROJ_DIR/data/$DATASET/ImageSets:/DepthContrast/data/$DATASET/ImageSets
+--bind $PROJ_DIR/wandb:/DepthContrast/wandb
 $DEPTH_CONTRAST_BINDS
 $SING_IMG
 "
