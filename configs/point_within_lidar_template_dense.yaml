@@ -1,3 +1,4 @@
+tag: 'clear_short'
 resume: true
 test_only: false
 num_workers: 8
@@ -6,15 +7,22 @@ required_devices: 1
 no_test: false
 debug: false
 log2tb: true
+log2wb: true
 allow_double_bs: false
 seed: 0
 distributed: false
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 10 # print progress after processing every <freq> iters or batches
 
+WANDB:
+  ENABLED: True
+  PROJECT: DepthContrast_dense
+  ENTITY: trailab
+  SUMMARY_HIGHEST_METRIC: None
+
 dataset:
   DATASET_NAMES: [dense]
-  DATA_PATHS: ['data/dense/ImageSets/dense_short.npy']
+  DATA_PATHS: ['data/dense/ImageSets/dense_clear.npy']
   BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: sample_index
   DATA_TYPE: points

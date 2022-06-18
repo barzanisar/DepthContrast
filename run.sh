@@ -5,6 +5,7 @@
 #KITTI_TEST=$(readlink -f ../data/kitti/testing)
 #WAYMO_RAW=$(readlink -f ../data/waymo/raw_data)
 WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
+DENSE_LIDAR=$(readlink -f ./data/dense/lidar_hdl64_strongest)
 
 # Setup volume linking (host link:container link)
 CUR_DIR=$(pwd)
@@ -13,6 +14,7 @@ PROJ_DIR=$CUR_DIR
 #KITTI_TEST=$KITTI_TEST:/DepthContrast/data/kitti/testing
 #WAYMO_RAW=$WAYMO_RAW:/DepthContrast/data/waymo/raw_data
 WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_10
+DENSE_LIDAR=$DENSE_LIDAR:/DepthContrast/data/dense/lidar_hdl64_strongest
 
 PCDET_VOLUMES=""
 for entry in $PROJ_DIR/third_party/OpenPCDet/pcdet/*
@@ -25,7 +27,7 @@ do
     fi
 done
 
-docker run -it \
+docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --runtime=nvidia \
         --net=host \
         --privileged=true \
@@ -37,6 +39,7 @@ docker run -it \
         --hostname="inside-DOCKER" \
         --name="DepthContrast" \
         --volume $WAYMO_PROCESSED \
+        --volume $DENSE_LIDAR \
         --volume $PROJ_DIR/data:/DepthContrast/data \
         --volume $PROJ_DIR/output:/DepthContrast/output \
         --volume $PROJ_DIR/tools:/DepthContrast/tools \

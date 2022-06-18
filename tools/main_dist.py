@@ -27,7 +27,7 @@ import torch.optim
 import torch.multiprocessing as mp
   
 import utils.logger
-from utils import main_utils
+from utils import main_utils, wandb_utils
 
 parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training in 3D')
 
@@ -50,7 +50,7 @@ parser.add_argument('--local_rank', default=0, type=int,
                     help='local process id i.e. GPU id to use.') #local_rank = 0
 parser.add_argument('--ngpus', default=4, type=int,
                     help='number of GPUs to use.') #not needed
-parser.add_argument('--multiprocessing-distributed', action='store_true', default=True,
+parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
@@ -104,6 +104,7 @@ def main_worker(gpu, ngpus, args, cfg):
     # Setup environment
     args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
     logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
+    wandb_utils.init(cfg, args, job_type='train-depth-contrast-clear-dense')
     print("=" * 30 + "   DDP   " + "=" * 30)
     print(f"world_size: {args.world_size}")
     print(f"local_rank: {args.local_rank}")
@@ -163,14 +164,14 @@ def main_worker(gpu, ngpus, args, cfg):
 def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter):
     from utils import metrics_utils
     logger.add_line('\n{}: Epoch {}'.format(phase, epoch))
-    batch_time = metrics_utils.AverageMeter('Time', ':6.3f', window_size=100)
-    data_time = metrics_utils.AverageMeter('Data', ':6.3f', window_size=100)
-    loss_meter = metrics_utils.AverageMeter('Loss', ':.3e')
-    loss_meter_npid1 = metrics_utils.AverageMeter('Loss_npid1', ':.3e')
-    loss_meter_npid2 = metrics_utils.AverageMeter('Loss_npid2', ':.3e')
-    loss_meter_cmc1 = metrics_utils.AverageMeter('Loss_cmc1', ':.3e')
-    loss_meter_cmc2 = metrics_utils.AverageMeter('Loss_cmc2', ':.3e')
-    progress = utils.logger.ProgressMeter(len(loader), [batch_time, data_time, loss_meter, loss_meter_npid1, loss_meter_npid2, loss_meter_cmc1, loss_meter_cmc2], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
+    batch_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Process Time', ':6.3f', window_size=100)
+    data_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Load Time', ':6.3f', window_size=100)
+    loss_meter = metrics_utils.AverageMeter(f'{phase}-Loss', ':.3e')
+    # loss_meter_npid1 = metrics_utils.AverageMeter('Loss_npid1', ':.3e')
+    # loss_meter_npid2 = metrics_utils.AverageMeter('Loss_npid2', ':.3e')
+    # loss_meter_cmc1 = metrics_utils.AverageMeter('Loss_cmc1', ':.3e')
+    # loss_meter_cmc2 = metrics_utils.AverageMeter('Loss_cmc2', ':.3e')
+    progress = utils.logger.ProgressMeter(len(loader), [batch_time, data_time, loss_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
 
     # switch to train mode
     model.train(phase == 'train')
@@ -190,10 +191,10 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         # compute loss
         loss, loss_debug = criterion(embedding)
         loss_meter.update(loss.item(), embedding[0].size(0))
-        loss_meter_npid1.update(loss_debug[0].item(), embedding[0].size(0))
-        loss_meter_npid2.update(loss_debug[1].item(), embedding[0].size(0))
-        loss_meter_cmc1.update(loss_debug[2].item(), embedding[0].size(0))
-        loss_meter_cmc2.update(loss_debug[3].item(), embedding[0].size(0))
+        # loss_meter_npid1.update(loss_debug[0].item(), embedding[0].size(0))
+        # loss_meter_npid2.update(loss_debug[1].item(), embedding[0].size(0))
+        # loss_meter_cmc1.update(loss_debug[2].item(), embedding[0].size(0))
+        # loss_meter_cmc2.update(loss_debug[3].item(), embedding[0].size(0))
 
         # compute gradient and do SGD step during training
         if phase == 'train':
@@ -209,16 +210,25 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         step = epoch * len(loader) + i #sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
         if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
             progress.display(i+1)
+            
+            # # Log to wb
+            # metrics_dict = {'epoch': epoch, 'step': step}
+            # for meter in progress.meters:
+            #     metrics_dict[meter.name + '-batch'] = meter.avg
+            # wandb_utils.log(cfg, args, metrics_dict, step)
 
     # Sync metrics across all GPUs and print final averages
     if args.multiprocessing_distributed:
         progress.synchronize_meters(args.local_rank)
         progress.display(len(loader)*args.world_size)
 
+    metrics_dict = {'epoch': epoch}
     if tb_writter is not None:
         for meter in progress.meters:
             tb_writter.add_scalar('{}-epoch/{}'.format(phase, meter.name), meter.avg, epoch)
-
+            metrics_dict[meter.name +'-epoch'] = meter.avg
+    
+    wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary? how to log for train and val separatly?
 
 if __name__ == '__main__':
     main()
