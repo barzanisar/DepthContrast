@@ -61,16 +61,15 @@ class DepthContrastDataset(Dataset):
         self._get_data_files("train")
         self.root_path = (Path(__file__) / '../..').resolve() # DepthContrast
         self.root_data_path = self.root_path / Path(self.data_paths[0].split('ImageSets')[0]) # DepthContrast/data/waymo
-        self.data_objs = np.load(self.root_path / Path(self.data_paths[0])) ### Only load the first one for now
+        self.data_objs = np.load(self.root_path / Path(self.data_paths[0]))[:200] ### Only load the first one for now
+        if "waymo" in self.dataset_names:
+            self.point_cloud_range = WAYMO_POINT_RANGE
+        elif "dense" in self.dataset_names:
+            self.point_cloud_range = DENSE_POINT_RANGE
 
         #### Add the voxelizer here
         if ("Lidar" in cfg) and cfg["VOX"]:
             self.VOXEL_SIZE = [0.1, 0.1, 0.2]
-
-            if "waymo" in self.dataset_names:
-                self.point_cloud_range = WAYMO_POINT_RANGE
-            elif "dense" in self.dataset_names:
-                self.point_cloud_range = DENSE_POINT_RANGE
 
             self.MAX_POINTS_PER_VOXEL = 5
             self.MAX_NUMBER_OF_VOXELS = 16000
@@ -202,8 +201,8 @@ class DepthContrastDataset(Dataset):
                 #     point = np.copy(temp)
                 #     b=1
 
-                upper_idx = np.sum((point[:,0:3] <= POINT_RANGE[3:6]).astype(np.int32), 1) == 3
-                lower_idx = np.sum((point[:,0:3] >= POINT_RANGE[0:3]).astype(np.int32), 1) == 3
+                upper_idx = np.sum((point[:,0:3] <= self.point_cloud_range[3:6]).astype(np.int32), 1) == 3
+                lower_idx = np.sum((point[:,0:3] >= self.point_cloud_range[0:3]).astype(np.int32), 1) == 3
 
                 new_pointidx = (upper_idx) & (lower_idx)
                 point = point[new_pointidx,:]

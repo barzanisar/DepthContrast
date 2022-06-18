@@ -25,4 +25,4 @@ if __name__ == '__main__':
     for i, sample_id in enumerate(sample_id_list):
         sample_id_list[i] = LIDAR_DIR + '/' + sample_id_list[i] + ".bin"
 
-    np.save("./ImageSets/dense_short.npy", sample_id_list) # only store paths as "waymo_processed_data_10/seq_name/frame.npy"
+    np.save("./ImageSets/dense_clear.npy", sample_id_list) # only store paths as "waymo_processed_data_10/seq_name/frame.npy"
