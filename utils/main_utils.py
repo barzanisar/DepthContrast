@@ -157,10 +157,21 @@ def prep_environment(args, cfg):
     from torch.utils.tensorboard import SummaryWriter
 
     # Prepare loggers (must be configured after initialize_distributed_backend())
-    model_dir = '{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'])
+    if cfg['test_only']:
+        phase = 'eval'
+        model_dir = '{}/{}/linear_probe'.format(cfg['model']['model_dir'], cfg['model']['name'])
+    else:
+        phase = 'train'
+        model_dir = '{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'])
+    
     if args.rank == 0:
-        prep_output_folder(model_dir, False)
-    log_fn = '{}/train.log'.format(model_dir)
+        if cfg['test_only']:
+            assert os.path.isdir(model_dir.split('/linear_probe')[-1])
+            prep_output_folder(model_dir, True)
+        else:
+            prep_output_folder(model_dir, False)
+
+    log_fn = '{}/{}_{}.log'.format(model_dir, phase, datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     logger = Logger(quiet=args.quiet, log_fn=log_fn, rank=args.rank)
 
     logger.add_line(str(datetime.datetime.now()))
@@ -232,6 +243,15 @@ def distribute_model_to_cuda(models, args):
 
     return models, args
 
+def build_dataloaders_train_val(cfg, num_workers, distributed, logger):
+    train_loader = build_dataloader(cfg, num_workers, distributed, mode = 'train')
+    logger.add_line("\n"+"="*30+"   Train data   "+"="*30)
+    logger.add_line(str(train_loader.dataset))
+
+    val_loader = build_dataloader(cfg, num_workers, distributed, mode = 'val')
+    logger.add_line("\n"+"="*30+"   Val data   "+"="*30)
+    logger.add_line(str(val_loader.dataset))
+    return train_loader, val_loader
 
 def build_dataloaders(cfg, num_workers, distributed, logger):
     train_loader = build_dataloader(cfg, num_workers, distributed)
@@ -240,13 +260,13 @@ def build_dataloaders(cfg, num_workers, distributed, logger):
     return train_loader
 
 
-def build_dataloader(config, num_workers, distributed):
+def build_dataloader(config, num_workers, distributed, mode='train'):
     import torch.utils.data as data
     import torch.utils.data.distributed
     import datasets
 
     datasets, data_and_label_keys = {}, {}
-    datasets = build_dataset(config)
+    datasets = build_dataset(config, mode)
 
     loader = get_loader(
         dataset=datasets,
@@ -292,6 +312,23 @@ def build_optimizer(params, cfg, logger=None):
         ### By default we use a cosine param scheduler
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['num_epochs'], eta_min=cfg['lr']['final_lr'])
     return optimizer, scheduler
+
+def get_labels(sample, coords):
+    labels=None
+    return labels
+
+def load_data_to_gpu(batch_dict):
+    # for key, val in batch_dict.items():
+    #     if not isinstance(val, np.ndarray):
+    #         continue
+    #     elif key in ['frame_id', 'metadata', 'calib', 'image_shape', 'sample_idx']:
+    #         continue
+    #     elif key in ['images']:
+    #         batch_dict[key] = kornia.image_to_tensor(val).float().cuda().contiguous()
+    #     elif key in ['image_shape']:
+    #         batch_dict[key] = torch.from_numpy(val).int().cuda()
+    #     else:
+    #         batch_dict[key] = torch.from_numpy(val).float().cuda()
 
 
 class CheckpointManager(object):
@@ -362,7 +399,8 @@ def save_checkpoint(state, is_best, model_dir='.', filename=None):
 
 def prep_output_folder(model_dir, evaluate):
     if evaluate:
-        assert os.path.isdir(model_dir)
+        if not os.path.isdir(model_dir):
+            os.makedirs(model_dir)
     else:
         if not os.path.isdir(model_dir):
             os.makedirs(model_dir)

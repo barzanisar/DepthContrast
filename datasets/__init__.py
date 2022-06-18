@@ -16,8 +16,8 @@ from torch.utils.data import DataLoader
 __all__ = ["DepthContrastDataset", "get_data_files"]
 
 
-def build_dataset(cfg):
-    dataset = DepthContrastDataset(cfg)
+def build_dataset(cfg, mode):
+    dataset = DepthContrastDataset(cfg, mode)
     return dataset
 
 

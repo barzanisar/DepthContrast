@@ -21,11 +21,11 @@ sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
 from ops.pointnet2.pointnet2_batch import pointnet2_modules
 
 class PointNet2MSG(nn.Module):
-    def __init__(self, use_mlp=False, mlp_dim=None):
+    def __init__(self, use_mlp=False, mlp_dim=None, linear_probe = False):
         super().__init__()
 
         input_channels = 4
-        
+        self.linear_probe= linear_probe
         self.SA_modules = nn.ModuleList()
         channel_in = input_channels - 3 #  C
 
@@ -130,10 +130,10 @@ class PointNet2MSG(nn.Module):
         out_feats = [None] * len(out_feat_keys)
         for key in out_feat_keys:
             feat = end_points[key+"_features"]
-            nump = feat.shape[-1] # num points original
-
-            # get one feature vector of dim 128 for the entire point cloud
-            feat = torch.squeeze(F.max_pool1d(feat, nump))
+            if not self.linear_probe:
+                nump = feat.shape[-1] # num points original
+                # get one feature vector of dim 128 for the entire point cloud
+                feat = torch.squeeze(F.max_pool1d(feat, nump))
             if self.use_mlp:
                 feat = self.head(feat)
             out_feats[out_feat_keys.index(key)] = feat

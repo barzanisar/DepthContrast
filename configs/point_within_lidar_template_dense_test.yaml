@@ -1,6 +1,6 @@
 tag: 'dense_dc'
 resume: true
-test_only: false
+test_only: true
 num_workers: 8
 
 required_devices: 1
@@ -22,7 +22,12 @@ WANDB:
   
 dataset:
   DATASET_NAMES: [dense]
-  DATA_PATHS: ['data/dense/ImageSets/dense_short.npy']
+  DATA_SPLIT: 
+    train: 'train_clear'
+    val: 'val_clear'
+  INFO_PATHS: 
+    train: ['dense_infos_train_clear.pkl']
+    val: ['dense_infos_val_clear.pkl']
   BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: sample_index
   DATA_TYPE: points
@@ -41,7 +46,7 @@ dataset:
     - name: RandomScaleLidar
     - name: ToTensorLidar
   COLLATE_FUNCTION: "point_moco_collator"
-  INPUT_KEY_NAMES: ["points", "points_moco"]
+  INPUT_KEY_NAMES: ["points"]
   DROP_LAST: True
 
 optimizer:
@@ -58,15 +63,16 @@ optimizer:
 model:
   name: "PointnetMSG"
   model_dir: "checkpoints/pointnetMSG_within_format"
-  model_input: ["points", "points_moco"]
-  model_feature: [["fp2"], ["fp2"]]
+  model_input: ["points"]
+  model_feature: [["fp2"]]
   Lidar: True
   VOX: False
   arch_point: "pointnet_msg"
+  linear_probe_dim: [128, 5]
   args_point:
     use_mlp: True
     mlp_dim: [128, 128, 128]
-    linear_probe: False
+    linear_probe: True
 
 loss:
   name: "NCELossMoco"
