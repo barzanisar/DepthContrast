@@ -36,7 +36,7 @@ LAUNCHER='pytorch'
 
 # Additional parameters
 DATASET=dense
-DATA_DIR=/home/$USER/projects/def-swasland-ab/Datasets/Dense
+DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense
 INFOS_DIR='not needed' #/home/$USER/projects/rrg-swasland/Datasets/Dense/Infos
 SING_IMG=/home/$USER/projects/rrg-swasland/singularity/depth_contrast.sif
 DIST=true
