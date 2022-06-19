@@ -61,7 +61,7 @@ class DepthContrastDataset(Dataset):
         self._get_data_files("train")
         self.root_path = (Path(__file__) / '../..').resolve() # DepthContrast
         self.root_data_path = self.root_path / Path(self.data_paths[0].split('ImageSets')[0]) # DepthContrast/data/waymo
-        self.data_objs = np.load(self.root_path / Path(self.data_paths[0]))[:200] ### Only load the first one for now
+        self.data_objs = np.load(self.root_path / Path(self.data_paths[0])) ### Only load the first one for now
         if "waymo" in self.dataset_names:
             self.point_cloud_range = WAYMO_POINT_RANGE
         elif "dense" in self.dataset_names:
