@@ -1,4 +1,4 @@
-tag: 'clear_60'
+tag: 'voxel_ssl_clear_60'
 resume: true
 test_only: false
 num_workers: 8
