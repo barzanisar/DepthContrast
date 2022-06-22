@@ -13,6 +13,10 @@ def point_moco_collator(batch):
     
     data_point = [x["data"] for x in batch]
     data_moco = [x["data_moco"] for x in batch]
+
+    data_point_aug_matrix = [x["data_aug_matrix"] for x in batch]
+    data_moco_aug_matrix = [x["data_moco_aug_matrix"] for x in batch]        
+
     # labels are repeated N+1 times but they are the same
     labels = [x["label"][0] for x in batch]
     labels = torch.LongTensor(labels).squeeze()
@@ -22,12 +26,16 @@ def point_moco_collator(batch):
 
     points_moco = torch.stack([data_moco[i][0] for i in range(batch_size)])
     points = torch.stack([data_point[i][0] for i in range(batch_size)])
-    
+
+    points_moco_aug_matrix = torch.stack([data_moco_aug_matrix[i] for i in range(batch_size)])
+    points_aug_matrix = torch.stack([data_point_aug_matrix[i] for i in range(batch_size)])
+
     output_batch = {
         "points": points,
         "points_moco": points_moco,
+        "points_aug_matrix": points_aug_matrix,
+        "points_moco_aug_matrix": points_moco_aug_matrix,
         "label": labels,
         "data_valid": data_valid,
     }
-    
     return output_batch

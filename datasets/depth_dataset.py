@@ -226,7 +226,7 @@ class DepthContrastDataset(Dataset):
         # TODO: this doesn't yet handle the case where the length of datasets
         # could be different.
         if cfg["DATA_TYPE"] == "point_vox":
-            item = {"data": [], "data_valid": [], "data_moco": [], "vox": [], "vox_moco": []}
+            item = {"data": [], "data_valid": [], "data_aug_matrix": [], "data_moco": [], "data_moco_aug_matrix": [], "vox": [], "vox_aug_matrix": [], "vox_moco": [], "vox_moco_aug_matrix": []}
 
             data, valid = self.load_data(idx)
             item["data"].append(data)
@@ -235,7 +235,8 @@ class DepthContrastDataset(Dataset):
             item["vox_moco"].append(np.copy(data))
             item["data_valid"].append(1 if valid else -1)
         else:
-            item = {"data": [], "data_moco": [], "data_valid": [], "data_idx": []}
+            #this data could either be voxels or point cloud
+            item = {"data": [], "data_aug_matrix": [], "data_moco": [], "data_moco_aug_matrix": [], "data_valid": [], "data_idx": []}
             
             data, valid = self.load_data(idx)
             item["data"].append(data)
@@ -251,10 +252,12 @@ class DepthContrastDataset(Dataset):
             tempitem = {"data": item["data"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"])
             item["data"] = tempdata["data"]
+            item["data_aug_matrix"] = tempdata['aug_trans_matrix']
 
             tempitem = {"data": item["data_moco"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"])
             item["data_moco"] = tempdata["data"]
+            item["data_moco_aug_matrix"] = tempdata['aug_trans_matrix']
 
             tempitem = {"data": item["vox"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=True)
@@ -262,13 +265,15 @@ class DepthContrastDataset(Dataset):
             feats = tempdata["data"][0][:,3:6]*255.0#np.ones(coords.shape)*255.0
             labels = np.zeros(coords.shape[0]).astype(np.int32)
             item["vox"] = [self.toVox(coords, feats, labels)]
+            item["vox_aug_matrix"] = tempdata['aug_trans_matrix']
             
             tempitem = {"data": item["vox_moco"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=True)
             coords = tempdata["data"][0][:,:3]
             feats = tempdata["data"][0][:,3:6]*255.0#np.ones(coords.shape)*255.0
             labels = np.zeros(coords.shape[0]).astype(np.int32)                    
-            item["vox_moco"] = [self.toVox(coords, feats, labels)]               
+            item["vox_moco"] = [self.toVox(coords, feats, labels)]   
+            item["vox_moco_aug_matrix"] = tempdata['aug_trans_matrix']            
         else:
             tempitem = {"data": item["data"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=cfg["VOX"])
@@ -279,6 +284,7 @@ class DepthContrastDataset(Dataset):
                 item["data"] = [self.toVox(coords, feats, labels)]
             else:
                 item["data"] = tempdata["data"]
+            item["data_aug_matrix"] = tempdata['aug_trans_matrix']
     
             tempitem = {"data": item["data_moco"]}                
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=cfg["VOX"])
@@ -289,6 +295,7 @@ class DepthContrastDataset(Dataset):
                 item["data_moco"] = [self.toVox(coords, feats, labels)]
             else:
                 item["data_moco"] = tempdata["data"]
+            item["data_moco_aug_matrix"] = tempdata['aug_trans_matrix']
 
         return item
 

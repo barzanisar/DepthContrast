@@ -136,7 +136,7 @@ class PointNet2MSG(nn.Module):
         features = (pc[:, :, 3:].contiguous() if pc.size(-1) > 3 else None)
         return xyz, features
 
-    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None):
+    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None):
         """
         Args:
             batch_dict:
@@ -169,6 +169,16 @@ class PointNet2MSG(nn.Module):
             )  # (B, C, N)
             assert l_features[i - 1].is_contiguous()
 
+        # print("Transformed" , l_xyz[0][0,0,:])
+        # print("Transformed" , xyz[0,0,:])
+        assert np.abs((l_xyz[0] - xyz).detach().cpu().numpy()).max() < 1e-4
+
+        # Undo transformation
+        xyz = xyz @ aug_matrix.inverse()
+        # print("Transformed" , l_xyz[0][0,0,:])
+        # print("Un-Transformed" , xyz[0,0,:])
+        # print("Un-Transformed" , l_xyz[0][0,0,:] @ aug_matrix[0].inverse())
+
         point_features = l_features[0] #(B=8, 128, num points = 16384)
         xyz_point_features = torch.cat([xyz, point_features.permute(0, 2, 1).contiguous()], 2)
         batch_voxel_features_list = []
@@ -176,7 +186,7 @@ class PointNet2MSG(nn.Module):
         #Make changes here: Voxelize pointcloud and max pool each
         voxel_generator = point_to_voxel_func(device=xyz_point_features.device)
         for pc_idx in range(batch_size):
-            voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_point_features[pc_idx])
+            voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_point_features[pc_idx]) # voxel_features = (num voxels, max points per voxel, 3+features_dim) #coords = z_grid_idx, y_idx, x_idx 
             coords.append(np.pad(coordinates.cpu(), ((0, 0), (1, 0)), mode='constant', constant_values=pc_idx))
             # Mean VFE: find mean of point features in each voxel # try max as well
             points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False)

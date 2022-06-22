@@ -29,13 +29,13 @@ dataset:
   Lidar: True
   VOX: False
   POINT_TRANSFORMS:
-    - name: randomcuboidLidar
-      crop: 0.5
-      npoints: 10000
-      randcrop: 1.0
-      aspect: 0.75
-    - name: randomdrop
-      crop: 0.2
+    # - name: randomcuboidLidar
+    #   crop: 0.5
+    #   npoints: 10000
+    #   randcrop: 1.0
+    #   aspect: 0.75
+    # - name: randomdrop
+    #   crop: 0.2
     - name: RandomFlipLidar
     - name: RandomRotateLidar
     - name: RandomScaleLidar
