@@ -5,3 +5,4 @@
 # LICENSE file in the root directory of this source tree.
 #
 from .nce_loss_moco import *
+from .focal_loss import *

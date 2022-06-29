@@ -62,13 +62,14 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         
     def multi_input_with_head_mapping_forward(self, batch):
         all_outputs = []
+        all_coords = []
         for input_idx in range(len(self.model_input)): #['points', 'points_moco']
             input_key = self.model_input[input_idx]
             feature_names = self.model_feature[input_idx]
             if "moco" in input_key:
-                outputs = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx)
+                outputs, coords = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx)
             else:
-                outputs = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx)
+                outputs, coords = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx)
             if len(outputs) == 1:
                 # single head. do not make nested list
                 outputs = outputs[0]
@@ -76,7 +77,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                 all_outputs += outputs
                 continue
             all_outputs.append(outputs)
-        return all_outputs
+            all_coords.append(coords)
+        return all_outputs, all_coords
     
     def _single_input_forward(self, batch, feature_names, input_key, target):
         if "vox" not in input_key:
@@ -105,8 +107,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                 batch, non_blocking=True
             )
         
-        feats = self.trunk[target](batch, feature_names)
-        return feats
+        feats, coords = self.trunk[target](batch, feature_names)
+        return feats, coords
 
     @torch.no_grad()
     def _momentum_update_key(self, target=1):
@@ -256,13 +258,14 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                     batch, non_blocking=True
                 )
             
-            feats = self.trunk[target](batch, feature_names)
+            feats, coords = self.trunk[target](batch, feature_names)
             if torch.distributed.is_initialized():
                 if "vox" not in input_key:
+                    # TODO: Are feats, before and after shuffle the same?
                     feats = [self._batch_unshuffle_ddp(feats[0], idx_unshuffle)]
-                return feats
+                return feats, coords
             else:
-                return feats
+                return feats, coords
 
     def forward(self, batch):
         return self.multi_input_with_head_mapping_forward(batch)

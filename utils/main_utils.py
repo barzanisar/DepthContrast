@@ -6,6 +6,7 @@
 #
 
 import os
+import sys
 import shutil
 import torch
 import numpy as np
@@ -17,6 +18,12 @@ import subprocess
 
 from datasets import build_dataset, get_loader
 import torch.multiprocessing as mp
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) #utils
+ROOT_DIR = os.path.dirname(ROOT_DIR) #DepthContrast
+sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
+
+from pcdet.utils import box_utils
 
 def initialize_distributed_backend(args, ngpus_per_node):
     if args.multiprocessing_distributed:
@@ -157,21 +164,15 @@ def prep_environment(args, cfg):
     from torch.utils.tensorboard import SummaryWriter
 
     # Prepare loggers (must be configured after initialize_distributed_backend())
-    if cfg['test_only']:
-        phase = 'eval'
-        model_dir = '{}/{}/linear_probe'.format(cfg['model']['model_dir'], cfg['model']['name'])
-    else:
-        phase = 'train'
-        model_dir = '{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'])
+
+    model_dir = '{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], cfg['phase'])
     
     if args.rank == 0:
-        if cfg['test_only']:
-            assert os.path.isdir(model_dir.split('/linear_probe')[-1])
-            prep_output_folder(model_dir, True)
-        else:
-            prep_output_folder(model_dir, False)
+        if cfg['phase'] == 'linear_probe':
+            assert os.path.isdir(model_dir.split('/linear_probe')[0])
+        prep_output_folder(model_dir)
 
-    log_fn = '{}/{}_{}.log'.format(model_dir, phase, datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
+    log_fn = '{}/{}_{}.log'.format(model_dir, cfg['phase'], datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     logger = Logger(quiet=args.quiet, log_fn=log_fn, rank=args.rank)
 
     logger.add_line(str(datetime.datetime.now()))
@@ -243,30 +244,30 @@ def distribute_model_to_cuda(models, args):
 
     return models, args
 
-def build_dataloaders_train_val(cfg, num_workers, distributed, logger):
-    train_loader = build_dataloader(cfg, num_workers, distributed, mode = 'train')
+def build_dataloaders_train_val(cfg, num_workers, distributed, logger, phase):
+    train_loader = build_dataloader(cfg, num_workers, distributed, phase, mode = 'train', logger=logger)
     logger.add_line("\n"+"="*30+"   Train data   "+"="*30)
     logger.add_line(str(train_loader.dataset))
 
-    val_loader = build_dataloader(cfg, num_workers, distributed, mode = 'val')
+    val_loader = build_dataloader(cfg, num_workers, distributed, phase, mode = 'val', logger=logger)
     logger.add_line("\n"+"="*30+"   Val data   "+"="*30)
     logger.add_line(str(val_loader.dataset))
     return train_loader, val_loader
 
-def build_dataloaders(cfg, num_workers, distributed, logger):
-    train_loader = build_dataloader(cfg, num_workers, distributed)
+def build_dataloaders(cfg, num_workers, distributed, logger, phase):
+    train_loader = build_dataloader(cfg, num_workers, distributed, phase, mode = 'train', logger=logger)
     logger.add_line("\n"+"="*30+"   Train data   "+"="*30)
     logger.add_line(str(train_loader.dataset))
     return train_loader
 
 
-def build_dataloader(config, num_workers, distributed, mode='train'):
+def build_dataloader(config, num_workers, distributed, phase, mode='train', logger=None):
     import torch.utils.data as data
     import torch.utils.data.distributed
     import datasets
 
     datasets, data_and_label_keys = {}, {}
-    datasets = build_dataset(config, mode)
+    datasets = build_dataset(config, phase, mode, logger)
 
     loader = get_loader(
         dataset=datasets,
@@ -313,23 +314,26 @@ def build_optimizer(params, cfg, logger=None):
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['num_epochs'], eta_min=cfg['lr']['final_lr'])
     return optimizer, scheduler
 
-def get_labels(sample, coords):
-    labels=None
-    return labels
+def get_labels(batch_gt_boxes_lidar, coords, label_type = 'class_names'):
+    '''
+    coords: numpy array (batch size, n points, 3)
 
-def load_data_to_gpu(batch_dict):
-    # for key, val in batch_dict.items():
-    #     if not isinstance(val, np.ndarray):
-    #         continue
-    #     elif key in ['frame_id', 'metadata', 'calib', 'image_shape', 'sample_idx']:
-    #         continue
-    #     elif key in ['images']:
-    #         batch_dict[key] = kornia.image_to_tensor(val).float().cuda().contiguous()
-    #     elif key in ['image_shape']:
-    #         batch_dict[key] = torch.from_numpy(val).int().cuda()
-    #     else:
-    #         batch_dict[key] = torch.from_numpy(val).float().cuda()
+    batch_labels: list of len "batch_size". Each element is a numpy array of len npoints
+    '''
+    batch_size = len(batch_gt_boxes_lidar)
+    batch_labels = []
+    for pc_idx, gt_boxes_lidar in enumerate(batch_gt_boxes_lidar):
+        points = coords[pc_idx]
+        corners_lidar = box_utils.boxes_to_corners_3d(gt_boxes_lidar[:,:7]) #nboxes, 8 corners, 3coords
+        num_objects = gt_boxes_lidar.shape[0]
+        labels = np.zeros(points.shape[0])
 
+        for k in range(num_objects):
+            flag = box_utils.in_hull(points[:, 0:3], corners_lidar[k]) #flag=points dim labels=np.zeros(points.shape[0]), labels[flag] = class_names[obj_name].get_index
+            labels[flag] = gt_boxes_lidar[k, 7] if label_type=='class_names' else 1
+        batch_labels.append(labels) # background = 0, car = 1, so on OR background = 0, object = 1
+    batch_labels = torch.stack([torch.tensor(batch_labels[i]).long() for i in range(batch_size)])
+    return batch_labels
 
 class CheckpointManager(object):
     def __init__(self, checkpoint_dir, rank=0, dist=False):
@@ -378,13 +382,16 @@ class CheckpointManager(object):
         ckp = torch.load(checkpoint_fn, map_location={'cuda:0': 'cpu'})
         start_epoch = ckp['epoch']
         for k in kwargs:
-            # if (k == 'model') and (self.dist == False):
-            #     newparam = {}
-            #     for tempk in ckp[k]:
-            #         newparam[tempk[7:]] = ckp[k][tempk]
-            #     ### Fix the module issue
-            #     kwargs[k].load_state_dict(newparam)
-            # else:
+            if (k == 'model') and (self.dist == False):
+                newparam = {}
+                for tempk in ckp[k]:
+                    if tempk[:7] == 'module.':
+                        newparam[tempk[7:]] = ckp[k][tempk]
+                    else:
+                        newparam[tempk] = ckp[k][tempk]
+                ### Fix the module issue
+                kwargs[k].load_state_dict(newparam)
+            else:
                 kwargs[k].load_state_dict(ckp[k])
         return start_epoch
 
@@ -397,12 +404,9 @@ def save_checkpoint(state, is_best, model_dir='.', filename=None):
         shutil.copyfile(filename, '{}/model_best.pth.tar'.format(model_dir))
 
 
-def prep_output_folder(model_dir, evaluate):
-    if evaluate:
-        if not os.path.isdir(model_dir):
-            os.makedirs(model_dir)
-    else:
-        if not os.path.isdir(model_dir):
-            os.makedirs(model_dir)
+def prep_output_folder(model_dir): 
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir)
+
 
 

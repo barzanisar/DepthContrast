@@ -13,9 +13,9 @@ import sys
 
 from models.trunks.mlp import MLP
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(ROOT_DIR)
-ROOT_DIR = os.path.dirname(ROOT_DIR)
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) #trunks
+ROOT_DIR = os.path.dirname(ROOT_DIR) #models
+ROOT_DIR = os.path.dirname(ROOT_DIR) #DepthContrast
 sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
 
 from ops.pointnet2.pointnet2_batch import pointnet2_modules
@@ -104,6 +104,7 @@ class PointNet2MSG(nn.Module):
         batch_size = pointcloud.shape[0]
         points = pointcloud
         xyz, features = self.break_up_pc(points)
+        #TODO: reverse aug and then return xyz_old as coords
 
         features = features.view(batch_size, -1, features.shape[-1]).permute(0, 2, 1).contiguous() if features is not None else None
         l_xyz, l_features = [xyz], [features]
@@ -134,8 +135,11 @@ class PointNet2MSG(nn.Module):
                 nump = feat.shape[-1] # num points original
                 # get one feature vector of dim 128 for the entire point cloud
                 feat = torch.squeeze(F.max_pool1d(feat, nump))
+            else:
+                feat = feat.view(batch_size, -1, feat.shape[-1]).permute(0, 2, 1).contiguous() #(8, 128, npoints=16384) -> (8, 16384, 128) 
+
             if self.use_mlp:
-                feat = self.head(feat)
+                feat = self.head(feat) #linear probe out (8=batch, 16384=npoints, 5=nclasses)
             out_feats[out_feat_keys.index(key)] = feat
         
-        return out_feats
+        return out_feats, xyz

@@ -26,6 +26,7 @@ import torch.optim
 #     pass
 
 import torch.multiprocessing as mp
+import numpy as np
   
 import utils.logger
 from utils import main_utils, wandb_utils
@@ -53,7 +54,7 @@ parser.add_argument('--local_rank', default=0, type=int,
                     help='local process id i.e. GPU id to use.') #local_rank = 0
 parser.add_argument('--ngpus', default=4, type=int,
                     help='number of GPUs to use.') #not needed
-parser.add_argument('--multiprocessing-distributed', action='store_true', default=True,
+parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
@@ -107,61 +108,70 @@ def main_worker(gpu, ngpus, args, cfg):
     # Setup environment
     args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
     logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
-    wandb_utils.init(cfg, args, job_type='eval')
-    ckp_manager_base_model = main_utils.CheckpointManager(model_dir, rank=args.rank, dist=args.multiprocessing_distributed)
-    ckp_manager_linear = main_utils.CheckpointManager(model_dir + "/linear_probe", rank=args.rank, dist=args.multiprocessing_distributed)
-
-    
-    # print("=" * 30 + "   DDP   " + "=" * 30)
-    # print(f"world_size: {args.world_size}")
-    # print(f"local_rank: {args.local_rank}")
-    # print(f"rank: {args.rank}")
+    wandb_utils.init(cfg, args, job_type='linear_probe')
+    ckp_manager_base_model = main_utils.CheckpointManager(model_dir.split('/linear_probe')[0] + '/train', rank=args.rank, dist=args.multiprocessing_distributed)
+    ckp_manager_linear = main_utils.CheckpointManager(model_dir, rank=args.rank, dist=args.multiprocessing_distributed)
 
     # Define model
+    if 'args_point' in cfg['model']:
+        cfg['model']['args_point']['linear_probe'] = True
     model = main_utils.build_model(cfg['model'], logger)
 
     # Load state dict
     start_epoch = ckp_manager_base_model.restore(restore_last=True, model=model)
 
     logger.add_line(f"Linear Probing Epoch {start_epoch-1}")
+    # Delete moco encoder
+    del model.trunk[1]
+    #print(model)
 
     # Freeze training for feature layers
     for param in model.parameters():
         param.requires_grad = False
 
-    model.head = MLP(cfg["model"]["linear_probe_dim"])
-
-    print(model)
+    # linear classifier
+    model.trunk[0].head = MLP(cfg["model"]["linear_probe_dim"])
+    #print(model)
 
 
     # model To cuda
     model, args = main_utils.distribute_model_to_cuda(model, args)
 
     # Define criterion 
-    train_criterion = torch.nn.CrossEntropyLoss()
+    train_criterion =  main_utils.build_criterion(cfg['loss'], logger=logger) 
     train_criterion = train_criterion.cuda()
     
     # Define dataloaders
-    train_loader, val_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], args.multiprocessing_distributed, logger)       
+    train_loader, val_loader = main_utils.build_dataloaders_train_val(cfg['dataset'], cfg['num_workers'], args.multiprocessing_distributed, logger, cfg['phase'])       
 
             
     # Define optimizer
     optimizer, scheduler = main_utils.build_optimizer(
-        params=model.head.parameters(),
+        params=model.trunk[0].head.parameters(),
         cfg=cfg['optimizer'],
         logger=logger)
     
-    # Optionally resume from a checkpoint (TODO if needed)
     start_epoch, end_epoch = 0, cfg['optimizer']['num_epochs']
+
+    # Optionally resume from a checkpoint
+    if cfg['resume']:
+        if ckp_manager_linear.checkpoint_exists(last=True):
+            start_epoch = ckp_manager_linear.restore(restore_last=True, model=model, optimizer=optimizer)
+            scheduler.step(start_epoch)
+            logger.add_line("Checkpoint loaded: '{}' (epoch {})".format(ckp_manager_linear.last_checkpoint_fn(), start_epoch))
+        else:
+            logger.add_line("No checkpoint found at '{}'".format(ckp_manager_linear.last_checkpoint_fn()))
 
     cudnn.benchmark = True
 
     ############################ TRAIN Linear classifier head #########################################
     test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
+    val_epoch_accuracy = -1
+    val_epoch_obj_accuracy = -1
     for epoch in range(start_epoch, end_epoch):
-        if (epoch % 10) == 0: #TODO make this a param
+        if (epoch % cfg['ckpt_save_interval']) == 0:
             ckp_manager_linear.save(epoch, model=model, train_criterion=train_criterion, optimizer=optimizer, filename='checkpoint-ep{}.pth.tar'.format(epoch))
-            logger.add_line(f'Saved checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
+            logger.add_line(f'Saved linear_probe checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
 
         if args.multiprocessing_distributed:
             train_loader.sampler.set_epoch(epoch)
@@ -174,52 +184,90 @@ def main_worker(gpu, ngpus, args, cfg):
         scheduler.step(epoch)
 
         # Validate one epoch
-        run_phase('val', val_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter)
+        accuracy, obj_accuracy = run_phase('val', val_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter)
 
         #TODO
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
             ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
-            logger.add_line(f'Saved checkpoint for testing {ckp_manager_linear.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
+            logger.add_line(f'Saved linear_probe checkpoint for testing {ckp_manager_linear.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
+        if accuracy > val_epoch_accuracy:
+            logger.add_line('='*30 + 'VALIDATION ACCURACY INCREASED' + '='*30)
+            ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion, filename='checkpoint-best-acc-ep{}.pth.tar'.format(epoch+1))
+            logger.add_line(f'Saved Best linear_probe checkpoint checkpoint-best-acc-ep{epoch+1}.pth.tar after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
+            logger.add_line(f'Epoch {epoch}: Val Accuracy increased from {val_epoch_accuracy} to {accuracy}')
+            val_epoch_accuracy = accuracy
+        if obj_accuracy > val_epoch_obj_accuracy:
+            logger.add_line('='*30 + 'VALIDATION OBJECT ACCURACY INCREASED' + '='*30)
+            logger.add_line(f'Epoch {epoch}: Val Obj Accuracy increased from {val_epoch_obj_accuracy} to {obj_accuracy}')
+            val_epoch_obj_accuracy = obj_accuracy
+
+
 
 
 def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter):
     from utils import metrics_utils
     logger.add_line('\n{}: Epoch {}'.format(phase, epoch))
-    batch_time = metrics_utils.AverageMeter('Process Time', ':6.3f', window_size=100)
-    data_time = metrics_utils.AverageMeter('Data Load Time', ':6.3f', window_size=100)
+    batch_time = metrics_utils.AverageMeter('Batch Process Time', ':6.3f', window_size=100)
+    data_time = metrics_utils.AverageMeter('Batch Load Time', ':6.3f', window_size=100)
     loss_meter = metrics_utils.AverageMeter('Loss', ':.3e')
-    accuracy_meter = metrics_utils.AverageMeter('Accuracy', ':.3e')
+    accuracy_meter = metrics_utils.AverageMeter('Accuracy', ':.2f')
+    obj_accuracy_meter = metrics_utils.AverageMeter('Obj Accuracy', ':.2f')
 
-    progress = utils.logger.ProgressMeter(len(loader), [batch_time, data_time, loss_meter, accuracy_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
+    progress = utils.logger.ProgressMeter(len(loader), [loss_meter, accuracy_meter, obj_accuracy_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
 
     # switch to train mode
     model.train(phase == 'train')
-    # ['points', 'points_moco']
+
+    correct = 0
+    total = 0
+    correct_obj_points= 0
+    total_obj_points = 0
+    
     end = time.time()
     device = args.local_rank if args.local_rank is not None else 0
     for i, sample in enumerate(loader):
         # measure data loading time
         data_time.update(time.time() - end) # Time to load one batch
 
-        # TODO: Load data and labels to gpu:
-        main_utils.load_data_to_gpu(sample)
 
         if phase == 'train':
-            output, coords = model(sample) #output=(Npoints, num classes), coords=(8pcs, Npoints, 3)
+            output, coords = model(sample) #output=(batch_size, Npoints, num classes), coords=(8pcs, Npoints, 3)
         else:
             with torch.no_grad():
                 output, coords = model(sample)
-
+        
+        #TODO: remove output list
+        output = output[0]
         # compute loss
-        labels = main_utils.get_labels(sample, coords) #TODO
-        loss = criterion(output, labels)
-        loss_meter.update(loss.item(), output[0].size(0))
+        labels = main_utils.get_labels(sample['gt_boxes_lidar'], coords[0].detach().cpu().numpy(), cfg['dataset']['LABEL_TYPE']) #TODO
+        # Load labels to gpu:
+        labels = main_utils.recursive_copy_to_gpu(labels)
+        loss = criterion(output.transpose(1,2), labels)
+        loss_meter.update(loss.item(), output.size(0))
 
         # compute gradient and do SGD step during training
         if phase == 'train':
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        # convert output probabilities to predicted class
+        pred = output.data.max(2, keepdim=True)[1] #pred_labels
+        pred = torch.squeeze(pred)
+    
+        # compare predictions to true label
+        correct += np.sum(np.squeeze(pred.eq(labels)).cpu().numpy())
+        total += labels.size(0) * labels.size(1)
+
+        #ignore background points in accuracy
+        gt_obj_flag = labels>0
+        total_obj_points += gt_obj_flag.sum().item()
+        pred_obj = pred[gt_obj_flag]
+        labels_obj = labels[gt_obj_flag]
+        correct_obj_points += np.sum(np.squeeze(pred_obj.eq(labels_obj)).cpu().numpy())
+
+        accuracy_meter.update(100. * correct/total)
+        obj_accuracy_meter.update(100. * correct_obj_points / total_obj_points)
 
         # measure elapsed time
         batch_time.update(time.time() - end) # This is printed as Time # Time to train one batch
@@ -229,6 +277,12 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         step = epoch * len(loader) + i #sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
         if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
             progress.display(i+1)
+    
+    accuracy = 100. * correct / total
+    obj_accuracy = 100. * correct_obj_points / total_obj_points
+    print('\n %s Accuracy: %2d%% (%2d/%2d)' % (phase, accuracy, correct, total))
+    print('\n %s Obj Accuracy: %2d%% (%2d/%2d)' % (phase, obj_accuracy, correct_obj_points, total_obj_points))
+
 
     # Sync metrics across all GPUs and print final averages
     if args.multiprocessing_distributed:
@@ -242,6 +296,8 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             metrics_dict[meter.name] = meter.avg
 
     wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary? how to log for train and val separatly?
+
+    return accuracy, obj_accuracy
 
 
 if __name__ == '__main__':

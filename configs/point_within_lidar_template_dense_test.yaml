@@ -1,18 +1,19 @@
 tag: 'dense_dc'
 resume: true
-test_only: true
+phase: 'linear_probe' #'train', 'eval'
 num_workers: 8
 
 required_devices: 1
 no_test: false
 debug: false
 log2tb: true
-log2wb: true
+log2wb: false
 allow_double_bs: false
 seed: 0
 distributed: false
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 10 # print progress after processing every <freq> iters or batches
+ckpt_save_interval: 10
 
 WANDB:
   ENABLED: True
@@ -21,29 +22,31 @@ WANDB:
   SUMMARY_HIGHEST_METRIC: None
   
 dataset:
-  DATASET_NAMES: [dense]
+  DATASET_NAMES: [DenseDataset]
   DATA_SPLIT: 
     train: 'train_clear'
     val: 'val_clear'
   INFO_PATHS: 
-    train: ['dense_infos_train_clear.pkl']
-    val: ['dense_infos_val_clear.pkl']
+    train: ['dense_infos_train_clear_60.pkl']
+    val: ['dense_infos_val_clear_15.pkl']
   BATCHSIZE_PER_REPLICA: 8
-  LABEL_TYPE: sample_index
+  LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
+  SENSOR_TYPE: 'hdl64'
+  SIGNAL_TYPE: 'strongest'
   Lidar: True
   VOX: False
   POINT_TRANSFORMS:
-    - name: randomcuboidLidar
-      crop: 0.5
-      npoints: 10000
-      randcrop: 1.0
-      aspect: 0.75
-    - name: randomdrop
-      crop: 0.2
-    - name: RandomFlipLidar
-    - name: RandomRotateLidar
-    - name: RandomScaleLidar
+    # - name: randomcuboidLidar
+    #   crop: 0.5
+    #   npoints: 10000
+    #   randcrop: 1.0
+    #   aspect: 0.75
+    # - name: randomdrop
+    #   crop: 0.2
+    # - name: RandomFlipLidar
+    # - name: RandomRotateLidar
+    # - name: RandomScaleLidar
     - name: ToTensorLidar
   COLLATE_FUNCTION: "point_moco_collator"
   INPUT_KEY_NAMES: ["points"]
@@ -54,7 +57,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: False
-  num_epochs: 10
+  num_epochs: 20
   lr:
     name: "cosine"
     base_lr: 0.12
@@ -68,25 +71,16 @@ model:
   Lidar: True
   VOX: False
   arch_point: "pointnet_msg"
-  linear_probe_dim: [128, 5]
+  linear_probe_dim: [128, 2] #[128, 5]
   args_point:
     use_mlp: True
     mlp_dim: [128, 128, 128]
-    linear_probe: True
 
 loss:
-  name: "NCELossMoco"
+  name: "FocalLoss"
   args:
-    two_domain: True
-    LOSS_TYPE: NPID
-    OTHER_INPUT: False
-    within_format_weight0: 1.0
-    within_format_weight1: 0.0
-    across_format_weight0: 0.0
-    across_format_weight1: 0.0
-    NCE_LOSS:
-      NORM_EMBEDDING: True
-      TEMPERATURE: 0.1
-      LOSS_TYPE: cross_entropy
-      NUM_NEGATIVES: 65536 # has to be divisble by batch size or num voxels in each point cloud
-      EMBEDDING_DIM: 128
+    num_classes: 1 #4 #num_classes does not include background class
+    alpha: None #[0.6, 0.1, 0.1, 0.1, 0.1] if None, then class weights are calc as 1/class_freq
+    gamma: 2
+    reduction: 'mean'
+    ignore_index: -100 # don't ignore any class
