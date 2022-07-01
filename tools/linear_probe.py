@@ -116,7 +116,11 @@ def main_worker(gpu, ngpus, args, cfg):
     model = main_utils.build_model(cfg['model'], logger=logger, linear_probe=True)
 
     # Load model state dict i.e. load checkpoint
-    start_epoch = ckp_manager_base_model.restore(fn = 'checkpoint-ep200.pth.tar', model=model) #fn = 'checkpoint-ep200.pth.tar'
+    if cfg.get('linear_probe_base_model_fn', None) is not None:
+        start_epoch = ckp_manager_base_model.restore(fn=cfg['linear_probe_base_model_fn'], model=model)
+    else:
+        start_epoch = ckp_manager_base_model.restore(restore_last=True, model=model)
+        
 
     logger.add_line(f"Linear Probing Epoch {start_epoch-1}")
     # Delete moco encoder
