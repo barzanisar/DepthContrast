@@ -9,17 +9,17 @@ import logging
 
 import torch
 from datasets.collators import get_collator
-from datasets.depth_dataset import DepthContrastDataset
+from datasets.depth_dataset import DenseDataset
 from torch.utils.data import DataLoader
 
 
-__all__ = ["DepthContrastDataset", "get_data_files"]
+__all__ = {"DenseDataset": DenseDataset}
 
 
-def build_dataset(cfg):
-    dataset = DepthContrastDataset(cfg)
+def build_dataset(cfg, linear_probe, mode, logger=None):
+    # TODO: Turn DATASET_NAMES in cfg from list to normal. Take first dataset for now
+    dataset = __all__[cfg["DATASET_NAMES"][0]](cfg, linear_probe, mode, logger)
     return dataset
-
 
 def print_sampler_config(data_sampler):
     sampler_cfg = {

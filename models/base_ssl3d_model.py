@@ -45,12 +45,13 @@ def concat_all_gather(tensor):
     return output
 
 class BaseSSLMultiInputOutputModel(nn.Module):
-    def __init__(self, model_config, logger):
+    def __init__(self, model_config, logger, linear_probe=False):
         """
         Class to implement a self-supervised model.
         The model is split into `trunk' that computes features.
         """
         self.config = model_config
+        self.linear_probe = linear_probe
         self.logger = logger
         super().__init__()
         self.eval_mode = None  # this is just informational
@@ -62,14 +63,15 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         
     def multi_input_with_head_mapping_forward(self, batch):
         all_outputs = []
-        all_coords = []
+        all_vox_coords = []
+        all_point_coords = []
         for input_idx in range(len(self.model_input)): #['points', 'points_moco']
             input_key = self.model_input[input_idx]
             feature_names = self.model_feature[input_idx]
             if "moco" in input_key:
-                outputs, coords = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
+                outputs, vox_coords, point_coords = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
             else:
-                outputs, coords = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
+                outputs, vox_coords, point_coords = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
             if len(outputs) == 1:
                 # single head. do not make nested list
                 outputs = outputs[0]
@@ -77,8 +79,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                 all_outputs += outputs
                 continue
             all_outputs.append(outputs)
-            all_coords.append(coords)
-        return all_outputs, all_coords
+            all_vox_coords.append(vox_coords)
+            all_point_coords.append(point_coords)
+        return all_outputs, all_vox_coords, all_point_coords
     
     def _single_input_forward(self, batch, feature_names, input_key, target, aug_matrix=None):
         if "vox" not in input_key:
@@ -113,8 +116,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                     aug_matrix, non_blocking=True
                 )
         
-        feats, coords = self.trunk[target](batch, feature_names, aug_matrix)
-        return feats, coords
+        feats, vox_coords, point_coords = self.trunk[target](batch, feature_names, aug_matrix)
+        return feats, vox_coords, point_coords
 
     @torch.no_grad()
     def _momentum_update_key(self, target=1):
@@ -269,13 +272,13 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                         aug_matrix, non_blocking=True
                     )
             
-            feats, coords = self.trunk[target](batch, feature_names, aug_matrix)
+            feats, vox_coords, point_coords = self.trunk[target](batch, feature_names, aug_matrix)
             if torch.distributed.is_initialized():
                 if "vox" not in input_key:
                     feats = [self._batch_unshuffle_ddp(feats[0], idx_unshuffle)]
-                return feats, coords
+                return feats, vox_coords, point_coords
             else:
-                return feats, coords
+                return feats, vox_coords, point_coords
 
     def forward(self, batch):
         return self.multi_input_with_head_mapping_forward(batch)
@@ -285,8 +288,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         trunks = torch.nn.ModuleList()
         if 'arch_point' in self.config:
             assert self.config['arch_point'] in models.TRUNKS, 'Unknown model architecture'
-            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point']))
-            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point']))
+            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], linear_probe = self.linear_probe))
+            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], linear_probe = self.linear_probe))
         if 'arch_vox' in self.config:
             assert self.config['arch_vox'] in models.TRUNKS, 'Unknown model architecture'
             trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))

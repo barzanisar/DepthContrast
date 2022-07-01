@@ -17,25 +17,21 @@ def point_moco_collator(batch):
     data_point_aug_matrix = [x["data_aug_matrix"] for x in batch]
     data_moco_aug_matrix = [x["data_moco_aug_matrix"] for x in batch]        
 
-    # labels are repeated N+1 times but they are the same
-    labels = [x["label"][0] for x in batch]
-    labels = torch.LongTensor(labels).squeeze()
-    
-    # data valid is repeated N+1 times but they are the same
-    data_valid = torch.BoolTensor([x["data_valid"][0] for x in batch])
+    gt_boxes_lidar = [x.get("gt_boxes_lidar", None) for x in batch]
 
-    points_moco = torch.stack([data_moco[i][0] for i in range(batch_size)])
-    points = torch.stack([data_point[i][0] for i in range(batch_size)])
+    points_moco = torch.stack([data_moco[i][0] for i in range(batch_size)]) #(8, 16384, 4)
+    points = torch.stack([data_point[i][0] for i in range(batch_size)]) #(8, 16384, 4)
 
-    points_moco_aug_matrix = torch.stack([data_moco_aug_matrix[i] for i in range(batch_size)])
-    points_aug_matrix = torch.stack([data_point_aug_matrix[i] for i in range(batch_size)])
+    points_moco_aug_matrix = torch.stack([data_moco_aug_matrix[i] for i in range(batch_size)]) #(8, 3, 3)
+    points_aug_matrix = torch.stack([data_point_aug_matrix[i] for i in range(batch_size)])#(8, 3, 3)
 
     output_batch = {
         "points": points,
         "points_moco": points_moco,
         "points_aug_matrix": points_aug_matrix,
-        "points_moco_aug_matrix": points_moco_aug_matrix,
-        "label": labels,
-        "data_valid": data_valid,
+        "points_moco_aug_matrix": points_moco_aug_matrix
     }
+    if gt_boxes_lidar[0] is not None:
+        output_batch["gt_boxes_lidar"] = gt_boxes_lidar
+       
     return output_batch

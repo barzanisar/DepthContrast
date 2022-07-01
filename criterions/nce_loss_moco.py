@@ -12,7 +12,6 @@ import pprint
 import numpy as np
 import torch
 from torch import nn
-import time
 
 # utils
 @torch.no_grad()
@@ -113,7 +112,7 @@ class NCELossMoco(nn.Module):
         
             self.queue_other_ptr[0] = other_ptr
                                                                         
-    def forward(self, output, coords):
+    def forward(self, output, vox_coords):
         assert isinstance(
             output, list
         ), "Model output should be a list of tensors. Got Type {}".format(type(output))
@@ -125,32 +124,26 @@ class NCELossMoco(nn.Module):
                 normalized_output3 = nn.functional.normalize(output[2], dim=1, p=2) #query unet embedding
                 normalized_output4 = nn.functional.normalize(output[3], dim=1, p=2) #key unet embedding
 
-        coords_0 = coords[0]
-        coords_1 = coords[1]
-        map_coord0_id = {str(coords_0[i, :]): i for i in range(coords_0.shape[0])}
-        matched_idx_0 = []
-        matched_idx_1 = []
-        for idx_1 in range(coords_1.shape[0]):
-            if str(coords_1[idx_1, :]) in map_coord0_id:
-                idx_0 = map_coord0_id[str(coords_1[idx_1, :])]
-                matched_idx_0.append(idx_0)
-                matched_idx_1.append(idx_1)
+        # Voxelized Depth Contrast
+        if vox_coords[0] is not None:
+            coords_0 = vox_coords[0] # vox_coords from query encoder = list of len total num voxels=1181, each element has a numpy array with a voxel coord = bzyx
+            coords_1 = vox_coords[1] # vox_coords from key encoder
 
-        normalized_output1 = normalized_output1[matched_idx_0, :]
-        normalized_output2 = normalized_output2[matched_idx_1, :]
+            # Find matching vox_coords in both in order to rearrange normalized output1 and output2 in the order of matching voxel features
+            map_coord0_idx0 = {str(coords_0[i, :]): i for i in range(coords_0.shape[0])}
+            matched_idx_0 = []
+            matched_idx_1 = []
+            for idx_1 in range(coords_1.shape[0]):
+                if str(coords_1[idx_1, :]) in map_coord0_idx0:
+                    idx_0 = map_coord0_idx0[str(coords_1[idx_1, :])]
+                    matched_idx_0.append(idx_0)
+                    matched_idx_1.append(idx_1)
 
-        # start = time.time()
-        #
-        # num_matches = matches.shape[0]
-        # matched_idx0 = [None] * num_matches
-        # matched_idx1 = [None] * num_matches
-        # for i in range(num_matches):
-        #     matched_idx0[i] = np.argwhere(coords[0] == matches[i,][])
-        #     matched_idx1[i] = np.argwhere(np.isin(coords[1], matches[i]))
-        # #matched_idx1 = np.argwhere(np.isin(coords[1], matches).all(axis=1))
-        #dif = time.time() - start
-        # positive logits: Nx1 = batch size of positive examples x 1
-        l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1)
+            normalized_output1 = normalized_output1[matched_idx_0, :] #(matched num voxels, 128)
+            normalized_output2 = normalized_output2[matched_idx_1, :] #(matched num voxels, 128)
+
+        # positive logits: Nx1 = batch size of positive examples (or matched num voxels)x 1
+        l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1) #(v_i_1).transpose() * v_i_2 => dim (n = matched num voxels)
         
         # negative logits: NxK
         l_neg = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()])

@@ -6,6 +6,7 @@
 #
 
 import os
+import sys
 import shutil
 import torch
 import numpy as np
@@ -17,6 +18,51 @@ import subprocess
 
 from datasets import build_dataset, get_loader
 import torch.multiprocessing as mp
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) #utils
+ROOT_DIR = os.path.dirname(ROOT_DIR) #DepthContrast
+sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
+
+from pcdet.utils import box_utils
+
+def confusion_matrix(preds, labels, num_classes):
+    hist = (
+        torch.bincount(
+            num_classes * labels + preds,
+            minlength=num_classes ** 2,
+        )
+        .reshape(num_classes, num_classes)
+        .float()
+    )
+    return hist
+
+
+def compute_IoU_from_cmatrix(hist, ignore_index=None):
+    """Computes the Intersection over Union (IoU).
+    Args:
+        hist: confusion matrix.
+    Returns:
+        m_IoU, fw_IoU, and matrix IoU
+    """
+    if ignore_index is not None:
+        hist[ignore_index] = 0.0
+    intersection = torch.diag(hist)
+    union = hist.sum(dim=1) + hist.sum(dim=0) - intersection
+    IoU = intersection.float() / union.float()
+    IoU[union == 0] = 1.0
+    if ignore_index is not None:
+        IoU = torch.cat((IoU[:ignore_index], IoU[ignore_index+1:]))
+    m_IoU = torch.mean(IoU).item()
+    fw_IoU = (
+        torch.sum(intersection) / (2 * torch.sum(hist) - torch.sum(intersection))
+    ).item()
+    return m_IoU, fw_IoU, IoU
+
+
+def compute_IoU(preds, labels, num_classes, ignore_index=None):
+    """Computes the Intersection over Union (IoU)."""
+    hist = confusion_matrix(preds, labels, num_classes)
+    return compute_IoU_from_cmatrix(hist, ignore_index)
 
 def initialize_distributed_backend(args, ngpus_per_node):
     if args.multiprocessing_distributed:
@@ -155,12 +201,18 @@ def recursive_copy_to_gpu(value, non_blocking=True, max_depth=3, curr_depth=0):
 
 def prep_environment(args, cfg):
     from torch.utils.tensorboard import SummaryWriter
-
+    
+    phase = 'linear_probe' if cfg.get('linear_probe', False) else 'train'
     # Prepare loggers (must be configured after initialize_distributed_backend())
-    model_dir = '{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'])
+    model_dir = '{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], phase)
+    
+    
     if args.rank == 0:
-        prep_output_folder(model_dir, False)
-    log_fn = '{}/train.log'.format(model_dir)
+        if cfg['linear_probe']:
+            assert os.path.isdir(model_dir.split('/linear_probe')[0])
+        prep_output_folder(model_dir)
+
+    log_fn = '{}/{}_{}.log'.format(model_dir, phase, datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     logger = Logger(quiet=args.quiet, log_fn=log_fn, rank=args.rank)
 
     logger.add_line(str(datetime.datetime.now()))
@@ -193,9 +245,9 @@ def prep_environment(args, cfg):
     return logger, tb_writter, model_dir
 
 
-def build_model(cfg, logger=None):
+def build_model(cfg, logger=None, linear_probe=False):
     import models
-    return models.build_model(cfg, logger)
+    return models.build_model(cfg, logger, linear_probe)
 
 
 def distribute_model_to_cuda(models, args):
@@ -233,20 +285,30 @@ def distribute_model_to_cuda(models, args):
     return models, args
 
 
-def build_dataloaders(cfg, num_workers, distributed, logger):
-    train_loader = build_dataloader(cfg, num_workers, distributed)
+def build_dataloaders_train_val(cfg, num_workers, distributed, logger, linear_probe=False):
+    train_loader = build_dataloader(cfg, num_workers, distributed, linear_probe=linear_probe, mode = 'train', logger=logger)
+    logger.add_line("\n"+"="*30+"   Train data   "+"="*30)
+    logger.add_line(str(train_loader.dataset))
+
+    val_loader = build_dataloader(cfg, num_workers, distributed, linear_probe=linear_probe, mode = 'val', logger=logger)
+    logger.add_line("\n"+"="*30+"   Val data   "+"="*30)
+    logger.add_line(str(val_loader.dataset))
+    return train_loader, val_loader
+
+def build_dataloaders(cfg, num_workers, distributed, logger, linear_probe=False):
+    train_loader = build_dataloader(cfg, num_workers, distributed, linear_probe=linear_probe, mode = 'train', logger=logger)
     logger.add_line("\n"+"="*30+"   Train data   "+"="*30)
     logger.add_line(str(train_loader.dataset))
     return train_loader
 
 
-def build_dataloader(config, num_workers, distributed):
+def build_dataloader(config, num_workers, distributed, linear_probe=False, mode='train', logger=None):
     import torch.utils.data as data
     import torch.utils.data.distributed
     import datasets
 
     datasets, data_and_label_keys = {}, {}
-    datasets = build_dataset(config)
+    datasets = build_dataset(config, linear_probe, mode, logger)
 
     loader = get_loader(
         dataset=datasets,
@@ -293,6 +355,28 @@ def build_optimizer(params, cfg, logger=None):
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['num_epochs'], eta_min=cfg['lr']['final_lr'])
     return optimizer, scheduler
 
+def get_labels(batch_gt_boxes_lidar, coords, label_type = 'class_names'):
+    '''
+    coords: numpy array (batch size, n points, 3)
+
+    batch_labels: list of len "batch_size". Each element is a numpy array of len npoints
+    '''
+    batch_size = len(batch_gt_boxes_lidar)
+    batch_labels = []
+    for pc_idx, gt_boxes_lidar in enumerate(batch_gt_boxes_lidar):
+        points = coords[pc_idx]
+        corners_lidar = box_utils.boxes_to_corners_3d(gt_boxes_lidar[:,:7]) #nboxes, 8 corners, 3coords
+        num_objects = gt_boxes_lidar.shape[0]
+        labels = np.zeros(points.shape[0])
+
+        for k in range(num_objects):
+            flag = box_utils.in_hull(points[:, 0:3], corners_lidar[k]) #flag=points dim labels=np.zeros(points.shape[0]), labels[flag] = class_names[obj_name].get_index
+            labels[flag] = gt_boxes_lidar[k, 7] if label_type=='class_names' else 1
+        batch_labels.append(labels) # background = 0, car = 1, so on OR background = 0, object = 1
+    batch_labels = torch.stack([torch.tensor(batch_labels[i]).long() for i in range(batch_size)])
+    return batch_labels
+
+
 
 class CheckpointManager(object):
     def __init__(self, checkpoint_dir, rank=0, dist=False):
@@ -337,17 +421,20 @@ class CheckpointManager(object):
         return os.path.isfile(self.checkpoint_fn(last, best))
 
     def restore(self, fn=None, restore_last=False, restore_best=False, **kwargs):
-        checkpoint_fn = fn if fn is not None else self.checkpoint_fn(restore_last, restore_best)
+        checkpoint_fn = f'{self.checkpoint_dir}/{fn}' if fn is not None else self.checkpoint_fn(restore_last, restore_best)
         ckp = torch.load(checkpoint_fn, map_location={'cuda:0': 'cpu'})
         start_epoch = ckp['epoch']
         for k in kwargs:
-            # if (k == 'model') and (self.dist == False):
-            #     newparam = {}
-            #     for tempk in ckp[k]:
-            #         newparam[tempk[7:]] = ckp[k][tempk]
-            #     ### Fix the module issue
-            #     kwargs[k].load_state_dict(newparam)
-            # else:
+            if (k == 'model') and (self.dist == False):
+                newparam = {}
+                for tempk in ckp[k]:
+                    if tempk[:7] == 'module.':
+                        newparam[tempk[7:]] = ckp[k][tempk]
+                    else:
+                        newparam[tempk] = ckp[k][tempk]
+                ### Fix the module issue
+                kwargs[k].load_state_dict(newparam)
+            else:
                 kwargs[k].load_state_dict(ckp[k])
         return start_epoch
 
@@ -360,11 +447,9 @@ def save_checkpoint(state, is_best, model_dir='.', filename=None):
         shutil.copyfile(filename, '{}/model_best.pth.tar'.format(model_dir))
 
 
-def prep_output_folder(model_dir, evaluate):
-    if evaluate:
-        assert os.path.isdir(model_dir)
-    else:
-        if not os.path.isdir(model_dir):
-            os.makedirs(model_dir)
+def prep_output_folder(model_dir): 
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir)
+
 
 

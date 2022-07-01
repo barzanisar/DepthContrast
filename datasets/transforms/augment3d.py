@@ -127,8 +127,10 @@ def get_transform3d(data, input_transforms_list, vox=False):
                 point_cloud[:,0:3] = point_cloud[:,0:3] * noise_scale
                 #compute aug matrix
                 aug_trans_matrix = aug_trans_matrix * noise_scale
+
+                
             if transform_config['name'] == 'randomcuboidLidar':
-                continue # not compatible with voxel wise contrastive loss
+                # not compatible with voxel wise contrastive loss!
                 range_xyz = np.max(point_cloud[:,0:2], axis=0) - np.min(point_cloud[:,0:2], axis=0)
                 if ('randcrop' in transform_config):
                     crop_range = float(transform_config['crop']) + np.random.rand(2) * (float(transform_config['randcrop']) - float(transform_config['crop']))
@@ -162,6 +164,41 @@ def get_transform3d(data, input_transforms_list, vox=False):
                         break
                 
                 point_cloud = point_cloud[new_pointidx,:]
+
+
+            if transform_config['name'] == 'randomdrop':
+                # not compatible with voxel wise contrastive loss!
+                range_xyz = np.max(point_cloud[:,0:3], axis=0) - np.min(point_cloud[:,0:3], axis=0)
+
+                crop_range = float(transform_config['crop'])
+                new_range = range_xyz * crop_range / 2.0
+
+                if "dist_sample" in transform_config:
+                    numb,numv = np.histogram(point_cloud[:,2])
+                    max_idx = np.argmax(numb)
+                    minidx = max(0,max_idx-2)
+                    maxidx = min(len(numv)-1,max_idx+2)
+                    range_v = [numv[minidx], numv[maxidx]]
+                loop_count = 0
+                #write_ply_color(point_cloud[:,:3], point_cloud[:,3:], "before.ply")
+                while True:
+                    sample_center = point_cloud[np.random.choice(len(point_cloud)), 0:3]
+                    loop_count += 1
+                    if "dist_sample" in transform_config:
+                        if (loop_count <= 100):
+                            if (sample_center[-1] > range_v[1]) or (sample_center[-1] < range_v[0]):
+                                continue
+                    break
+                max_xyz = sample_center + new_range
+                min_xyz = sample_center - new_range
+
+                upper_idx = np.sum((point_cloud[:,0:3] < max_xyz).astype(np.int32), 1) == 3
+                lower_idx = np.sum((point_cloud[:,0:3] > min_xyz).astype(np.int32), 1) == 3
+
+                new_pointidx = ~((upper_idx) & (lower_idx))
+                point_cloud = point_cloud[new_pointidx,:]
+
+
             if transform_config['name'] == 'ToTensorLidar':
                 lpt = len(point_cloud)
                 if (vox == False):
@@ -212,166 +249,7 @@ def get_transform3d(data, input_transforms_list, vox=False):
                     # if DEBUG_REVERSE_TRANS:
                     #     old_points = torch.tensor(old_points).float()
 
-
-
-            # if transform_config['name'] == 'RandomFlip':
-            #     if np.random.random() > 0.5:
-            #         # Flipping along the YZ plane
-            #         point_cloud[:,0] = -1 * point_cloud[:,0]
-            #     if np.random.random() > 0.5:
-            #         # Flipping along the XZ plane
-            #         point_cloud[:,1] = -1 * point_cloud[:,1]
-            # if transform_config['name'] == 'RandomRotate':
-            #     # Rotation along up-axis/Z-axis
-            #     rot_angle = (np.random.random()*np.pi/18) - np.pi/36 # -5 ~ +5 degree
-            #     rot_mat = rotz(rot_angle)
-            #     point_cloud[:,0:3] = np.dot(point_cloud[:,0:3], np.transpose(rot_mat))
-            # if transform_config['name'] == 'RandomRotateAll':
-            #     # Rotation along up-axis/Z-axis
-            #     if True:
-            #         ### Use random rotate for all representation
-            #         rot_angle = (np.random.random()*np.pi*2) - np.pi # -5 ~ +5 degree
-            #         if np.random.random() <= 0.33:
-            #             rot_mat = rotx(rot_angle)
-            #         elif np.random.random() <= 0.66:
-            #             rot_mat = roty(rot_angle)
-            #         else:
-            #             rot_mat = rotz(rot_angle)
-            #         point_cloud[:,0:3] = np.dot(point_cloud[:,0:3], np.transpose(rot_mat))
-            #     else:
-            #         rot_angle = (np.random.random()*np.pi/18) - np.pi/36 # -5 ~ +5 degree
-            #         rot_mat = rotz(rot_angle)
-            #         point_cloud[:,0:3] = np.dot(point_cloud[:,0:3], np.transpose(rot_mat))
-            # if (transform_config['name'] == 'RandomScale'):
-            #     point_cloud[:,0:3] = point_cloud[:,0:3] * np.random.uniform(0.8, 1.2)
-            # if transform_config['name'] == 'ColorJitter':
-            #     rgb_color = point_cloud[:,3:6] #+ MEAN_COLOR_RGB
-            #     rgb_color *= (1+0.4*np.random.random(3)-0.2) # brightness change for each channel
-            #     rgb_color += (0.1*np.random.random(3)-0.05) # color shift for each channel
-            #     rgb_color += np.expand_dims((0.05*np.random.random(point_cloud.shape[0])-0.025), -1) # jittering on each pixel
-            #     rgb_color = np.clip(rgb_color, 0, 1)
-            #     # 20% gray scale
-            #     random_idx = np.random.choice(rgb_color.shape[0], rgb_color.shape[0]//5, replace=False)
-            #     rgb_color[random_idx] = np.stack([np.dot(rgb_color[random_idx],np.array([0.3,0.59,0.11])), np.dot(rgb_color[random_idx],np.array([0.3,0.59,0.11])), np.dot(rgb_color[random_idx],np.array([0.3,0.59,0.11]))], axis=-1)
-            #     # randomly drop out 30% of the points' colors
-            #     rgb_color *= np.expand_dims(np.random.random(point_cloud.shape[0])>0.3,-1)
-            #     point_cloud[:,3:6] = rgb_color - 0.5 ### Subtract mean color
-            # if (transform_config['name'] == 'RandomNoise') and (vox == False):
-            #     pt_shape = point_cloud.shape
-            #     point_noise = (np.random.rand(pt_shape[0], 3) - 0.5) * float(transform_config['noise'])
-            #     point_cloud[:,0:3] += point_noise#[new_pointidx,:]
-            # if transform_config['name'] == 'randomcuboid':
-            #     range_xyz = np.max(point_cloud[:,0:3], axis=0) - np.min(point_cloud[:,0:3], axis=0)
-            #     if ('randcrop' in transform_config):# and (int(transform_config['randcrop']) == 1):
-            #         crop_range = float(transform_config['crop']) + np.random.rand(3) * (float(transform_config['randcrop']) - float(transform_config['crop']))
-            #         if ('aspect' in transform_config):
-            #             loop_count = 0
-            #             while not check_aspect(crop_range, float(transform_config['aspect'])):
-            #                 loop_count += 1
-            #                 crop_range = float(transform_config['crop']) + np.random.rand(3) * (float(transform_config['randcrop']) - float(transform_config['crop']))
-            #                 if loop_count > 100:
-            #                     break
-            #     else:
-            #         crop_range = float(transform_config['crop'])
-
-            #     skip_step = False
-            #     loop_count = 0
-        
-            #     ### Optional for depth selection croption
-            #     if "dist_sample" in transform_config:
-            #         numb,numv = np.histogram(point_cloud[:,2])
-            #         max_idx = np.argmax(numb)
-            #         minidx = max(0,max_idx-2)
-            #         maxidx = min(len(numv)-1,max_idx+2)
-            #         range_v = [numv[minidx], numv[maxidx]]
-            #     while True:
-            #         loop_count += 1
-                 
-            #         sample_center = point_cloud[np.random.choice(len(point_cloud)), 0:3]
-            #         if "dist_sample" in transform_config:
-            #             if (loop_count <= 100):
-            #                 if (sample_center[-1] <= range_v[1]) and (sample_center[-1] >= range_v[0]):
-            #                     continue
-                    
-            #         new_range = range_xyz * crop_range / 2.0
-
-            #         max_xyz = sample_center + new_range
-            #         min_xyz = sample_center - new_range
-
-            #         upper_idx = np.sum((point_cloud[:,0:3] <= max_xyz).astype(np.int32), 1) == 3
-            #         lower_idx = np.sum((point_cloud[:,0:3] >= min_xyz).astype(np.int32), 1) == 3
-
-            #         new_pointidx = (upper_idx) & (lower_idx)
-                    
-            #         if (loop_count > 100) or (np.sum(new_pointidx) > float(transform_config['npoints'])):
-            #             break
-                    
-            #     #print ("final", np.sum(new_pointidx))
-            #     point_cloud = point_cloud[new_pointidx,:]
-            # if transform_config['name'] == 'multiscale':
-            #     rand_scale = [5000, 10000, 15000, 20000]
-            #     rand_scale_idx = np.random.choice(len(rand_scale))
-            #     if len(point_cloud) >= rand_scale[rand_scale_idx]:
-            #         idx = np.random.choice(len(point_cloud), rand_scale[rand_scale_idx], replace=False)
-            #     else:
-            #         idx = np.random.choice(len(point_cloud), rand_scale[rand_scale_idx], replace=True)
-            #     point_cloud = point_cloud[idx,:]
-            #     #pc2obj(point_cloud, "new.obj")
-            # if transform_config['name'] == 'randomdrop':
-            #     range_xyz = np.max(point_cloud[:,0:3], axis=0) - np.min(point_cloud[:,0:3], axis=0)
-
-            #     crop_range = float(transform_config['crop'])
-            #     new_range = range_xyz * crop_range / 2.0
-
-            #     if "dist_sample" in transform_config:
-            #         numb,numv = np.histogram(point_cloud[:,2])
-            #         max_idx = np.argmax(numb)
-            #         minidx = max(0,max_idx-2)
-            #         maxidx = min(len(numv)-1,max_idx+2)
-            #         range_v = [numv[minidx], numv[maxidx]]
-            #     loop_count = 0
-            #     #write_ply_color(point_cloud[:,:3], point_cloud[:,3:], "before.ply")
-            #     while True:
-            #         sample_center = point_cloud[np.random.choice(len(point_cloud)), 0:3]
-            #         loop_count += 1
-            #         if "dist_sample" in transform_config:
-            #             if (loop_count <= 100):
-            #                 if (sample_center[-1] > range_v[1]) or (sample_center[-1] < range_v[0]):
-            #                     continue
-            #         break
-            #     max_xyz = sample_center + new_range
-            #     min_xyz = sample_center - new_range
-
-            #     upper_idx = np.sum((point_cloud[:,0:3] < max_xyz).astype(np.int32), 1) == 3
-            #     lower_idx = np.sum((point_cloud[:,0:3] > min_xyz).astype(np.int32), 1) == 3
-
-            #     new_pointidx = ~((upper_idx) & (lower_idx))
-            #     point_cloud = point_cloud[new_pointidx,:]
-            #     #write_ply_color(point_cloud[:,:3], point_cloud[:,3:], "after.ply")
-            # if transform_config['name'] == 'ToTensor':
-            #     if len(point_cloud) >= 20000:
-            #         idx = np.random.choice(len(point_cloud), 20000, replace=False)
-            #     else:
-            #         idx = np.random.choice(len(point_cloud), 20000, replace=True)
-
-            #     if np.sum(point_cloud) == 0: ### If there are no points, use sudo points
-            #         pt_shape = point_cloud.shape
-            #         point_noise = (np.random.rand(pt_shape[0], 3) - 0.5) * float(transform_config['noise'])
-            #         point_cloud[:,0:3] += point_noise
-            #     point_cloud = point_cloud[idx,:]
-            #     if (vox == False):
-            #         point_cloud = torch.tensor(point_cloud).float()
-            # if transform_config['name'] == 'ToFinal':
-            #     if len(point_cloud) >= 20000:
-            #         idx = np.random.choice(len(point_cloud), 20000, replace=False)
-            #     else:
-            #         idx = np.random.choice(len(point_cloud), 20000, replace=True)
-                    
-            #     if np.sum(point_cloud) == 0:### If there are no points, use sudo points
-            #         pt_shape = point_cloud.shape
-            #         point_noise = (np.random.rand(pt_shape[0], 3) - 0.5) * float(transform_config['noise'])
-            #         point_cloud[:,0:3] += point_noise
-            #     point_cloud = point_cloud[idx,:]
+            
         outdata.append(point_cloud)
         # if DEBUG_REVERSE_TRANS:
         #     outdata.append(old_points)

@@ -16,7 +16,8 @@ except:
     Res16UNet34 = None
     
 try:
-    from models.trunks.pointnet2_backbone import PointNet2MSG
+    from models.trunks.pointnet2_backbone import PointNet2MSG_DepthContrast
+    from models.trunks.pointnet2_backbone import PointNet2MSG_VoxelizedDepthContrast
     from models.trunks.spconv_unet import UNetV2_concat as UNetV2
 except:
     PointNet2MSG = None
@@ -25,7 +26,8 @@ except:
 TRUNKS = {
     "pointnet": PointNet,
     "unet": Res16UNet34,
-    "pointnet_msg": PointNet2MSG,
+    "pointnet_msg_depthcontrast": PointNet2MSG_DepthContrast,
+    "pointnet_msg_voxelizeddepthcontrast": PointNet2MSG_VoxelizedDepthContrast,
     "UNetV2": UNetV2,
 }
 

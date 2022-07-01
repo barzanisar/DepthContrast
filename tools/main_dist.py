@@ -44,7 +44,7 @@ parser.add_argument('--dist-url', default='tcp://127.0.0.1:29500', type=str,
                     help='url used to set up distributed training') #tc port
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
-parser.add_argument('--seed', default=None, type=int,
+parser.add_argument('--seed', default=1024, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--local_rank', default=0, type=int,
                     help='local process id i.e. GPU id to use.') #local_rank = 0
@@ -104,11 +104,11 @@ def main_worker(gpu, ngpus, args, cfg):
     # Setup environment
     args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
     logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
-    wandb_utils.init(cfg, args, job_type='train-depth-contrast-clear-dense')
-    print("=" * 30 + "   DDP   " + "=" * 30)
-    print(f"world_size: {args.world_size}")
-    print(f"local_rank: {args.local_rank}")
-    print(f"rank: {args.rank}")
+    wandb_utils.init(cfg, args, job_type='train')
+    # print("=" * 30 + "   DDP   " + "=" * 30)
+    # print(f"world_size: {args.world_size}")
+    # print(f"local_rank: {args.local_rank}")
+    # print(f"rank: {args.rank}")
 
     # Define model
     model = main_utils.build_model(cfg['model'], logger)
@@ -143,7 +143,7 @@ def main_worker(gpu, ngpus, args, cfg):
     ############################ TRAIN #########################################
     test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
     for epoch in range(start_epoch, end_epoch):
-        if (epoch % 50) == 0:
+        if (epoch % cfg['ckpt_save_interval']) == 0:
             ckp_manager.save(epoch, model=model, train_criterion=train_criterion, optimizer=optimizer, filename='checkpoint-ep{}.pth.tar'.format(epoch))
             logger.add_line(f'Saved checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
 
@@ -167,10 +167,6 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     batch_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Process Time', ':6.3f', window_size=100)
     data_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Load Time', ':6.3f', window_size=100)
     loss_meter = metrics_utils.AverageMeter(f'{phase}-Loss', ':.3e')
-    # loss_meter_npid1 = metrics_utils.AverageMeter('Loss_npid1', ':.3e')
-    # loss_meter_npid2 = metrics_utils.AverageMeter('Loss_npid2', ':.3e')
-    # loss_meter_cmc1 = metrics_utils.AverageMeter('Loss_cmc1', ':.3e')
-    # loss_meter_cmc2 = metrics_utils.AverageMeter('Loss_cmc2', ':.3e')
     progress = utils.logger.ProgressMeter(len(loader), [batch_time, data_time, loss_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
 
     # switch to train mode
@@ -183,18 +179,15 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         data_time.update(time.time() - end) # Time to load one batch
 
         if phase == 'train':
-            embedding, coords = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
+            embedding, vox_coords, _ = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
         else:
             with torch.no_grad():
-                embedding = model(sample)
+                embedding, vox_coords, _ = model(sample)
 
         # compute loss
-        loss, loss_debug = criterion(embedding, coords)
+        loss, loss_debug = criterion(embedding, vox_coords)
         loss_meter.update(loss.item(), embedding[0].size(0))
-        # loss_meter_npid1.update(loss_debug[0].item(), embedding[0].size(0))
-        # loss_meter_npid2.update(loss_debug[1].item(), embedding[0].size(0))
-        # loss_meter_cmc1.update(loss_debug[2].item(), embedding[0].size(0))
-        # loss_meter_cmc2.update(loss_debug[3].item(), embedding[0].size(0))
+
 
         # compute gradient and do SGD step during training
         if phase == 'train':

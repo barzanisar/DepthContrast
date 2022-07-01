@@ -13,7 +13,7 @@ def is_wandb_enabled(cfg, args):
     return wandb_enabled
 
 
-def init(cfg, args, job_type='train_eval'):
+def init(cfg, args, job_type='train'):
     """
         Initialize wandb by passing in config
     """
