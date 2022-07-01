@@ -15,6 +15,7 @@ WANDB:
   PROJECT: DepthContrast_dense
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
+  dir: '/DepthContrast/wandb'
   
 dataset:
   DATASET_NAMES: [DenseDataset]
