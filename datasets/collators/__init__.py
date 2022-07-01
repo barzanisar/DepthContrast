@@ -11,7 +11,7 @@ try:
     from datasets.collators.vox_moco_collator import vox_moco_collator
     from datasets.collators.point_vox_moco_collator import point_vox_moco_collator
 except:
-    print ("Cannot import minkowski engine. Try spconv next")
+    #print ("Cannot import minkowski engine. Try spconv next")
     from datasets.collators.point_vox_moco_lidar_collator import point_vox_moco_collator
 from torch.utils.data.dataloader import default_collate
 

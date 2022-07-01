@@ -82,19 +82,19 @@ def main():
             num_nodes = int(os.environ['SLURM_NNODES'])
             args.rank = int(os.environ['SLURM_NODEID'])
             node0 = 'gra' + os.environ['SLURM_NODELIST'][4:8]
-            print("=" * 30 + "   DDP   " + "=" * 30)
-            print(f"node0 : {node0}")
-            print(f"num_nodes : {num_nodes}")
+            # print("=" * 30 + "   DDP   " + "=" * 30)
+            # print(f"node0 : {node0}")
+            # print(f"num_nodes : {num_nodes}")
             args.dist_url = f"tcp://{node0}:1234" #'tcp://127.0.0.1:29500' "tcp://gra1154:29500"
             ngpus_per_node = args.ngpus
             args.world_size = ngpus_per_node * num_nodes #total number of gpus
             mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, cfg))
         else:
             args.ngpus = torch.cuda.device_count()  # remove for fair
-            print("=" * 30 + "   DDP   " + "=" * 30)
-            print(f"args.ngpus : {args.ngpus}")
-            print(f"args.local_rank : {args.local_rank}")
-            print(f"args.launcher : {args.launcher}")
+            # print("=" * 30 + "   DDP   " + "=" * 30)
+            # print(f"args.ngpus : {args.ngpus}")
+            # print(f"args.local_rank : {args.local_rank}")
+            # print(f"args.launcher : {args.launcher}")
             main_worker(args.local_rank, args.ngpus, args, cfg)
     else:
         args.ngpus = torch.cuda.device_count()  # remove for fair
@@ -314,9 +314,9 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
     accuracy = 100. * correct / total
     obj_accuracy = 100. * correct_obj_points / total_obj_points
-    print('\n %s Accuracy: %2d%% (%2d/%2d)' % (phase, accuracy, correct, total))
-    print('\n %s Obj Accuracy: %2d%% (%2d/%2d)' % (phase, obj_accuracy, correct_obj_points, total_obj_points))
-    print(f'{phase} mIoU: {m_IoU}, IoU per class: {IoU}')
+    logger.add_line('\n %s Accuracy: %2d%% (%2d/%2d)' % (phase, accuracy, correct, total))
+    logger.add_line('\n %s Obj Accuracy: %2d%% (%2d/%2d)' % (phase, obj_accuracy, correct_obj_points, total_obj_points))
+    logger.add_line(f'{phase} mIoU: {m_IoU}, IoU per class: {IoU}')
 
 
     # Sync metrics across all GPUs and print final averages
