@@ -58,7 +58,7 @@ optimizer:
 
 model:
   name: "PointnetMSG_DepthContrast"
-  model_dir: "checkpoints/pointnetMSG_within_format_DepthContrast"
+  model_dir: "checkpoints/pointnetMSG_DC_lr2p0"
   model_input: ["points"]
   model_feature: [["fp2"]]
   Lidar: True
