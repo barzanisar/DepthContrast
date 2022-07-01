@@ -1,4 +1,4 @@
-tag: 'dc_clear_60_linear_probe'
+tag: 'dc_lp_classes_lr2.0'
 resume: false
 linear_probe: true
 num_workers: 8
@@ -53,7 +53,7 @@ optimizer:
   num_epochs: 60
   lr:
     name: "cosine"
-    base_lr: 0.02
+    base_lr: 2.0
     final_lr: 0
 
 model:

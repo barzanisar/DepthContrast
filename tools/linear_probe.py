@@ -313,7 +313,8 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     if cfg['loss']['args']['ignore_index'] == 0:
         ignore_index=0
 
-    m_IoU, fw_IoU, IoU = main_utils.compute_IoU(torch.stack(all_preds).view(-1), torch.stack(all_labels).view(-1), num_classes = 5, ignore_index=ignore_index)
+    num_classes = cfg['loss']['args']['num_classes'] + 1
+    m_IoU, fw_IoU, IoU = main_utils.compute_IoU(torch.stack(all_preds).view(-1), torch.stack(all_labels).view(-1), num_classes = num_classes, ignore_index=ignore_index)
     mIoU_meter.update(m_IoU)
 
     accuracy = 100. * correct / total
