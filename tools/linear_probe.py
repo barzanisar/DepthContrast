@@ -129,8 +129,6 @@ def main_worker(gpu, ngpus, args, cfg):
 
     # linear classifier
     model.trunk[0].head = MLP(cfg["model"]["linear_probe_dim"])
-    #print(model)
-
 
     # model To cuda
     model, args = main_utils.distribute_model_to_cuda(model, args)
@@ -142,12 +140,19 @@ def main_worker(gpu, ngpus, args, cfg):
     # Define dataloaders
     train_loader, val_loader = main_utils.build_dataloaders_train_val(cfg['dataset'], cfg['num_workers'], args.multiprocessing_distributed, logger, True)       
 
-            
-    # Define optimizer
-    optimizer, scheduler = main_utils.build_optimizer(
-        params=model.trunk[0].head.parameters(),
-        cfg=cfg['optimizer'],
-        logger=logger)
+    if args.multiprocessing_distributed:     
+        # Define optimizer
+        optimizer, scheduler = main_utils.build_optimizer(
+            params=model.module.trunk[0].head.parameters(),
+            cfg=cfg['optimizer'],
+            logger=logger)
+    else:
+        # Define optimizer
+        optimizer, scheduler = main_utils.build_optimizer(
+            params=model.trunk[0].head.parameters(),
+            cfg=cfg['optimizer'],
+            logger=logger)
+
     
     start_epoch, end_epoch = 0, cfg['optimizer']['num_epochs']
 
