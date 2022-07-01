@@ -14,8 +14,9 @@ die() { echo "$*" 1>&2 ; exit 1; }
 
 # Default Command line args
 # main.py script parameters
-CFG_FILE=configs/point_within_lidar_template_dense.yaml
+CFG_FILE=configs/point_within_lidar_vdc_linear_probe.yaml
 DIST="true"
+LINEAR_PROBE="true"
 TCP_PORT=18888
 LAUNCHER='pytorch'
 #WORLD_SIZE='default'
@@ -37,12 +38,12 @@ LAUNCHER='pytorch'
 # Additional parameters
 DATASET=dense
 DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense
-INFOS_DIR='not needed' #/home/$USER/projects/rrg-swasland/Datasets/Dense/Infos
+INFOS_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense/Infos
 SING_IMG=/home/$USER/projects/rrg-swasland/singularity/depth_contrast.sif
 DIST=true
 TEST_ONLY=false
 WANDB_API_KEY=$WANDB_API_KEY
-WANDB_MODE='dryrun' #'offline'
+WANDB_MODE='offline' #'dryrun'
 
 # Get last element in string and increment by 1
 NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"
@@ -136,6 +137,9 @@ while :; do
     -2|--dist)       # Takes an option argument; ensure it has been specified.
         DIST="true"
         ;;
+    -p|--linear_probe)       # Takes an option argument; ensure it has been specified.
+        LINEAR_PROBE="true"
+        ;;
     -z|--test_only)       # Takes an option argument; ensure it has been specified.
         TEST_ONLY="true"
         ;;
@@ -176,13 +180,13 @@ for file in $DATA_DIR/*.zip; do
 done
 echo "Done extracting data"
 
-## Extract dataset infos
-#echo "Extracting dataset infos"
-#for file in $INFOS_DIR/*.zip; do
-#    echo "Unzipping $file to $TMP_DATA_DIR"
-#    unzip -qq $file -d $TMP_DATA_DIR
-#done
-#echo "Done extracting dataset infos"
+# Extract dataset infos
+echo "Extracting dataset infos"
+for file in $INFOS_DIR/*.zip; do
+   echo "Unzipping $file to $TMP_DATA_DIR"
+   unzip -qq $file -d $TMP_DATA_DIR
+done
+echo "Done extracting dataset infos"
 
 # Load Singularity
 module load StdEnv/2020 
@@ -230,21 +234,46 @@ $SING_IMG
 
 TRAIN_CMD=$BASE_CMD
 #TRAIN_CMD+="python -u /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$CFG_FILE --launcher slurm --tcp_port $TCP_PORT"
-
-if [ $DIST != "true" ]
+if [ $LINEAR_PROBE == "true" ]
 then
-    TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$CFG_FILE
-"
-else
-    TRAIN_CMD+="python -m torch.distributed.launch
-    --nproc_per_node=$NUM_GPUS
-    /DepthContrast/tools/main_dist.py
-    --launcher pytorch
-    --tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE
+
+    if [ $DIST != "true" ]
+    then
+        TRAIN_CMD+="python /DepthContrast/tools/linear_probe.py --cfg /DepthContrast/$CFG_FILE
     "
+    else
+        TRAIN_CMD+="python -m torch.distributed.launch
+        --nproc_per_node=$NUM_GPUS
+        /DepthContrast/tools/linear_probe.py
+        --launcher pytorch
+        --tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE
+        "
+    fi
+
+    echo "Running linear probe"
+    echo "$TRAIN_CMD"
+    eval $TRAIN_CMD
+    echo "Done linear probe"
+else
+
+    if [ $DIST != "true" ]
+    then
+        TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$CFG_FILE
+    "
+    else
+        TRAIN_CMD+="python -m torch.distributed.launch
+        --nproc_per_node=$NUM_GPUS
+        /DepthContrast/tools/main_dist.py
+        --launcher pytorch
+        --tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE
+        "
+    fi
+
+    echo "Running training"
+    echo "$TRAIN_CMD"
+    eval $TRAIN_CMD
+    echo "Done training"
 fi
 
-echo "Running training and evaluation"
-echo "$TRAIN_CMD"
-eval $TRAIN_CMD
-echo "Done training and evaluation"
+
+
