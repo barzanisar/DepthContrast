@@ -425,7 +425,7 @@ class CheckpointManager(object):
         ckp = torch.load(checkpoint_fn, map_location={'cuda:0': 'cpu'})
         start_epoch = ckp['epoch']
         for k in kwargs:
-            if (k == 'model') and (self.dist == False):
+            if (k == 'model'):
                 newparam = {}
                 for tempk in ckp[k]:
                     if tempk[:7] == 'module.':
@@ -434,8 +434,6 @@ class CheckpointManager(object):
                         newparam[tempk] = ckp[k][tempk]
                 ### Fix the module issue
                 kwargs[k].load_state_dict(newparam)
-            else:
-                kwargs[k].load_state_dict(ckp[k])
         return start_epoch
 
 
