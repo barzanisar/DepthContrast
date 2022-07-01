@@ -20,7 +20,7 @@ def init(cfg, args, job_type='train'):
     if not is_wandb_enabled(cfg, args):
         return False
 
-    dir = cfg['WANDB']['dir'] if cfg['WANDB']['dir'] != 'None' else None 
+    dir = cfg['WANDB'].get('dir', None)
     wandb.init(name=cfg['tag'],
                config=cfg,
                project=cfg['WANDB']['PROJECT'],

@@ -8,7 +8,7 @@ log2wb: true
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 10 # print progress after processing every <freq> iters or batches
-ckpt_save_interval: 10
+ckpt_save_interval: 100
 
 WANDB:
   ENABLED: True
@@ -50,7 +50,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: False
-  num_epochs: 5
+  num_epochs: 60
   lr:
     name: "cosine"
     base_lr: 0.02

@@ -199,8 +199,8 @@ def main_worker(gpu, ngpus, args, cfg):
             logger.add_line(f'Saved linear_probe checkpoint for testing {ckp_manager_linear.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
         if accuracy > val_epoch_accuracy:
             logger.add_line('='*30 + 'VALIDATION ACCURACY INCREASED' + '='*30)
-            ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion, filename='checkpoint-best-acc-ep{}.pth.tar'.format(epoch+1))
-            logger.add_line(f'Saved Best linear_probe checkpoint checkpoint-best-acc-ep{epoch+1}.pth.tar after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
+            #ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion, filename='checkpoint-best-acc-ep{}.pth.tar'.format(epoch+1))
+            #logger.add_line(f'Saved Best linear_probe checkpoint checkpoint-best-acc-ep{epoch+1}.pth.tar after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
             logger.add_line(f'Epoch {epoch}: Val Accuracy increased from {val_epoch_accuracy} to {accuracy}')
             val_epoch_accuracy = accuracy
         if obj_accuracy > val_epoch_obj_accuracy:
