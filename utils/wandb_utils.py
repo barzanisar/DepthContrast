@@ -24,8 +24,7 @@ def init(cfg, args, job_type='train'):
                config=cfg,
                project=cfg['WANDB']['PROJECT'],
                entity=cfg['WANDB']['ENTITY'],
-               job_type=job_type,
-               dir='/DepthContrast/wandb')
+               job_type=job_type)
     return True
 
 

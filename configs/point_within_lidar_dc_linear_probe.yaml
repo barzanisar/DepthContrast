@@ -22,7 +22,7 @@ dataset:
     train: ['dense_infos_train_clear_60.pkl']
     val: ['dense_infos_val_clear_15.pkl']
   BATCHSIZE_PER_REPLICA: 8
-  LABEL_TYPE: objects #sample_index, objects, class_names
+  LABEL_TYPE: class_names #sample_index, objects, class_names
   DATA_TYPE: points
   SENSOR_TYPE: 'hdl64'
   SIGNAL_TYPE: 'strongest'
@@ -49,11 +49,11 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: False
-  num_epochs: 8
+  num_epochs: 5
   lr:
     name: "cosine"
-    base_lr: 0.12
-    final_lr: 0.00012
+    base_lr: 0.02
+    final_lr: 0
 
 model:
   name: "PointnetMSG_DepthContrast"
@@ -63,7 +63,7 @@ model:
   Lidar: True
   VOX: False
   arch_point: "pointnet_msg_depthcontrast"
-  linear_probe_dim: [128, 2] #[128, 5]
+  linear_probe_dim: [128, 5] #[128, 5]
   args_point:
     use_mlp: True
     mlp_dim: [128, 128, 128]
@@ -71,8 +71,8 @@ model:
 loss:
   name: "FocalLoss"
   args:
-    num_classes: 1 #4 #num_classes does not include background class
+    num_classes: 4 #1 #num_classes does not include background class
     alpha: None #[0.6, 0.1, 0.1, 0.1, 0.1] if None, then class weights are calc as 1/class_freq
     gamma: 2
     reduction: 'mean'
-    ignore_index: -100 # don't ignore any class
+    ignore_index: 0 # don't ignore any class
