@@ -266,10 +266,40 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         #TODO: remove output list
         output = output[0]
         # compute loss
-        labels = main_utils.get_labels(sample['gt_boxes_lidar'], point_coords[0].detach().cpu().numpy(), cfg['dataset']['LABEL_TYPE']) #TODO
+        labels = main_utils.get_labels(sample['gt_boxes_lidar'], point_coords[0].detach().cpu().numpy(), cfg['dataset']['LABEL_TYPE']) #(8, 16384)
+        
+        # Undersampling bk class from labels and output
+        num_points = labels.view(-1).shape[0]
+        background_points_mask = labels == 0
+        obj_points_mask = labels > 0
+        car_mask = labels == 1
+        ped_mask = labels == 2
+        rv_mask = labels == 3
+        lv_mask = labels == 4
+        background_percent = background_points_mask.sum()/num_points
+        car_percent = car_mask.sum()/num_points
+        ped_percent = ped_mask.sum()/num_points
+        rv_percent = rv_mask.sum()/num_points
+        lv_percent = lv_mask.sum()/num_points
+
+        bk_labels = labels[background_points_mask]
+        bk_output = output[background_points_mask]
+
+        perm = torch.randperm(bk_labels.size(0))
+        idx = perm[:obj_points_mask.sum().item()]
+        downsampled_bk_labels = bk_labels[idx]
+        downsampled_bk_output = bk_output[idx]
+
+        new_labels = torch.cat((downsampled_bk_labels, labels[obj_points_mask]))
+        new_output = torch.cat((downsampled_bk_output, output[obj_points_mask]))
+        labels = new_labels
+        output = new_output 
+
+
         # Load labels to gpu:
         labels = main_utils.recursive_copy_to_gpu(labels)
-        loss = criterion(output.transpose(1,2), labels)
+        loss = criterion(output, labels)
+        #loss = criterion(output.transpose(1,2), labels)
         loss_meter.update(loss.item(), output.size(0))
 
         # compute gradient and do SGD step during training
@@ -279,7 +309,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             optimizer.step()
 
         # convert output probabilities to predicted class
-        pred = output.data.max(2, keepdim=True)[1] #pred_labels
+        pred = output.data.max(1, keepdim=True)[1] #pred_labels
         pred = torch.squeeze(pred)
 
         #Update progress
@@ -288,9 +318,9 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     
         # compare predictions to true label
         correct += np.sum(np.squeeze(pred.eq(labels)).cpu().numpy())
-        total += labels.size(0) * labels.size(1)
+        total += labels.size(0) #* labels.size(1)
 
-        #ignore background points in accuracy
+        #Obj accuracy or recall = num correctly pred gt obj points/ num total gt obj points
         gt_obj_flag = labels>0
         total_obj_points += gt_obj_flag.sum().item()
         pred_obj = pred[gt_obj_flag]
@@ -314,7 +344,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         ignore_index=0
 
     num_classes = cfg['loss']['args']['num_classes'] + 1
-    m_IoU, fw_IoU, IoU = main_utils.compute_IoU(torch.stack(all_preds).view(-1), torch.stack(all_labels).view(-1), num_classes = num_classes, ignore_index=ignore_index)
+    m_IoU, fw_IoU, IoU = main_utils.compute_IoU(torch.cat(all_preds).view(-1), torch.cat(all_labels).view(-1), num_classes = num_classes, ignore_index=ignore_index)
     mIoU_meter.update(m_IoU)
 
     accuracy = 100. * correct / total
@@ -333,9 +363,10 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     if tb_writter is not None:
         for meter in progress.meters:
             tb_writter.add_scalar('{}-epoch/{}'.format(phase, meter.name), meter.avg, epoch)
-            metrics_dict[meter.name] = meter.avg
+            metrics_dict[meter.name + f'--{phase}'] = meter.avg
 
-    wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary? how to log for train and val separatly?
+    if phase == 'val':
+        wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary? how to log for train and val separatly?
 
     return accuracy, obj_accuracy
 
