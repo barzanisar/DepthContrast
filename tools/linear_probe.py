@@ -365,8 +365,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             tb_writter.add_scalar('{}-epoch/{}'.format(phase, meter.name), meter.avg, epoch)
             metrics_dict[meter.name + f'--{phase}'] = meter.avg
 
-    if phase == 'val':
-        wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary? how to log for train and val separatly?
+    wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary? how to log for train and val separatly?
 
     return accuracy, obj_accuracy
 
