@@ -30,8 +30,8 @@ class MLP(nn.Module):
             if (counter < len(dims)) and use_relu:
                 layers.append(nn.ReLU(inplace=True))
                 last_dim = dim
-            if use_dropout:
-                layers.append(nn.Dropout())
+                if use_dropout:
+                    layers.append(nn.Dropout(0.2))
         self.clf = nn.Sequential(*layers)
 
     def forward(self, batch):
