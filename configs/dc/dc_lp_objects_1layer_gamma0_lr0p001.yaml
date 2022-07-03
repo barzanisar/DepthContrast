@@ -1,10 +1,10 @@
-tag: 'dc_lp_objects_xeloss_balanced_lr0.02'
+tag: 'dc_lp_objects_1layer_gamma0_lr0.001'
 resume: false
 linear_probe: true
 num_workers: 8
 
-log2tb: true
-log2wb: false
+log2tb: false
+log2wb: true
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 10 # print progress after processing every <freq> iters or batches
@@ -53,7 +53,7 @@ optimizer:
   num_epochs: 100
   lr:
     name: "cosine"
-    base_lr: 0.02
+    base_lr: 0.001
     final_lr: 0
 
 model:
@@ -64,7 +64,7 @@ model:
   Lidar: True
   VOX: False
   arch_point: "pointnet_msg_depthcontrast"
-  linear_probe_dim: [128, 2] #[128, 5]
+  linear_probe_dim: [128, 2] #[128, 5] # [128, 2]
   args_point:
     use_mlp: True
     mlp_dim: [128, 128, 128]
@@ -72,8 +72,8 @@ model:
 loss:
   name: "FocalLoss"
   args:
-    num_classes: 1 #4 #num_classes does not include background class
+    num_classes: 1 #4 #1 #num_classes does not include background class i.e. [car, pedestrian]
     alpha: None #[0.6, 0.1, 0.1, 0.1, 0.1] if None, then class weights are calc as 1/class_freq
-    gamma: 0 #2
+    gamma: 0
     reduction: 'mean'
-    ignore_index: -100 #0 # don't ignore any class
+    ignore_index: -100 # don't ignore any class if objects
