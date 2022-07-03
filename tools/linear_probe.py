@@ -132,7 +132,7 @@ def main_worker(gpu, ngpus, args, cfg):
         param.requires_grad = False
 
     # linear classifier
-    model.trunk[0].head = MLP(cfg["model"]["linear_probe_dim"])
+    model.trunk[0].head = MLP(cfg["model"]["linear_probe_dim"], use_dropout=len(cfg["model"]["linear_probe_dim"])>2)
 
     # model To cuda
     model, args = main_utils.distribute_model_to_cuda(model, args)
@@ -254,7 +254,9 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     data_time = metrics_utils.AverageMeter('Batch Load Time', ':6.3f', window_size=100)
     loss_meter = metrics_utils.AverageMeter('Loss', ':.3e')
     accuracy_meter = metrics_utils.AverageMeter('Accuracy', ':.2f')
-    obj_accuracy_meter = metrics_utils.AverageMeter('Obj Accuracy', ':.2f')
+    obj_recall_meter = metrics_utils.AverageMeter('Obj Accuracy', ':.2f')
+    obj_precision_meter = metrics_utils.AverageMeter('Obj Precision', ':.2f')
+
 
     #Accuracy class wise
     # bg_acc = metrics_utils.AverageMeter('Background Accuracy', ':.2f')
@@ -272,15 +274,22 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     # lv_Iou = metrics_utils.AverageMeter('LargeVehicle Iou', ':.3f')
     
 
-    progress = utils.logger.ProgressMeter(len(loader), [loss_meter, accuracy_meter, obj_accuracy_meter, mIoU_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
+    progress = utils.logger.ProgressMeter(len(loader), [loss_meter, accuracy_meter, obj_recall_meter, obj_precision_meter, mIoU_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
 
     # switch to train mode
     model.train(phase == 'train')
 
+    #Accuracy
     correct = 0
     total = 0
+
+    # Recall
     correct_obj_points= 0
     total_obj_points = 0
+
+    # Precision
+    correct_obj_points_predictions = 0
+    total_obj_points_predictions = 0
 
     all_labels=[]
     all_preds=[]
@@ -343,8 +352,16 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         labels_obj = labels[gt_obj_flag]
         correct_obj_points += np.sum(np.squeeze(pred_obj.eq(labels_obj)).cpu().numpy())
 
-        accuracy_meter.update(100. * correct/total)
-        obj_accuracy_meter.update(100. * correct_obj_points / total_obj_points)
+        # accuracy_meter.update(100. * correct/total)
+        # obj_recall_meter.update(100. * correct_obj_points / total_obj_points)
+
+        #Precision
+        pred_obj_flag = pred>0
+        total_obj_points_predictions += pred_obj_flag.sum().item()
+        obj_predictions = pred[pred_obj_flag]
+        labels_for_obj_predictions = labels[pred_obj_flag]
+        correct_obj_points_predictions += np.sum(np.squeeze(obj_predictions.eq(labels_for_obj_predictions)).cpu().numpy())
+
 
         # measure elapsed time
         batch_time.update(time.time() - end) # This is printed as Time # Time to train one batch
@@ -361,12 +378,18 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
     num_classes = cfg['loss']['args']['num_classes'] + 1
     m_IoU, fw_IoU, IoU = main_utils.compute_IoU(torch.cat(all_preds).view(-1), torch.cat(all_labels).view(-1), num_classes = num_classes, ignore_index=ignore_index)
-    mIoU_meter.update(m_IoU)
 
     accuracy = 100. * correct / total
     obj_accuracy = 100. * correct_obj_points / total_obj_points
+    precision = 100. * correct_obj_points_predictions / total_obj_points_predictions
+
+    mIoU_meter.update(m_IoU)
+    accuracy_meter.update(accuracy)
+    obj_recall_meter.update(obj_accuracy)
+    obj_precision_meter.update(precision)
     logger.add_line('\n %s Accuracy: %2d%% (%2d/%2d)' % (phase, accuracy, correct, total))
-    logger.add_line('\n %s Obj Accuracy: %2d%% (%2d/%2d)' % (phase, obj_accuracy, correct_obj_points, total_obj_points))
+    logger.add_line('\n %s Obj Recall: %2d%% (%2d/%2d)' % (phase, obj_accuracy, correct_obj_points, total_obj_points))
+    logger.add_line('\n %s Obj Precision: %2d%% (%2d/%2d)' % (phase, precision, correct_obj_points_predictions, total_obj_points_predictions))
     logger.add_line(f'{phase} mIoU: {m_IoU}, IoU per class: {IoU}')
 
 
