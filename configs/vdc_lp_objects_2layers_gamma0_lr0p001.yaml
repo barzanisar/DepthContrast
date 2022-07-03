@@ -16,6 +16,7 @@ WANDB:
   PROJECT: DepthContrast_dense
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
+  dir: '/DepthContrast/wandb'
   
 dataset:
   DATASET_NAMES: [DenseDataset]
@@ -64,7 +65,7 @@ model:
   Lidar: True
   VOX: False
   arch_point: "pointnet_msg_voxelizeddepthcontrast"
-  linear_probe_dim: [128, 128, 2] #[128, 5] # [128, 2]
+  linear_probe_dim: [128, 64, 2] #[128, 5] # [128, 2]
   args_point:
     use_mlp: True
     mlp_dim: [128, 128, 128]
