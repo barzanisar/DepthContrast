@@ -177,7 +177,7 @@ def main_worker(gpu, ngpus, args, cfg):
     val_epoch_obj_accuracy = -1
     for epoch in range(start_epoch, end_epoch):
         if (epoch % cfg['ckpt_save_interval']) == 0:
-            ckp_manager_linear.save(epoch, model=model, train_criterion=train_criterion, optimizer=optimizer, filename='checkpoint-ep{}.pth.tar'.format(epoch))
+            #ckp_manager_linear.save(epoch, model=model, train_criterion=train_criterion, optimizer=optimizer, filename='checkpoint-ep{}.pth.tar'.format(epoch))
             logger.add_line(f'Saved linear_probe checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
 
         if args.multiprocessing_distributed:
@@ -195,7 +195,7 @@ def main_worker(gpu, ngpus, args, cfg):
 
         #TODO
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
-            ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
+            #ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
             logger.add_line(f'Saved linear_probe checkpoint for testing {ckp_manager_linear.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
         if accuracy > val_epoch_accuracy:
             logger.add_line('='*30 + 'VALIDATION ACCURACY INCREASED' + '='*30)
