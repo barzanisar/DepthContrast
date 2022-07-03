@@ -209,11 +209,46 @@ def main_worker(gpu, ngpus, args, cfg):
             val_epoch_obj_accuracy = obj_accuracy
 
 
+def class_stats(labels):
+    num_points = labels.view(-1).shape[0]
+    background_points_mask = labels == 0
+    car_mask = labels == 1
+    ped_mask = labels == 2
+    rv_mask = labels == 3
+    lv_mask = labels == 4
+    background_percent = background_points_mask.sum()/num_points
+    car_percent = car_mask.sum()/num_points
+    ped_percent = ped_mask.sum()/num_points
+    rv_percent = rv_mask.sum()/num_points
+    lv_percent = lv_mask.sum()/num_points
 
+    print(f'bk: {background_percent}, car: {car_percent}, ped: {ped_percent}, rv:{rv_percent}, lv:{lv_percent}')
+
+def undersample_bk_class(output, labels):
+        background_points_mask = labels == 0
+        obj_points_mask = labels > 0
+
+
+        bk_labels = labels[background_points_mask]
+        bk_output = output[background_points_mask]
+
+        perm = torch.randperm(bk_labels.size(0))
+        idx = perm[:obj_points_mask.sum().item()]
+        downsampled_bk_labels = bk_labels[idx]
+        downsampled_bk_output = bk_output[idx]
+
+        new_labels = torch.cat((downsampled_bk_labels, labels[obj_points_mask]))
+        new_output = torch.cat((downsampled_bk_output, output[obj_points_mask]))
+
+        return new_output, new_labels
+
+def ignore_cyclist(output, labels):
+    noncyclist_mask = labels != 3
+    return output[noncyclist_mask], labels[noncyclist_mask]
 
 def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter):
     from utils import metrics_utils
-    #class_names = ['PassengerCar', 'Pedestrian', 'RidableVehicle', 'LargeVehicle']
+    #class_names = ['PassengerCar', 'Pedestrian', 'RidableVehicle']
     logger.add_line('\n{}: Epoch {}'.format(phase, epoch))
     batch_time = metrics_utils.AverageMeter('Batch Process Time', ':6.3f', window_size=100)
     data_time = metrics_utils.AverageMeter('Batch Load Time', ':6.3f', window_size=100)
@@ -268,33 +303,14 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         # compute loss
         labels = main_utils.get_labels(sample['gt_boxes_lidar'], point_coords[0].detach().cpu().numpy(), cfg['dataset']['LABEL_TYPE']) #(8, 16384)
         
-        # Undersampling bk class from labels and output
-        num_points = labels.view(-1).shape[0]
-        background_points_mask = labels == 0
-        obj_points_mask = labels > 0
-        car_mask = labels == 1
-        ped_mask = labels == 2
-        rv_mask = labels == 3
-        lv_mask = labels == 4
-        background_percent = background_points_mask.sum()/num_points
-        car_percent = car_mask.sum()/num_points
-        ped_percent = ped_mask.sum()/num_points
-        rv_percent = rv_mask.sum()/num_points
-        lv_percent = lv_mask.sum()/num_points
+        # Ignore ridable vehicle
+        output, labels = ignore_cyclist(output, labels)
 
-        bk_labels = labels[background_points_mask]
-        bk_output = output[background_points_mask]
+        # Undersampling bk class from labels and output to have 1:1 ratio of bk:objects class
+        output, labels = undersample_bk_class(output, labels)
 
-        perm = torch.randperm(bk_labels.size(0))
-        idx = perm[:obj_points_mask.sum().item()]
-        downsampled_bk_labels = bk_labels[idx]
-        downsampled_bk_output = bk_output[idx]
-
-        new_labels = torch.cat((downsampled_bk_labels, labels[obj_points_mask]))
-        new_output = torch.cat((downsampled_bk_output, output[obj_points_mask]))
-        labels = new_labels
-        output = new_output 
-
+        #Print class stats
+        #class_stats(labels)
 
         # Load labels to gpu:
         labels = main_utils.recursive_copy_to_gpu(labels)

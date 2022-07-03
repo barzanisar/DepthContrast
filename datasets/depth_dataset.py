@@ -70,7 +70,7 @@ class DepthContrastDataset(Dataset):
             self.class_names = ['Vehicle', 'Pedestrian', 'Cyclist']
         elif "DenseDataset" in self.dataset_names:
             self.point_cloud_range = DENSE_POINT_RANGE
-            self.class_names = ['PassengerCar', 'Pedestrian', 'RidableVehicle', 'LargeVehicle']
+            self.class_names = ['PassengerCar', 'Pedestrian', 'RidableVehicle'] #, 'LargeVehicle' is now grouped under PassengerCar
 
         #### Add the voxelizer here
         if ("Lidar" in cfg) and cfg["VOX"]:
@@ -326,7 +326,7 @@ class DenseDataset(DepthContrastDataset):
 
             # Change Vehicle or Obstacle class to PassengerCar
             for i, name in enumerate(data_dict['gt_names']):
-                if name in ['Vehicle', 'Obstacle']:
+                if name in ['Vehicle', 'Obstacle', 'LargeVehicle']:
                     data_dict['gt_names'][i] = 'PassengerCar'
 
         # Prepare points and Transform 
