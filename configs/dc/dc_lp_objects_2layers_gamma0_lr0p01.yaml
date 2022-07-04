@@ -3,7 +3,7 @@ resume: false
 linear_probe: true
 num_workers: 8
 
-log2tb: false
+log2tb: true
 log2wb: true
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp

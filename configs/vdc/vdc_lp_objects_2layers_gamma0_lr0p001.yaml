@@ -4,7 +4,7 @@ linear_probe: true
 linear_probe_base_model_fn: 'checkpoint-ep200.pth.tar'
 num_workers: 8
 
-log2tb: false
+log2tb: true
 log2wb: true
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
