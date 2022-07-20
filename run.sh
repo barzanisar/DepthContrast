@@ -4,8 +4,9 @@
 #KITTI_TRAIN=$(readlink -f ../data/kitti/training)
 #KITTI_TEST=$(readlink -f ../data/kitti/testing)
 #WAYMO_RAW=$(readlink -f ../data/waymo/raw_data)
-WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
+#WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
 DENSE_LIDAR=$(readlink -f ./data/dense/lidar_hdl64_strongest)
+SNOWFALL_LIDAR=$(readlink -f ./data/dense/snowfall_simulation)
 
 # Setup volume linking (host link:container link)
 CUR_DIR=$(pwd)
@@ -13,8 +14,10 @@ PROJ_DIR=$CUR_DIR
 #KITTI_TRAIN=$KITTI_TRAIN:/DepthContrast/data/kitti/training
 #KITTI_TEST=$KITTI_TEST:/DepthContrast/data/kitti/testing
 #WAYMO_RAW=$WAYMO_RAW:/DepthContrast/data/waymo/raw_data
-WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_10
+#WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_10
 DENSE_LIDAR=$DENSE_LIDAR:/DepthContrast/data/dense/lidar_hdl64_strongest
+SNOWFALL_LIDAR=$SNOWFALL_LIDAR:/DepthContrast/data/dense/snowfall_simulation
+
 
 PCDET_VOLUMES=""
 for entry in $PROJ_DIR/third_party/OpenPCDet/pcdet/*
@@ -38,8 +41,8 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --env="QT_X11_NO_MITSHM=1" \
         --hostname="inside-DOCKER" \
         --name="DepthContrast" \
-        --volume $WAYMO_PROCESSED \
         --volume $DENSE_LIDAR \
+        --volume $SNOWFALL_LIDAR \
         --volume $PROJ_DIR/data:/DepthContrast/data \
         --volume $PROJ_DIR/output:/DepthContrast/output \
         --volume $PROJ_DIR/tools:/DepthContrast/tools \
@@ -50,6 +53,9 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --volume $PROJ_DIR/models:/DepthContrast/models \
         --volume $PROJ_DIR/scripts:/DepthContrast/scripts \
         --volume $PROJ_DIR/utils:/DepthContrast/utils \
+        --volume $PROJ_DIR/lib:/DepthContrast/lib \
         $PCDET_VOLUMES \
         --rm \
-        depth_contrast_img:first_try bash
+        depth_contrast_snow_sim:first_try bash
+
+#--volume $WAYMO_PROCESSED \
