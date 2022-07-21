@@ -18,7 +18,7 @@ ROOT_PATH = (Path(__file__) / '../../../../..').resolve() #DepthContrast
 DATA_PATH = ROOT_PATH /'data' / 'dense'
 SPLIT_FOLDER =  DATA_PATH/ 'ImageSets' / 'train_clear_precompute'
 LIDAR_FOLDER = DATA_PATH / 'lidar_hdl64_strongest'
-SAVE_DIR_ROOT = DATA_PATH / 'snowfall_simulation'
+SAVE_DIR_ROOT = ROOT_PATH / 'output' / 'snowfall_simulation'
 
 SNOWFALL_RATES = [0.5, 0.5, 1.0, 2.0, 2.5, 1.5]  #[0.5, 1.0, 2.0, 2.5, 1.5]       # mm/h
 TERMINAL_VELOCITIES = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6] #[2.0, 1.6, 2.0, 1.6, 0.6]  # m/s
