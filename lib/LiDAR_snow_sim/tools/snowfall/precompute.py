@@ -11,14 +11,14 @@ from lib.LiDAR_snow_sim.tools.snowfall.simulation import augment
 from third_party.OpenPCDet.pcdet.utils import calibration_kitti
 from lib.LiDAR_snow_sim.tools.snowfall.sampling import compute_occupancy, snowfall_rate_to_rainfall_rate
 #from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
+import time
 import numpy as np
 
 ROOT_PATH = (Path(__file__) / '../../../../..').resolve() #DepthContrast
 DATA_PATH = ROOT_PATH /'data' / 'dense'
 SPLIT_FOLDER =  DATA_PATH/ 'ImageSets' / 'train_clear_precompute'
 LIDAR_FOLDER = DATA_PATH / 'lidar_hdl64_strongest'
-
-
+SAVE_DIR_ROOT = DATA_PATH / 'snowfall_simulation'
 
 SNOWFALL_RATES = [0.5, 0.5, 1.0, 2.0, 2.5, 1.5]  #[0.5, 1.0, 2.0, 2.5, 1.5]       # mm/h
 TERMINAL_VELOCITIES = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6] #[2.0, 1.6, 2.0, 1.6, 0.6]  # m/s
@@ -30,8 +30,7 @@ def split(a, n):
 
 
 def get_calib(sensor: str = 'hdl64'):
-    calib_file = Path(__file__).parent.parent.parent.resolve() / \
-                 'lib' / 'OpenPCDet' / 'data' / 'dense' / f'calib_{sensor}.txt'
+    calib_file = DATA_PATH / f'calib_{sensor}.txt'
     assert calib_file.exists(), f'{calib_file} not found'
     return calibration_kitti.Calibration(calib_file)
 
@@ -76,6 +75,9 @@ if __name__ == '__main__':
 
     combos = np.column_stack((rainfall_rates, occupancy_ratios))
 
+    print('Combos rainfall_rates and occupancy ratios: ')
+    print(combos)
+
     sample_id_list = sorted(['_'.join(x.strip().split(',')) for x in open(SPLIT).readlines()])
 
     # reversed_first_half = list(split(sample_id_list, 2))[0]
@@ -99,7 +101,7 @@ if __name__ == '__main__':
 
                 rainfall_rate, occupancy_ratio = combo
 
-                save_dir = ROOT_PATH / 'output' / 'snowfall_simulation' / mode / f'{LIDAR_FOLDER.name}_' \
+                save_dir = SAVE_DIR_ROOT / mode / f'{LIDAR_FOLDER.name}_' \
                                                                                 f'rainrate_{int(rainfall_rate)}'
                 save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -110,22 +112,30 @@ if __name__ == '__main__':
 
                 pc = copy.deepcopy(points)
 
-                pts_rectified = calibration.lidar_to_rect(pc[:, 0:3])
-                fov_flag = get_fov_flag(pts_rectified, (1024, 1920), calibration) #(1024, 1920)
+                
 
                 #V.draw_scenes(points=pc, color_feature=3)
                 #print(f'sample_idx: {sample_idx}, rr_ratio:{combo}')
-                print("pc: ", pc.shape)
+                #print(f'Sample: {sample_idx}')
+                #print("pc: ", pc.shape)
                 if args.fov:
+                    pts_rectified = calibration.lidar_to_rect(pc[:, 0:3])
+                    fov_flag = get_fov_flag(pts_rectified, (1024, 1920), calibration) #(1024, 1920)
                     pc = pc[fov_flag]
+                    if pc.shape[0] < 3000:
+                        print(f'Skipping {sample_idx} has less than 3000 points in FOV')
+                        continue
                 #V.draw_scenes(points=pc, color_feature=3)
-                print("FOV_pc: ", pc.shape)
+                #print("FOV_pc: ", pc.shape)
 
                 snowflake_file_prefix = f'{mode}_{rainfall_rate}_{occupancy_ratio}'
 
+                start = time.time()
                 stats, aug_pc = augment(pc=pc, particle_file_prefix=snowflake_file_prefix,
-                                        beam_divergence=float(np.degrees(3e-3)), root_path=DATA_PATH)
-                print("aug_pc: ", aug_pc.shape)
+                                        beam_divergence=float(np.degrees(3e-3)), root_path=DATA_PATH, only_camera_fov=args.fov)
+                time_taken = time.time() - start
+                print(f'Time taken for {sample_idx}: {time_taken}, pc shape: {pc.shape[0]}, aug pc shape: {aug_pc.shape[0]}')
+                #print("aug_pc: ", aug_pc.shape)
                 #V.draw_scenes(points=aug_pc, color_feature=3)
                 if aug_pc.shape[0] < 3000:
                     print(f'sample_idx: {sample_idx}, rr_ratio:{combo}, aug_pc:{aug_pc.shape}')

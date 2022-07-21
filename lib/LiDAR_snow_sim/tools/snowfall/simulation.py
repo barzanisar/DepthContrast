@@ -27,11 +27,11 @@ PI = np.pi
 DEBUG = False
 EPSILON = np.finfo(float).eps
 
-
+ROOT_PATH = (Path(__file__) / '../../../../..').resolve() #DepthContrast
+DATA_PATH = ROOT_PATH /'data' / 'dense'
 
 def get_calib(sensor: str = 'hdl64'):
-    calib_file = Path(__file__).parent.parent.parent.absolute() / \
-                 'lib' / 'OpenPCDet' / 'data' / 'dense' / f'calib_{sensor}.txt'
+    calib_file = DATA_PATH / f'calib_{sensor}.txt'
     assert calib_file.exists(), f'{calib_file} not found'
     return calibration_kitti.Calibration(calib_file)
 

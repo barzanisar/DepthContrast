@@ -7,6 +7,7 @@
 #WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
 DENSE_LIDAR=$(readlink -f ./data/dense/lidar_hdl64_strongest)
 SNOWFALL_LIDAR=$(readlink -f ./data/dense/snowfall_simulation)
+SNOWFLAKES=$(readlink -f ./data/dense/snowflakes)
 
 # Setup volume linking (host link:container link)
 CUR_DIR=$(pwd)
@@ -17,6 +18,7 @@ PROJ_DIR=$CUR_DIR
 #WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_10
 DENSE_LIDAR=$DENSE_LIDAR:/DepthContrast/data/dense/lidar_hdl64_strongest
 SNOWFALL_LIDAR=$SNOWFALL_LIDAR:/DepthContrast/data/dense/snowfall_simulation
+SNOWFLAKES=$SNOWFLAKES:/DepthContrast/data/dense/snowflakes
 
 
 PCDET_VOLUMES=""
@@ -43,6 +45,7 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --name="DepthContrast" \
         --volume $DENSE_LIDAR \
         --volume $SNOWFALL_LIDAR \
+        --volume $SNOWFLAKES \
         --volume $PROJ_DIR/data:/DepthContrast/data \
         --volume $PROJ_DIR/output:/DepthContrast/output \
         --volume $PROJ_DIR/tools:/DepthContrast/tools \
