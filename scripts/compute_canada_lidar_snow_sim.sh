@@ -150,22 +150,22 @@ module load StdEnv/2020
 module load singularity/3.6
 
 PROJ_DIR=$PWD
-# DEPTH_CONTRAST_BINDS=""
-# for entry in $PROJ_DIR/third_party/OpenPCDet/pcdet/*
-# do
-#     name=$(basename $entry)
-#     if [ "$name" != "version.py" ] && [ "$name" != "ops" ]
-#     then
-#         DEPTH_CONTRAST_BINDS+="--bind $entry:/DepthContrast/third_party/OpenPCDet/pcdet/$name
-# "
-#     fi
-# done
+DEPTH_CONTRAST_BINDS=""
+for entry in $PROJ_DIR/third_party/OpenPCDet/pcdet/*
+do
+    name=$(basename $entry)
+    if [ "$name" != "version.py" ] && [ "$name" != "ops" ]
+    then
+        DEPTH_CONTRAST_BINDS+="--bind $entry:/DepthContrast/third_party/OpenPCDet/pcdet/$name
+"
+    fi
+done
 
-# # Extra binds
-# DEPTH_CONTRAST_BINDS+="
-#     --bind $PROJ_DIR/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_modules.py:/DepthContrast/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_modules.py
-#     --bind $PROJ_DIR/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_utils.py:/DepthContrast/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_utils.py
-# "
+# Extra binds
+DEPTH_CONTRAST_BINDS+="
+    --bind $PROJ_DIR/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_modules.py:/DepthContrast/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_modules.py
+    --bind $PROJ_DIR/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_utils.py:/DepthContrast/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_utils.py
+"
 
 BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
 SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
@@ -185,6 +185,7 @@ singularity exec
 --bind $TMP_DATA_DIR:/DepthContrast/data/$DATASET
 --bind $PROJ_DIR/data/$DATASET/ImageSets:/DepthContrast/data/$DATASET/ImageSets
 --bind $PROJ_DIR/lib:/DepthContrast/lib
+$DEPTH_CONTRAST_BINDS
 $SING_IMG
 "
 
