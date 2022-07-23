@@ -80,13 +80,7 @@ if __name__ == '__main__':
 
     sample_id_list = sorted(['_'.join(x.strip().split(',')) for x in open(SPLIT).readlines()])
 
-    # reversed_first_half = list(split(sample_id_list, 2))[0]
-    # reversed_first_half.reverse()
-    # second_half = list(split(sample_id_list, 2))[1]
-
-    # new_list = second_half + reversed_first_half
-
-    for mode in ['gunn', 'sekhon']:
+    for mode in ['gunn']: #'sekhon'
 
         p_bar = tqdm(sample_id_list, desc=mode)
 
@@ -101,8 +95,7 @@ if __name__ == '__main__':
 
                 rainfall_rate, occupancy_ratio = combo
 
-                save_dir = SAVE_DIR_ROOT / mode / f'{LIDAR_FOLDER.name}_' \
-                                                                                f'rainrate_{int(rainfall_rate)}'
+                save_dir = SAVE_DIR_ROOT / mode / f'{LIDAR_FOLDER.name}_rainrate_{int(rainfall_rate)}'
                 save_dir.mkdir(parents=True, exist_ok=True)
 
                 save_path = save_dir / f'{sample_idx}.bin'
@@ -111,8 +104,6 @@ if __name__ == '__main__':
                     continue
 
                 pc = copy.deepcopy(points)
-
-                
 
                 #V.draw_scenes(points=pc, color_feature=3)
                 #print(f'sample_idx: {sample_idx}, rr_ratio:{combo}')
