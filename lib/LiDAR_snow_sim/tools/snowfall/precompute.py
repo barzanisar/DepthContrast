@@ -18,7 +18,7 @@ ROOT_PATH = (Path(__file__) / '../../../../..').resolve() #DepthContrast
 DATA_PATH = ROOT_PATH /'data' / 'dense'
 SPLIT_FOLDER =  DATA_PATH/ 'ImageSets' / 'train_clear_precompute'
 LIDAR_FOLDER = DATA_PATH / 'lidar_hdl64_strongest'
-SAVE_DIR_ROOT = ROOT_PATH / 'output' / 'snowfall_simulation'
+SAVE_DIR_ROOT = ROOT_PATH / 'output' / 'snowfall_simulation' #for compute canada DATA_PATH / 'snowfall_simulation_FOV' #
 
 SNOWFALL_RATES = [0.5, 0.5, 1.0, 2.0, 2.5, 1.5]  #[0.5, 1.0, 2.0, 2.5, 1.5]       # mm/h
 TERMINAL_VELOCITIES = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6] #[2.0, 1.6, 2.0, 1.6, 0.6]  # m/s
@@ -44,6 +44,15 @@ def get_fov_flag(pts_rect, img_shape, calib):
     pts_valid_flag = np.logical_and(val_flag_merge, pts_rect_depth >= 0)
 
     return pts_valid_flag
+
+def crop_pc(pc):
+    point_cloud_range = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32)
+    upper_idx = np.sum((pc[:, 0:3] <= point_cloud_range[3:6]).astype(np.int32), 1) == 3
+    lower_idx = np.sum((pc[:, 0:3] >= point_cloud_range[0:3]).astype(np.int32), 1) == 3
+
+    new_pointidx = (upper_idx) & (lower_idx)
+    pc = pc[new_pointidx, :]
+    return pc
 
 parser = argparse.ArgumentParser(description='Lidar snowfall sim')
 
@@ -90,6 +99,7 @@ if __name__ == '__main__':
 
             points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
             calibration = get_calib()
+            print(f'Processing sample: {sample_idx}')
 
             for combo in combos:
 
@@ -116,6 +126,8 @@ if __name__ == '__main__':
                     if pc.shape[0] < 3000:
                         print(f'Skipping {sample_idx} has less than 3000 points in FOV')
                         continue
+                else:
+                    pc = crop_pc(pc)
                 #V.draw_scenes(points=pc, color_feature=3)
                 #print("FOV_pc: ", pc.shape)
 
