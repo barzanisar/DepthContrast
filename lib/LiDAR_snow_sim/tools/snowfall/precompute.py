@@ -88,6 +88,7 @@ if __name__ == '__main__':
     print(combos)
 
     sample_id_list = sorted(['_'.join(x.strip().split(',')) for x in open(SPLIT).readlines()])
+    total_skipped = 0
 
     for mode in ['gunn']: #'sekhon'
 
@@ -117,7 +118,6 @@ if __name__ == '__main__':
 
                 #V.draw_scenes(points=pc, color_feature=3)
                 #print(f'sample_idx: {sample_idx}, rr_ratio:{combo}')
-                #print(f'Sample: {sample_idx}')
                 #print("pc: ", pc.shape)
                 if args.fov:
                     pts_rectified = calibration.lidar_to_rect(pc[:, 0:3])
@@ -137,10 +137,19 @@ if __name__ == '__main__':
                 stats, aug_pc = augment(pc=pc, particle_file_prefix=snowflake_file_prefix,
                                         beam_divergence=float(np.degrees(3e-3)), root_path=DATA_PATH, only_camera_fov=args.fov)
                 time_taken = time.time() - start
-                print(f'Time taken for {sample_idx}: {time_taken}, pc shape: {pc.shape[0]}, aug pc shape: {aug_pc.shape[0]}')
+                
                 #print("aug_pc: ", aug_pc.shape)
                 #V.draw_scenes(points=aug_pc, color_feature=3)
+                if stats == None:
+                    print(f'ERROR processing sample: {sample_idx}')
+                    total_skipped +=1
+                    continue
+                
+                print(f'Time taken for {sample_idx}: {time_taken}, pc shape: {pc.shape[0]}, aug pc shape: {aug_pc.shape[0]}')
                 if aug_pc.shape[0] < 3000:
-                    print(f'sample_idx: {sample_idx}, rr_ratio:{combo}, aug_pc:{aug_pc.shape}')
+                    print(f'LESS than 3000 pts! sample_idx: {sample_idx}, rr_ratio:{combo}, aug_pc:{aug_pc.shape}')
 
                 aug_pc.astype(np.float32).tofile(save_path)
+    
+    print(f'Total skipped: {total_skipped}')
+    print(f'Len samples: {len(sample_id_list)}')

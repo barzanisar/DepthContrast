@@ -451,97 +451,102 @@ def augment(pc: np.ndarray, particle_file_prefix: str, beam_divergence: float, s
                             np.matmul(pc[:, :3], np.asarray(w)) + h > -0.5)
     pc_ground = pc[ground]
 
-    calculated_indicent_angle = np.arccos(np.divide(np.matmul(pc_ground[:, :3], np.asarray(w)),
-                                                    np.linalg.norm(pc_ground[:, :3], axis=1) * np.linalg.norm(w)))
+    try:
+        calculated_indicent_angle = np.arccos(np.divide(np.matmul(pc_ground[:, :3], np.asarray(w)),
+                                                        np.linalg.norm(pc_ground[:, :3], axis=1) * np.linalg.norm(w)))
 
-    relative_output_intensity, adaptive_noise_threshold, _, _ = estimate_laser_parameters(pc_ground,
-                                                                                          calculated_indicent_angle,
-                                                                                          noise_floor=noise_floor,
-                                                                                          debug=False)
+        relative_output_intensity, adaptive_noise_threshold, _, _ = estimate_laser_parameters(pc_ground,
+                                                                                            calculated_indicent_angle,
+                                                                                            noise_floor=noise_floor,
+                                                                                            debug=False)
 
-    adaptive_noise_threshold *= np.cos(calculated_indicent_angle)
+        adaptive_noise_threshold *= np.cos(calculated_indicent_angle)
 
-    ground_distances = np.linalg.norm(pc_ground[:, :3], axis=1)
-    distances = np.linalg.norm(pc[:, :3], axis=1)
+        ground_distances = np.linalg.norm(pc_ground[:, :3], axis=1)
+        distances = np.linalg.norm(pc[:, :3], axis=1)
 
-    p = np.polyfit(ground_distances, adaptive_noise_threshold, 2)
+        p = np.polyfit(ground_distances, adaptive_noise_threshold, 2)
 
-    relative_output_intensity = p[0] * distances ** 2 + p[1] * distances + p[2]
+        relative_output_intensity = p[0] * distances ** 2 + p[1] * distances + p[2]
 
-    orig_pc = copy.deepcopy(pc)
-    aug_pc = copy.deepcopy(pc)
+        orig_pc = copy.deepcopy(pc)
+        aug_pc = copy.deepcopy(pc)
 
-    sensor_info = Path(__file__).parent.parent.parent.resolve() / 'calib' / '20171102_64E_S3.yaml'
+        sensor_info = Path(__file__).parent.parent.parent.resolve() / 'calib' / '20171102_64E_S3.yaml'
 
-    with open(sensor_info, 'r') as stream:
-        sensor_dict = yaml.safe_load(stream)
+        with open(sensor_info, 'r') as stream:
+            sensor_dict = yaml.safe_load(stream)
 
-    channel_infos = sensor_dict['lasers']
-    num_channels = sensor_dict['num_lasers']
+        channel_infos = sensor_dict['lasers']
+        num_channels = sensor_dict['num_lasers']
 
-    channels = range(num_channels)
-    order = list(range(num_channels))
+        channels = range(num_channels)
+        order = list(range(num_channels))
 
-    if shuffle:
-        random.shuffle(order)
+        if shuffle:
+            random.shuffle(order)
 
-    channel_list = [None] * num_channels
+        channel_list = [None] * num_channels
 
-    if show_progressbar:
+        if show_progressbar:
 
-        channel_list[:] = process_map(functools.partial(process_single_channel, root_path, particle_file_prefix,
-                                                        orig_pc, beam_divergence, order, channel_infos),
-                                      channels, chunksize=4)
+            channel_list[:] = process_map(functools.partial(process_single_channel, root_path, particle_file_prefix,
+                                                            orig_pc, beam_divergence, order, channel_infos),
+                                        channels, chunksize=4)
 
-    else:
+        else:
 
-        pool = mp.pool.ThreadPool(mp.cpu_count())
+            pool = mp.pool.ThreadPool(mp.cpu_count())
 
-        channel_list[:] = pool.map(functools.partial(process_single_channel, root_path, particle_file_prefix, orig_pc,
-                                                     beam_divergence, order, channel_infos), channels)
+            channel_list[:] = pool.map(functools.partial(process_single_channel, root_path, particle_file_prefix, orig_pc,
+                                                        beam_divergence, order, channel_infos), channels)
 
-        pool.close()
-        pool.join()
+            pool.close()
+            pool.join()
 
-    intensity_diff_sum = 0
+        intensity_diff_sum = 0
 
-    for item in channel_list:
+        for item in channel_list:
 
-        tmp_intensity_diff_sum, idx, pc = item
+            tmp_intensity_diff_sum, idx, pc = item
 
-        intensity_diff_sum += tmp_intensity_diff_sum
+            intensity_diff_sum += tmp_intensity_diff_sum
 
-        aug_pc[idx] = pc
+            aug_pc[idx] = pc
 
-    aug_pc[:, 3] = np.round(aug_pc[:, 3])
+        aug_pc[:, 3] = np.round(aug_pc[:, 3])
 
-    scattered = aug_pc[:, 4] == 2
-    above_threshold = aug_pc[:, 3] > relative_output_intensity[:]
-    scattered_or_above_threshold = np.logical_or(scattered, above_threshold)
+        scattered = aug_pc[:, 4] == 2
+        above_threshold = aug_pc[:, 3] > relative_output_intensity[:]
+        scattered_or_above_threshold = np.logical_or(scattered, above_threshold)
 
-    num_removed = np.logical_not(scattered_or_above_threshold).sum()
-    aug_pc = aug_pc[np.where(scattered_or_above_threshold)]
+        num_removed = np.logical_not(scattered_or_above_threshold).sum()
+        aug_pc = aug_pc[np.where(scattered_or_above_threshold)]
 
-    num_attenuated = (aug_pc[:, 4] == 1).sum()
+        num_attenuated = (aug_pc[:, 4] == 1).sum()
 
-    if num_attenuated > 0:
-        avg_intensity_diff = int(intensity_diff_sum / num_attenuated)
-    else:
-        avg_intensity_diff = 0
+        if num_attenuated > 0:
+            avg_intensity_diff = int(intensity_diff_sum / num_attenuated)
+        else:
+            avg_intensity_diff = 0
 
-    if only_camera_fov:
-        calib = get_calib()
+        if only_camera_fov:
+            calib = get_calib()
 
-        pts_rect = calib.lidar_to_rect(aug_pc[:, 0:3])
-        fov_flag = get_fov_flag(pts_rect, (1024, 1920), calib)
+            pts_rect = calib.lidar_to_rect(aug_pc[:, 0:3])
+            fov_flag = get_fov_flag(pts_rect, (1024, 1920), calib)
 
-        num_removed += np.logical_not(fov_flag).sum()
+            num_removed += np.logical_not(fov_flag).sum()
 
-        aug_pc = aug_pc[fov_flag]
+            aug_pc = aug_pc[fov_flag]
 
-    stats = num_attenuated, num_removed, avg_intensity_diff
+        stats = num_attenuated, num_removed, avg_intensity_diff
 
-    return  stats, aug_pc
+        return  stats, aug_pc
+    except Exception as e:
+        print(f'Error! Pc ground shape:{pc_ground.shape}')
+        print(e)
+        return None, None
 
 
 def received_power(CA_P0: float, beta_0: float, ratio: float, r: float, r_j: float, tau_h: float) -> float:
