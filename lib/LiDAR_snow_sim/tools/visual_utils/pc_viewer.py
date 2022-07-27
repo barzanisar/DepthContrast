@@ -1,55 +1,65 @@
-from tools.visual_utils import open3d_vis_utils as V
+from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 import numpy as np
 import matplotlib as mpl
 import matplotlib.cm as cm
+from pathlib import Path
+import pickle
 
-def get_colors(pc, color_feature=None):
-    # create colormap
-    if color_feature == 0:
-        feature = pc[:, 0]
-        min_value = np.min(feature)
-        max_value = np.max(feature)
+ROOT_PATH = (Path(__file__) / '../../../../..').resolve() #DepthContrast
+DENSE_ROOT = ROOT_PATH / 'data' / 'dense'
+alpha = 0.45
+sensor_type = 'hdl64'
+signal_type = 'strongest'
 
-    elif color_feature == 1:
-
-        feature = pc[:, 1]
-        min_value = np.min(feature)
-        max_value = np.max(feature)
-
-    elif color_feature == 2:
-        feature = pc[:, 2]
-        min_value = np.min(feature)
-        max_value = np.max(feature)
-
-    elif color_feature == 3:
-        feature = pc[:, 3]
-        min_value = np.min(feature)
-        max_value = 255
-
-    elif color_feature == 4:
-        feature = pc[:, 4]
-        min_value = np.min(feature)
-        max_value = np.max(feature)
-
-    else:
-        feature = np.linalg.norm(pc[:, 0:3], axis=1)
-        min_value = np.min(feature)
-        max_value = np.max(feature)
-
-
-    norm = mpl.colors.Normalize(vmin=min_value, vmax=max_value)
-
-
-    cmap = cm.jet  # sequential
-
-    m = cm.ScalarMappable(norm=norm, cmap=cmap)
-
-    colors = m.to_rgba(feature)
-    colors[:, [2, 1, 0, 3]] = colors[:, [0, 1, 2, 3]]
-    colors[:, 3] = 0.5
-
-    return colors[:, :3]
+samples = ['2019-01-09_14-54-03,03700',
+'2018-12-10_11-38-09,02600',
+'2018-02-12_15-55-09,00100',
+'2019-01-09_10-52-08,00100',
+'2018-02-06_14-40-36,00100',
+'2018-12-11_12-53-37,01540',
+'2019-01-09_11-33-12,01200',
+'2018-12-19_10-59-51,02200',
+'2019-01-09_12-55-44,01000',
+'2018-02-04_12-53-35,00000',
+'2018-02-06_14-21-31,00000',
+'2018-02-07_11-56-57,00560']
 if __name__ == '__main__':
-    #pc = np.fromfile('/media/barza/WD_BLACK/datasets/dense/lidar_hdl64_strongest/2018-02-17_09-52-18_00100.bin', dtype=np.float32).reshape((-1,5))
-    pc = np.fromfile('/media/barza/WD_BLACK/datasets/dense/snowfall_simulation/gunn/lidar_hdl64_strongest_rainrate_2/2018-02-17_09-52-18_00100.bin', dtype=np.float32).reshape((-1,5))
-    V.draw_scenes(points=pc[:, :3], point_colors = get_colors(pc, color_feature=3))
+
+    info_path = DENSE_ROOT / '360deg_Infos' / 'dense_infos_test_clear_25.pkl'
+    dense_infos = []
+    dror_path_not_exists=0
+
+    with open(info_path, 'rb') as i:
+        infos = pickle.load(i)
+        dense_infos.extend(infos)
+    
+    for info in dense_infos:
+        sample_idx = info['point_cloud']['lidar_idx']
+        
+        dror_path = DENSE_ROOT / 'DROR_downloaded' / f'alpha_{alpha}' / \
+                    'all' / sensor_type / signal_type / 'full' / f'{sample_idx}.pkl'
+
+        if dror_path.exists():
+            lidar_file = DENSE_ROOT / 'lidar_hdl64_strongest' / f'{sample_idx}.bin'
+            pc = np.fromfile(lidar_file, dtype=np.float32).reshape((-1,5))
+
+
+            with open(str(dror_path), 'rb') as f:
+                snow_indices = pickle.load(f)
+
+            keep_indices = np.ones(len(pc), dtype=bool)
+            keep_indices[snow_indices] = False
+
+            # Before DROR
+            V.draw_scenes(points=pc, color_feature=3)
+
+            # Apply DROR
+            pc = pc[keep_indices]
+
+            # After DROR
+            V.draw_scenes(points=pc, color_feature=3)
+        else:
+            dror_path_not_exists += 1
+            print(f'{sample_idx} snow indices do not exist')
+    
+    print(f'Not exists num: {dror_path_not_exists} / {len(dense_infos)}')
