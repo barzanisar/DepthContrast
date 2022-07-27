@@ -20,7 +20,7 @@ WANDB:
 dataset:
   DATASET_NAMES: [DenseDataset]
   INFO_PATHS: 
-    train: ['dense_infos_train_clear_60.pkl']
+    train: ['dense_infos_train_all_60.pkl']
     val: ['dense_infos_val_clear_15.pkl']
   BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: objects #sample_index, objects, class_names
@@ -30,9 +30,10 @@ dataset:
   Lidar: True
   VOX: False
   DROR: 0.45
-  # COUPLED: True
-  # WET_SURFACE: '1in1' #'1in10'
-  # SNOW: 'uniform_gunn_1in1' #'1in10'
+  UPSAMPLE: '1in1'
+  COUPLED: True
+  WET_SURFACE: '1in10' #'1in10'
+  SNOW: 'uniform_gunn_1in2' #'1in10'
   FOG_AUGMENTATION: 'CVL_uniform'
   FOG_NOISE_VARIANT: 'v2'
   FOG_GAIN: True
