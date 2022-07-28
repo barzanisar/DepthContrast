@@ -16,30 +16,15 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # main.py script parameters
 CFG_FILE=configs/point_within_lidar_vdc_linear_probe.yaml
 DIST="true"
-LINEAR_PROBE="true"
+LINEAR_PROBE="false"
 TCP_PORT=18888
 LAUNCHER='pytorch'
-#WORLD_SIZE='default'
-#RANK='default'
-#DIST_URL='default'
-#DIST_BACKEND='default'
-#SEED=None
-#LOCAL_RANK='default' #local rank
-#NGPUS='default' #num of gpus per node
-
-#CKPT=None
-#PRETRAINED_MODEL=None
-#TCP_PORT=18888
-#SYNC_BN=true
-#CKPT_SAVE_INTERVAL=1
-#MAX_CKPT_SAVE_NUM=10
-
 
 # Additional parameters
 DATASET=dense
 DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense
 INFOS_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense/Infos
-SING_IMG=/home/$USER/projects/rrg-swasland/singularity/depth_contrast.sif
+SING_IMG=/home/$USER/projects/rrg-swasland/singularity/depth_contrast_snow_sim.sif
 DIST=true
 TEST_ONLY=false
 WANDB_API_KEY=$WANDB_API_KEY
@@ -227,7 +212,7 @@ singularity exec
 --bind $PROJ_DIR/utils:/DepthContrast/utils
 --bind $TMP_DATA_DIR:/DepthContrast/data/$DATASET
 --bind $PROJ_DIR/data/$DATASET/ImageSets:/DepthContrast/data/$DATASET/ImageSets
---bind $PROJ_DIR/wandb:/DepthContrast/wandb
+--bind $PROJ_DIR/lib:/DepthContrast/lib
 $DEPTH_CONTRAST_BINDS
 $SING_IMG
 "

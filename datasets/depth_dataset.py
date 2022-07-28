@@ -17,12 +17,7 @@ import sys
 import time
 from datasets.transforms.augment3d import get_transform3d
 
-# ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-# ROOT_DIR = os.path.dirname(ROOT_DIR)
-# sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet'))
-#sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'LiDAR_snow_sim'))
 import scipy.stats as stats
-#import pcl
 import open3d as o3d
 from pcdet.utils import box_utils, calibration_kitti, common_utils, object3d_kitti
 from lib.LiDAR_snow_sim.tools.snowfall.simulation import augment
@@ -157,11 +152,11 @@ class DepthContrastDataset(Dataset):
 
         #Crop given point cloud range
         points = data_dict['data']
-        points = self.crop_pc(points)
+        #points = self.crop_pc(points)
         
         #Crop given point cloud range
         points_moco = data_dict['data_moco']
-        points_moco = self.crop_pc(points_moco)
+        #points_moco = self.crop_pc(points_moco)
 
 
         cfg = self.cfg
@@ -303,17 +298,11 @@ class DenseDataset(DepthContrastDataset):
         self.terminal_velocities = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6] # m/s
 
         self.rainfall_rates = []
-        #self.occupancy_ratios = []
 
         for i in range(len(self.snowfall_rates)):
 
             self.rainfall_rates.append(snowfall_rate_to_rainfall_rate(self.snowfall_rates[i],
                                                                       self.terminal_velocities[i]))
-
-            #self.occupancy_ratios.append(compute_occupancy(self.snowfall_rates[i], self.terminal_velocities[i]))
-
-        #self.combos = np.column_stack((self.rainfall_rates, self.occupancy_ratios))
-
 
     def include_dense_data(self):
         if self.logger is not None:
@@ -431,55 +420,6 @@ class DenseDataset(DepthContrastDataset):
 
         return mask
 
-    # # adapted from https://github.com/mpitropov/cadc_devkit/blob/master/other/filter_pointcloud.py#L13-L50
-    # def dynamic_radius_outlier_filter(self, pc: np.ndarray, alpha: float = 0.45, beta: float = 3.0,
-    #                                 k_min: int = 3, sr_min: float = 0.04) -> np.ndarray:
-    #     """
-    #     :param pc:      pointcloud
-    #     :param alpha:   horizontal angular resolution of the lidar
-    #     :param beta:    multiplication factor
-    #     :param k_min:   minimum number of neighbors
-    #     :param sr_min:  minumum search radius
-
-    #     :return:        mask [False = snow, True = no snow]
-    #     """
-
-    #     pc = pcl.PointCloud(pc[:, :3])
-
-    #     num_points = pc.size
-
-    #     # initialize mask with False
-    #     mask = np.zeros(num_points, dtype=bool)
-
-    #     k = k_min + 1
-
-    #     kd_tree = pc.make_kdtree_flann()
-
-    #     for i in range(num_points):
-
-    #         x = pc[i][0]
-    #         y = pc[i][1]
-
-    #         r = np.linalg.norm([x, y], axis=0)
-
-    #         sr = alpha * beta * np.pi / 180 * r
-
-    #         if sr < sr_min:
-    #             sr = sr_min
-
-    #         [_, sqdist] = kd_tree.nearest_k_search_for_point(pc, i, k)
-
-    #         neighbors = -1      # start at -1 since it will always be its own neighbour
-
-    #         for val in sqdist:
-    #             if np.sqrt(val) < sr:
-    #                 neighbors += 1
-
-    #         if neighbors >= k_min:
-    #             mask[i] = True  # no snow -> keep
-
-    #     return mask
-
     def crop_pc(self, pc):
         upper_idx = np.sum((pc[:, 0:3] <= self.point_cloud_range[3:6]).astype(np.int32), 1) == 3
         lower_idx = np.sum((pc[:, 0:3] >= self.point_cloud_range[0:3]).astype(np.int32), 1) == 3
@@ -504,9 +444,10 @@ class DenseDataset(DepthContrastDataset):
 
         weather = info['annos']['weather']
         pc_cropped = False
+        mor = np.inf
         data_dict = {}
 
-        if not self.linear_probe:
+        if not self.linear_probe and self.cfg['APPLY_WEATHER_AUG']:
             apply_dror =  weather != 'clear' and 'DROR' in self.cfg
             dror_applied = False
             if apply_dror:
@@ -520,40 +461,37 @@ class DenseDataset(DepthContrastDataset):
                     if dror_path.exists():
                         with open(str(dror_path), 'rb') as f:
                             snow_indices = pickle.load(f)
-
                     else:
-                        #TODO Crop points here to save time on dror
+                        #Crop points here to save time on dror
                         self.logger.add_line(f'DROR path does not exist! {weather}, {sample_idx}')
-                        points = self.crop_pc(points)
+                        points_moco = self.crop_pc(points_moco)
                         pc_cropped = True
-                        # keep_mask = self.dynamic_radius_outlier_filter(points, alpha=alpha)
-                        # snow_indices = (keep_mask == 0).nonzero()[0]#.astype(np.int16)
                         
-                        keep_mask = self.o3d_dynamic_radius_outlier_filter(points, alpha=alpha)
+                        keep_mask = self.o3d_dynamic_radius_outlier_filter(points_moco, alpha=alpha)
                         snow_indices = (keep_mask == 0).nonzero()[0]#.astype(np.int16)
 
-                    range_snow_indices = np.linalg.norm(points[snow_indices][:,:3], axis=1)
+                    range_snow_indices = np.linalg.norm(points_moco[snow_indices][:,:3], axis=1)
                     snow_indices = snow_indices[range_snow_indices < 30]
-                    keep_indices = np.ones(len(points), dtype=bool)
+                    keep_indices = np.ones(len(points_moco), dtype=bool)
                     keep_indices[snow_indices] = False
 
-                    points_moco = points[keep_indices]
+                    points_moco = points_moco[keep_indices]
                     dror_applied = True
                 except:
                     self.logger.add_line(f'DROR not applied! {weather}, {sample_idx}')
-
-            # crop pc and Extract FOV points
-            if not pc_cropped:
-                points = self.crop_pc(points)
-                points_moco = self.crop_pc(points_moco)
+                    pass
 
             
             apply_upsampling = dror_applied and 'UPSAMPLE' in self.cfg
 
             if apply_upsampling:
+                            # crop pc and Extract FOV points
+                if not pc_cropped:
+                    points_moco = self.crop_pc(points_moco)
+                    pc_cropped = True
+
                 pcd = o3d.geometry.PointCloud()
                 pcd.points = o3d.utility.Vector3dVector(points_moco[:, :3])
-                # pcd.colors = o3d.utility.Vector3dVector(get_colors(pc, 'intensity'))
 
                 method = self.cfg['UPSAMPLE']
 
@@ -584,14 +522,10 @@ class DenseDataset(DepthContrastDataset):
                         for i in range(num_pts):
                             [_, idx, _] = pcd_tree.search_knn_vector_3d(pcd.points[i], neighbours)
                             new_pc[i, :] = np.mean(points_moco[idx], axis=0)
-                        print(f'Iter: {iter}, Time: {time.time()-start_time} ')
+                        #print(f'Iter: {iter}, Time: {time.time()-start_time} ')
 
-                        # #Visualize augmented
                         points_moco = np.concatenate((points_moco, new_pc))
-                        # pcd = o3d.geometry.PointCloud()
-                        # pcd.points = o3d.utility.Vector3dVector(pc[:, :3])
-                        # pcd.colors = o3d.utility.Vector3dVector(get_colors(pc, 'intensity'))
-                        # draw_pts(pcd)
+
             
             # Snowfall Augmentation
             snowfall_augmentation_applied = False
@@ -636,12 +570,15 @@ class DenseDataset(DepthContrastDataset):
                         points_moco = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
                         snowfall_augmentation_applied = True
                     except FileNotFoundError:
-                        print(f'\n{lidar_file} not found')
+                        self.logger.add_line(f'\n{lidar_file} not found')
                         pass
             
             wet_surface_applied = False
             apply_wet_surface = info['annos']['weather'] == 'clear' and 'WET_SURFACE' in self.cfg
             if apply_wet_surface:
+                if not pc_cropped:
+                    points_moco = self.crop_pc(points_moco)
+                    pc_cropped = True
 
                 method = self.cfg['WET_SURFACE']
 
@@ -660,9 +597,6 @@ class DenseDataset(DepthContrastDataset):
                     choices = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]    # pointcloud gets augmented with 10% chance
 
                 apply_coupled = self.cfg.get('COUPLED', False) and snowfall_augmentation_applied
-
-                # if 'COUPLED' in self.cfg:
-                #     choices = [0]                   # make sure we only apply coupled when coupled is enabled
 
                 if np.random.choice(choices) or apply_coupled: 
 
@@ -696,13 +630,14 @@ class DenseDataset(DepthContrastDataset):
             #Fog augmentation
             apply_fog = info['annos']['weather'] == 'clear' and not snowfall_augmentation_applied and 'FOG_AUGMENTATION' in self.cfg
             if apply_fog:
+                if not pc_cropped:
+                    points_moco = self.crop_pc(points_moco)
+                    pc_cropped = True
                 alphas = ['0.005', '0.010', '0.020', '0.030', '0.060']
                 curriculum_stage = int(np.random.randint(low=0, high=len(alphas)))
                 alpha = alphas[curriculum_stage]
 
-                if alpha == '0.000':    # to prevent division by zero
-                    mor = np.inf
-                else:
+                if alpha != '0.000': 
                     mor = np.log(20) / float(alpha)
 
                 augmentation_method = self.cfg['FOG_AUGMENTATION'].split('_')[0]
@@ -736,36 +671,13 @@ class DenseDataset(DepthContrastDataset):
                 box_mask = box_distances < max_point_dist
                 data_dict['gt_boxes_lidar'] = data_dict['gt_boxes_lidar'][box_mask]
 
-            # TODO: mask boxes outside point cloud range
-            
-            # # TODO: remove
-            # # Drop gt_names == DontCare, gt_boxes already don't have dontcare boxes
-            # keep_indices = [i for i,x in enumerate(info['annos']['name']) if x != 'DontCare']
-            # data_dict['gt_names'] = info['annos']['name'][keep_indices]
-            # data_dict['gt_boxes_lidar'] = info['annos']['gt_boxes_lidar']
-            
-            # # Drop gt_names and boxes with negative h,w,l i.e. not visible in lidar
-            # keep_indices = [i for i in range(data_dict['gt_boxes_lidar'].shape[0]) if data_dict['gt_boxes_lidar'][i, 3] > 0]
-            # data_dict['gt_names'] = data_dict['gt_names'][keep_indices]
-            # data_dict['gt_boxes_lidar'] = data_dict['gt_boxes_lidar'][keep_indices]
+        # # TODO: mask boxes outside point cloud range
+        # if not pc_cropped:
+        #     points_moco = self.crop_pc(points_moco)
+        #     pc_cropped = True
 
-            # assert data_dict['gt_names'].shape[0] == data_dict['gt_boxes_lidar'].shape[0]
-            
-            # # # what happens if gt_boxes_lidar is empty?
-            # # if data_dict['gt_boxes_lidar'].shape[0] == 0:
-            # #     if self.logger is not None:
-            # #         self.logger.add_line(f'No gt_boxes_lidar in infos Index: {index}, sample_idx: {sample_idx}!')
-            # #     new_index = np.random.randint(self.__len__())
-            # #     return self.__getitem__(new_index)
-            
-            # # assert data_dict['gt_boxes_lidar'].shape[0] > 0
-
-            # # TODO: remove
-            # # Change Vehicle or Obstacle class to PassengerCar
-            # for i, name in enumerate(data_dict['gt_names']):
-            #     if name in ['Vehicle', 'Obstacle', 'LargeVehicle']:
-            #         data_dict['gt_names'][i] = 'PassengerCar'
-
+        points = self.crop_pc(points)
+        points_moco = self.crop_pc(points_moco)
         # Prepare points and Transform 
         data_dict['data'] = points[:,:4] #x,y,z,i #drop channel or label
         data_dict['data_moco'] = points_moco[:,:4] #x,y,z,i #drop channel or label 

@@ -21,8 +21,9 @@ def init(cfg, args, job_type='train'):
         return False
 
     dir = cfg['WANDB'].get('dir', None)
-    wandb.init(name=cfg['tag'],
+    wandb.init(name=cfg['model']['name'],
                config=cfg,
+               tags=cfg['wb_extra_tags'],
                project=cfg['WANDB']['PROJECT'],
                entity=cfg['WANDB']['ENTITY'],
                job_type=job_type,
