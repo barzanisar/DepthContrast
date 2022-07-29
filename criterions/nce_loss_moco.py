@@ -29,10 +29,10 @@ def concat_all_gather(tensor):
     torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
 
     output = torch.cat(tensors_gather, dim=0) # stack key embeddings vertically hcat[(batch size for gpu 1 x 128), (b2 x 128), (b3 x 128), (b4 x 128)] ==> [(row dim = b1+b2+b3+b4 , col dim = 128)]
-    print("concat_all_gather each gpu's normalized output 2 shape")
-    for each_tensor in tensors_gather:
-        print(each_tensor.shape)
-    print("concat_all_gather output shape ", output.shape)
+    # print("concat_all_gather each gpu's normalized output 2 shape")
+    # for each_tensor in tensors_gather:
+    #     print(each_tensor.shape)
+    # print("concat_all_gather output shape ", output.shape)
     return output
 
 class NCELossMoco(nn.Module):
