@@ -67,7 +67,7 @@ optimizer:
     final_lr: 0.00012 #0 for linear_probe
 
 model:
-  name: "dc_snow_coupled_fogF_cubeF_upsample"
+  name: "dc_snow_coupled_fogF_cubeF_upsampleF"
   model_dir: "checkpoints/pointnetMSG_train_all_60/dc"
   model_input: ["points", "points_moco"]
   model_feature: [["fp2"], ["fp2"]]
