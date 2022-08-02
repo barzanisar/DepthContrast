@@ -35,7 +35,7 @@ dataset:
   COUPLED: False
   WET_SURFACE: '1in10' #'1in10'
   SNOW: 'uniform_gunn_1in2' #'1in10'
-  FOG_AUGMENTATION: 'CVL_uniform'
+  FOG_AUGMENTATION: 'CVL_1in2'
   FOG_NOISE_VARIANT: 'v2'
   FOG_GAIN: True
   FOV_POINTS_ONLY: False
@@ -60,11 +60,11 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: False
-  num_epochs: 500
+  num_epochs: 201
   lr:
     name: "cosine"
-    base_lr: 0.12 #0.1 for linear_probe
-    final_lr: 0.00012 #0 for linear_probe
+    base_lr: 0.1 #0.1 for linear_probe
+    final_lr: 0 #0 for linear_probe
 
 model:
   name: "dc_snow_wet_fog_cube_upsample"

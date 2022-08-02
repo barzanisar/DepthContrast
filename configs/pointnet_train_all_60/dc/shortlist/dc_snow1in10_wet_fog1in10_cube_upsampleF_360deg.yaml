@@ -1,4 +1,4 @@
-wb_extra_tags: ['pointnet', 'train_all_FOV3000_60']
+wb_extra_tags: ['pointnet', 'train_all_60']
 resume: true
 linear_probe: false # True for linear probe
 num_workers: 8
@@ -20,8 +20,8 @@ WANDB:
 dataset:
   DATASET_NAMES: [DenseDataset]
   INFO_PATHS: 
-    train: ['dense_infos_train_all_FOV3000_60.pkl']
-    val: ['dense_infos_val_clear_FOV3000_15.pkl']
+    train: ['dense_infos_train_all_60.pkl']
+    val: ['dense_infos_val_clear_15.pkl']
   BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
@@ -29,16 +29,16 @@ dataset:
   SIGNAL_TYPE: 'strongest'
   Lidar: True
   VOX: False
-  APPLY_WEATHER_AUG: False # False for linear Probe
+  APPLY_WEATHER_AUG: True # False for linear probe
   DROR: 0.45
-  UPSAMPLE: '1in1'
-  COUPLED: True
+  UPSAMPLE: '1in0'
+  COUPLED: False
   WET_SURFACE: '1in10' #'1in10'
-  SNOW: 'uniform_gunn_1in2' #'1in10'
-  FOG_AUGMENTATION: 'CVL_uniform'
+  SNOW: 'uniform_gunn_1in10' #'1in10'
+  FOG_AUGMENTATION: 'CVL_1in10'
   FOG_NOISE_VARIANT: 'v2'
   FOG_GAIN: True
-  FOV_POINTS_ONLY: True
+  FOV_POINTS_ONLY: False
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
     - name: randomcuboidLidar
       crop: 0.5
@@ -64,11 +64,11 @@ optimizer:
   lr:
     name: "cosine"
     base_lr: 0.1 #0.1 for linear_probe
-    final_lr: 0 #0 for linear probe
+    final_lr: 0 #0 for linear_probe
 
 model:
-  name: "dc"
-  model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/dc"
+  name: "dc_snow1in10_wet_fog1in10_cube_upsampleF"
+  model_dir: "checkpoints/pointnetMSG_train_all_60/dc"
   model_input: ["points", "points_moco"]
   model_feature: [["fp2"], ["fp2"]]
   Lidar: True
