@@ -257,10 +257,10 @@ class PointNet2MSG_DepthContrast(PointNet2MSG):
                 point_features: (N, C)
         """
         batch_size = pointcloud.shape[0]
-        points = pointcloud
-        xyz, features = self.break_up_pc(points)
+        points = pointcloud #(8, 16384, 4)
+        xyz, features = self.break_up_pc(points) #(8, 16384, 3), #(8, 16384, 1)
 
-        features = features.view(batch_size, -1, features.shape[-1]).permute(0, 2, 1).contiguous() if features is not None else None
+        features = features.view(batch_size, -1, features.shape[-1]).permute(0, 2, 1).contiguous() if features is not None else None # (8, 16384, 1) -> (8, 1, 16384)
         l_xyz, l_features = [xyz], [features]
         for i in range(len(self.SA_modules)):
             assert l_features[i].is_contiguous()
@@ -279,10 +279,10 @@ class PointNet2MSG_DepthContrast(PointNet2MSG):
 
         # print("Transformed" , l_xyz[0][0,0,:])
         # print("Transformed" , xyz[0,0,:])
-        assert np.abs((l_xyz[0] - xyz).detach().cpu().numpy()).max() < 1e-4
+        # assert np.abs((l_xyz[0] - xyz).detach().cpu().numpy()).max() < 1e-4
 
         # Undo transformation for linear probe
-        xyz = xyz @ aug_matrix.inverse()
+        # xyz = xyz @ aug_matrix.inverse()
         # print("Transformed" , l_xyz[0][0,0,:])
         # print("Un-Transformed" , xyz[0,0,:])
         # print("Un-Transformed" , l_xyz[0][0,0,:] @ aug_matrix[0].inverse())
@@ -303,13 +303,14 @@ class PointNet2MSG_DepthContrast(PointNet2MSG):
                 feat = feat.view(batch_size, -1, feat.shape[-1]).permute(0, 2, 1).contiguous() #(8, 128, npoints=16384) -> (8, 16384, 128) 
 
             if self.use_mlp:
-                feat = self.head(feat) #linear probe out (8=batch, 16384=npoints, 5=nclasses)
+                feat = self.head(feat) #linear probe out (8=batch, 16384=npoints, 5=nclasses), #Dc out (8, 128)
             out_feats[out_feat_keys.index(key)] = feat
         
         vox_coords = None
         point_coords = None
         if self.linear_probe:
-            point_coords = xyz
+            # Undo transformation for linear probe
+            point_coords = xyz @ aug_matrix.inverse()
             
         return out_feats, vox_coords, point_coords
 
