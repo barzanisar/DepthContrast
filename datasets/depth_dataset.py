@@ -630,19 +630,37 @@ class DenseDataset(DepthContrastDataset):
             #Fog augmentation
             apply_fog = info['annos']['weather'] == 'clear' and not snowfall_augmentation_applied and 'FOG_AUGMENTATION' in self.cfg
             if apply_fog:
-                if not pc_cropped:
-                    points_moco = self.crop_pc(points_moco)
-                    pc_cropped = True
-                alphas = ['0.005', '0.010', '0.020', '0.030', '0.060']
-                curriculum_stage = int(np.random.randint(low=0, high=len(alphas)))
-                alpha = alphas[curriculum_stage]
-
-                if alpha != '0.000': 
-                    mor = np.log(20) / float(alpha)
-
                 augmentation_method = self.cfg['FOG_AUGMENTATION'].split('_')[0]
+                chance = self.cfg['FOG_AUGMENTATION'].split('_')[-1]
+                choices = [0]
 
-                points_moco = self.foggify(points_moco, sample_idx, alpha, augmentation_method)
+                if chance == '8in9':
+                    choices = [1, 1, 1, 1, 1, 1, 1, 1, 0]
+                elif chance == '4in5':
+                    choices = [1, 1, 1, 1, 0]
+                elif chance == '1in2':
+                    choices = [1, 0]
+                elif chance == '1in1':
+                    choices = [1]
+                elif chance == '1in4':
+                    choices = [1, 0, 0, 0]
+                elif chance == '1in10': #recommended by lidar snow sim paper
+                    choices = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+                if np.random.choice(choices):
+                    if not pc_cropped:
+                        points_moco = self.crop_pc(points_moco)
+                        pc_cropped = True
+                    alphas = ['0.005', '0.010', '0.020', '0.030', '0.060']
+                    curriculum_stage = int(np.random.randint(low=0, high=len(alphas)))
+                    alpha = alphas[curriculum_stage]
+
+                    if alpha != '0.000': 
+                        mor = np.log(20) / float(alpha)
+
+                    
+
+                    points_moco = self.foggify(points_moco, sample_idx, alpha, augmentation_method)
 
         
         # Add gt_boxes for linear probing
