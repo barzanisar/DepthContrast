@@ -72,16 +72,14 @@ class UNetV2_concat(nn.Module):
         super().__init__()
 
         input_channels = 4
-        voxel_size = [0.1, 0.1, 0.2]
-        point_cloud_range = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
+        voxel_size = [0.05, 0.05, 0.1] #[0.1, 0.1, 0.2]
+        point_cloud_range = np.array([0., -40., -3., 70.4, 40., 1.], dtype=np.float32) #DENSE dataset
 
-        grid_size = (point_cloud_range[3:6] - point_cloud_range[0:3]) / np.array(voxel_size) #[ 750 1500   30]
+        grid_size = (point_cloud_range[3:6] - point_cloud_range[0:3]) / np.array(voxel_size) # x,y,z = [704, 800, 20]
         grid_size = np.round(grid_size).astype(np.int64)
         model_cfg = {'NAME': 'UNetV2', 'RETURN_ENCODED_TENSOR': False}
         
-        self.sparse_shape = grid_size[::-1] + [1, 0, 0] #z,y,x grid size
-        self.voxel_size = voxel_size
-        self.point_cloud_range = point_cloud_range
+        self.sparse_shape = grid_size[::-1] + [1, 0, 0] #z,y,x grid size = [21, 800, 704]
 
         norm_fn = partial(nn.BatchNorm1d, eps=1e-3, momentum=0.01)
 
@@ -179,7 +177,7 @@ class UNetV2_concat(nn.Module):
         x = replace_feature(x, features.view(n, out_channels, -1).sum(dim=2))
         return x
 
-    def forward(self, x, out_feat_keys=None):
+    def forward(self, x, out_feat_keys=None, aug_matrix=None):
         """
         Args:
             batch_dict:
@@ -192,16 +190,16 @@ class UNetV2_concat(nn.Module):
                 point_features: (N, C)
         """
         ### Pre processing
-        voxel_features, voxel_num_points = x['voxels'], x['voxel_num_points']
-        points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False)
-        normalizer = torch.clamp_min(voxel_num_points.view(-1, 1), min=1.0).type_as(voxel_features)
+        voxel_features, voxel_num_points = x['voxels'], x['voxel_num_points'] #voxel_features = (num voxels, 5=max points per voxel, 4=xyzi), voxel_num_points = (num voxels, 1)
+        points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False) #(num voxels, 5=max points per voxel, 4=xyzi) -> sum points per voxel (num voxels, 4=xyzi sum)
+        normalizer = torch.clamp_min(voxel_num_points.view(-1, 1), min=1.0).type_as(voxel_features) # (num voxels, 1) gives num points per voxel with min clamped to 1, so 0 points will be counted as 1
         points_mean = points_mean / normalizer
-        voxel_features = points_mean.contiguous()
+        voxel_features = points_mean.contiguous() # voxel_features =(num voxels, 4=xyzi mean of points in that voxel)
 
-        temp = x['voxel_coords'].detach().cpu().numpy()
+        temp = x['voxel_coords'].detach().cpu().numpy() #(num voxels, 4=batchidx,z,y,x grid coord)
         
         batch_size = len(np.unique(temp[:,0]))
-        voxel_coords = x['voxel_coords']
+        voxel_coords = x['voxel_coords'] #(num voxels, 4=batchidx,z,y,x grid coord)
 
         input_sp_tensor = spconv.SparseConvTensor(
             features=voxel_features.float(),
@@ -211,10 +209,10 @@ class UNetV2_concat(nn.Module):
         )
         x = self.conv_input(input_sp_tensor)
 
-        x_conv1 = self.conv1(x)
-        x_conv2 = self.conv2(x_conv1)
-        x_conv3 = self.conv3(x_conv2)
-        x_conv4 = self.conv4(x_conv3)
+        x_conv1 = self.conv1(x)       #spatial_shape: (21, 800, 704) <- (21, 800, 704)
+        x_conv2 = self.conv2(x_conv1) #spatial_shape: (11, 400, 352) <- (21, 800, 704)
+        x_conv3 = self.conv3(x_conv2) #spatial_shape: (6, 200, 176) <- (11, 400, 352)
+        x_conv4 = self.conv4(x_conv3) #spatial_shape: (2, 100, 88) <- (6, 200, 176)
 
         if self.conv_out is not None:
             # for detection head
@@ -224,13 +222,13 @@ class UNetV2_concat(nn.Module):
             #batch_dict['encoded_spconv_tensor_stride'] = 8
 
         # for segmentation head
-        # [400, 352, 11] <- [200, 176, 5]
+        # [6, 200, 176] <- [2, 100, 88]
         x_up4 = self.UR_block_forward(x_conv4, x_conv4, self.conv_up_t4, self.conv_up_m4, self.inv_conv4)
-        # [800, 704, 21] <- [400, 352, 11]
+        # [11, 400, 352] <- [6, 200, 176]
         x_up3 = self.UR_block_forward(x_conv3, x_up4, self.conv_up_t3, self.conv_up_m3, self.inv_conv3)
-        # [1600, 1408, 41] <- [800, 704, 21]
+        # [21, 800, 704] <- [11, 400, 352]
         x_up2 = self.UR_block_forward(x_conv2, x_up3, self.conv_up_t2, self.conv_up_m2, self.inv_conv2)
-        # [1600, 1408, 41] <- [1600, 1408, 41]
+        # [21, 800, 704] <- [21, 800, 704]
         x_up1 = self.UR_block_forward(x_conv1, x_up2, self.conv_up_t1, self.conv_up_m1, self.conv5)
         
         end_points = {}
@@ -249,7 +247,7 @@ class UNetV2_concat(nn.Module):
                 for idx in range(len(end_points['indice'])):
                     temp_idx = end_points['indice'][idx][:,0] == i
                     temp_f = end_points['conv4_features'][idx][temp_idx].unsqueeze(0).permute(0, 2, 1).contiguous()
-                    tempfeat.append(F.max_pool1d(temp_f, temp_f.shape[-1]).squeeze(-1)) #(1, 64, numvox in one pc for that conv block idx= 4096)-->(1, 64) max pool to get one vector for on pc
+                    tempfeat.append(F.max_pool1d(temp_f, temp_f.shape[-1]).squeeze(-1)) #(1, 64, numvox in one pc for that conv block idx= 10754)-->(1, 64) max pool to get one vector for one pc
                 featlist.append(torch.cat(tempfeat, -1)) # featlist.append((1, 128) feature for pc 0)
             feat = torch.cat(featlist, 0) #(8 pcs, 128) -->change to (num big voxels, 128)
             if self.use_mlp:

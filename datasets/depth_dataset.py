@@ -86,7 +86,7 @@ class DepthContrastDataset(Dataset):
 
         #### Add the voxelizer here
         if ("Lidar" in cfg) and cfg["VOX"]:
-            self.VOXEL_SIZE = [0.1, 0.1, 0.2]
+            self.VOXEL_SIZE = [0.05, 0.05, 0.1] #[0.1, 0.1, 0.2]
 
             self.MAX_POINTS_PER_VOXEL = 5
             self.MAX_NUMBER_OF_VOXELS = 16000
@@ -122,9 +122,9 @@ class DepthContrastDataset(Dataset):
                 voxels, coordinates, num_points = voxel_output
 
             data_dict = {}
-            data_dict['voxels'] = voxels
-            data_dict['voxel_coords'] = coordinates
-            data_dict['voxel_num_points'] = num_points
+            data_dict['voxels'] = voxels #dim =(num_voxels, max_points_per_voxel=5, coords+feats = 3+1=4), gives xyzi value for each point in each voxel, if num points in voxel < 5, fill in zeros
+            data_dict['voxel_coords'] = coordinates #dim= (num voxels, 3), gives z,y,x grid coord of each voxel 
+            data_dict['voxel_num_points'] = num_points # dim = num_voxels, gives num points in each voxel
             return data_dict
     
     def prepare_data(self, data_dict, index):
@@ -201,7 +201,7 @@ class DepthContrastDataset(Dataset):
             tempitem = {"data": item["vox"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=True)
             coords = tempdata["data"][0][:, :3]
-            feats = tempdata["data"][0][:, 3:6] * 255.0  # np.ones(coords.shape)*255.0
+            feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
             labels = np.zeros(coords.shape[0]).astype(np.int32)
             item["vox"] = [self.toVox(coords, feats, labels)]
             item["vox_aug_matrix"] = tempdata['aug_trans_matrix']
@@ -210,17 +210,17 @@ class DepthContrastDataset(Dataset):
             tempitem = {"data": item["vox_moco"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=True)
             coords = tempdata["data"][0][:, :3]
-            feats = tempdata["data"][0][:, 3:6] * 255.0  # np.ones(coords.shape)*255.0
+            feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
             labels = np.zeros(coords.shape[0]).astype(np.int32)
             item["vox_moco"] = [self.toVox(coords, feats, labels)]
-            item["vox_moco_matrix"] = tempdata['aug_trans_matrix']
+            item["vox_moco_aug_matrix"] = tempdata['aug_trans_matrix']
         else:
             # Points -> transform -> voxelize if Vox
             tempitem = {"data": item["data"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=cfg["VOX"])
             if cfg["VOX"]:
                 coords = tempdata["data"][0][:, :3]
-                feats = tempdata["data"][0][:, 3:6]*255.0
+                feats = tempdata["data"][0][:, 3:6] # *255.0
                 labels = np.zeros(coords.shape[0]).astype(np.int32)
                 item["data"] = [self.toVox(coords, feats, labels)]
             else:
@@ -232,14 +232,14 @@ class DepthContrastDataset(Dataset):
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=cfg["VOX"])
             if cfg["VOX"]:
                 coords = tempdata["data"][0][:, :3]
-                feats = tempdata["data"][0][:, 3:6] * 255.0  # np.ones(coords.shape)*255.0
+                feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
                 labels = np.zeros(coords.shape[0]).astype(np.int32)
                 item["data_moco"] = [self.toVox(coords, feats, labels)]
             else:
                 item["data_moco"] = tempdata["data"]
             item["data_moco_aug_matrix"] = tempdata['aug_trans_matrix']
             
-            data_dict.update(item)
+        data_dict.update(item)
 
         return data_dict
 

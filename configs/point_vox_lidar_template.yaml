@@ -1,25 +1,36 @@
-resume: false
-test_only: false
+wb_extra_tags: ['pointnet_VoxelBackBone8x', 'train_all_60']
+resume: true
+linear_probe: false # True for linear probe
 num_workers: 8
 
-required_devices: 1
-no_test: false
-debug: false
-log2tb: true
-allow_double_bs: false
-seed: 0
-distributed: false
-test_freq: 10
-print_freq: 5
+log2tb: false
+log2wb: false
+
+test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
+print_freq: 10 # print progress after processing every <freq> iters or batches
+ckpt_save_interval: 50
+
+WANDB:
+  ENABLED: False
+  PROJECT: DepthContrast_dense
+  ENTITY: trailab
+  SUMMARY_HIGHEST_METRIC: None
+  dir: '/DepthContrast/output'
+
 
 dataset:
-  DATASET_NAMES: [waymo]
-  DATA_PATHS: ['data/waymo/ImageSets/waymo.npy']
+  DATASET_NAMES: [DenseDataset]
+  INFO_PATHS: 
+    train: ['dense_infos_train_all_60.pkl']
   BATCHSIZE_PER_REPLICA: 8
-  LABEL_TYPE: sample_index
+  LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: point_vox
+  SENSOR_TYPE: 'hdl64'
+  SIGNAL_TYPE: 'strongest'
   Lidar: True
   VOX: True
+  APPLY_WEATHER_AUG: False # False for linear Probe
+  FOV_POINTS_ONLY: False
   POINT_TRANSFORMS:
     - name: randomcuboidLidar
       crop: 0.5
@@ -48,16 +59,16 @@ optimizer:
     final_lr: 0.00012
 
 model:
-  name: "PointnetMSG_UnetV2"
-  model_dir: "checkpoints/pointnetMSG_UnetV2_within_format"
+  name: "PointnetMSG_VoxelBackBone8x"
+  model_dir: "checkpoints/pointnetMSG_VoxelBackBone8x"
   model_input: ["points", "points_moco", "vox", "vox_moco"]
   model_feature: [["fp2"], ["fp2"], ["conv4"], ["conv4"]]
   Lidar: True
-  arch_point: "pointnet_msg"
+  arch_point: "pointnet_msg_depthcontrast"
   args_point:
     use_mlp: True
     mlp_dim: [128, 128, 128]
-  arch_vox: "UNetV2"
+  arch_vox: "VoxelBackBone8x"
   args_vox:
     use_mlp: True
     mlp_dim: [128, 128, 128]

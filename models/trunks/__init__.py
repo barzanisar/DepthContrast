@@ -19,6 +19,7 @@ try:
     from models.trunks.pointnet2_backbone import PointNet2MSG_DepthContrast
     from models.trunks.pointnet2_backbone import PointNet2MSG_VoxelizedDepthContrast
     from models.trunks.spconv_unet import UNetV2_concat as UNetV2
+    from models.trunks.spconv_backbone import VoxelBackBone8x
 except:
     PointNet2MSG = None
     UNetV2 = None
@@ -29,6 +30,7 @@ TRUNKS = {
     "pointnet_msg_depthcontrast": PointNet2MSG_DepthContrast,
     "pointnet_msg_voxelizeddepthcontrast": PointNet2MSG_VoxelizedDepthContrast,
     "UNetV2": UNetV2,
+    "VoxelBackBone8x": VoxelBackBone8x
 }
 
 
