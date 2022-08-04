@@ -63,25 +63,15 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         
     def multi_input_with_head_mapping_forward(self, batch):
         all_outputs = []
-        all_vox_coords = []
-        all_point_coords = []
         for input_idx in range(len(self.model_input)): #['points', 'points_moco']
             input_key = self.model_input[input_idx]
             feature_names = self.model_feature[input_idx]
             if "moco" in input_key:
-                outputs, vox_coords, point_coords = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
+                outputs = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
             else:
-                outputs, vox_coords, point_coords = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
-            if len(outputs) == 1:
-                # single head. do not make nested list
-                outputs = outputs[0]
-            else:
-                all_outputs += outputs
-                continue
+                outputs = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
             all_outputs.append(outputs)
-            all_vox_coords.append(vox_coords)
-            all_point_coords.append(point_coords)
-        return all_outputs, all_vox_coords, all_point_coords
+        return all_outputs
     
     def _single_input_forward(self, batch, feature_names, input_key, target, aug_matrix=None):
         if "vox" not in input_key:
@@ -116,8 +106,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                     aug_matrix, non_blocking=True
                 )
         
-        feats, vox_coords, point_coords = self.trunk[target](batch, feature_names, aug_matrix)
-        return feats, vox_coords, point_coords
+        output = self.trunk[target](batch, feature_names, aug_matrix)
+        return output
 
     @torch.no_grad()
     def _momentum_update_key(self, target=1):
@@ -228,30 +218,6 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             if torch.distributed.is_initialized():
                 if "vox" not in input_key: 
                     batch, idx_unshuffle = self._batch_shuffle_ddp(batch, vox=False)
-                if False:
-                    ### Skip batch shuffle for vox for now
-                    ### Does not give performance gain
-                    if ("Lidar" not in self.config):
-                        batch_inds = points_coords[:,0].detach().cpu().numpy()
-                        points_coords = main_utils.recursive_copy_to_gpu(
-                            points_coords, non_blocking=True
-                        )
-                        points_feats = main_utils.recursive_copy_to_gpu(
-                            points_feats, non_blocking=True
-                        )
-                        
-                        point_coord_split = []
-                        point_feat_split = []
-                    
-                        for batch_ind in np.unique(batch_inds):
-                            point_coord_split.append(points_coords[points_coords[:,0]==batch_ind])
-                            point_feat_split.append(points_feats[points_coords[:,0]==batch_ind])
-                    
-                        points_coords, idx_unshuffle, idx_shuffle = self._batch_shuffle_ddp(point_coord_split, vox=True)
-                        points_feats, _, _ = self._batch_shuffle_ddp(point_feat_split, vox=True, idx_shuffle=idx_shuffle)
-                        batch = SparseTensor(points_feats, points_coords.float())
-                    else:
-                        print ("Not implemented yet")    
             else:
                 if ('vox' in input_key) and ("Lidar" not in self.config):
                     batch = SparseTensor(points_feats, points_coords.float())
@@ -272,13 +238,18 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                         aug_matrix, non_blocking=True
                     )
             
-            feats, vox_coords, point_coords = self.trunk[target](batch, feature_names, aug_matrix)
+            output = self.trunk[target](batch, feature_names, aug_matrix)
             if torch.distributed.is_initialized():
                 if "vox" not in input_key:
-                    feats = [self._batch_unshuffle_ddp(feats[0], idx_unshuffle)]
-                return feats, vox_coords, point_coords
+                    if 'dc_feats' in feature_names:
+                        output['dc_feats'] = [self._batch_unshuffle_ddp(output['dc_feats'], idx_unshuffle)]
+                    if 'vdc_feats' in feature_names:
+                        output['vdc_feats'] = [self._batch_unshuffle_ddp(output['vdc_feats'], idx_unshuffle)]
+                    if self.linear_probe:
+                        output['linear_probe_feats'] = [self._batch_unshuffle_ddp(output['linear_probe_feats'], idx_unshuffle)]
+                return output
             else:
-                return feats, vox_coords, point_coords
+                return output
 
     def forward(self, batch):
         return self.multi_input_with_head_mapping_forward(batch)

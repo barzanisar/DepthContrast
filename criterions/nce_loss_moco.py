@@ -56,19 +56,17 @@ class NCELossMoco(nn.Module):
 
         self.npid0_w = float(config["within_format_weight0"])
         self.npid1_w = float(config["within_format_weight1"])
-        self.cmc0_w = float(config["across_format_weight0"])
-        self.cmc1_w = float(config["across_format_weight1"])
-        
+
         self.K = int(config["NCE_LOSS"]["NUM_NEGATIVES"])
         self.dim = int(config["NCE_LOSS"]["EMBEDDING_DIM"])
         self.T = float(config["NCE_LOSS"]["TEMPERATURE"])
 
-        self.register_buffer("queue", torch.randn(self.dim, self.K)) # queue of pointnet based negative key embeddings
+        self.register_buffer("queue", torch.randn(self.dim, self.K)) # queue of dc (either pointnet or vox) based negative key embeddings
         self.queue = nn.functional.normalize(self.queue, dim=0)
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
         
         if self.other_queue:
-            self.register_buffer("queue_other", torch.randn(self.dim, self.K))  #queue of UNET based negative key embeddings
+            self.register_buffer("queue_other", torch.randn(self.dim, self.K))  #queue of vdc (either pointnet or vox) based negative key embeddings
             self.queue_other = nn.functional.normalize(self.queue_other, dim=0)
             self.register_buffer("queue_other_ptr", torch.zeros(1, dtype=torch.long))
             
@@ -102,32 +100,40 @@ class NCELossMoco(nn.Module):
 
         if self.other_queue:
             # gather keys before updating queue
+            obatch_size = okeys.shape[0]
             okeys = concat_all_gather(okeys)
                 
             other_ptr = int(self.queue_other_ptr)
-        
+            if (other_ptr + obatch_size) > self.queue_other.shape[1]:
+                obatch_size = self.queue_other.shape[1] - other_ptr
             # replace the keys at ptr (dequeue and enqueue)
-            self.queue_other[:, other_ptr:other_ptr + batch_size] = torch.transpose(okeys, 0, 1)#okeys.T
-            other_ptr = (other_ptr + batch_size) % self.K  # move pointer
+            self.queue_other[:, other_ptr:other_ptr + obatch_size] = torch.transpose(okeys, 0, 1)[:, 0:obatch_size] #okeys.T
+            other_ptr = (other_ptr + obatch_size) % self.K  # move pointer
         
             self.queue_other_ptr[0] = other_ptr
                                                                         
-    def forward(self, output, vox_coords):
-        assert isinstance(
-            output, list
-        ), "Model output should be a list of tensors. Got Type {}".format(type(output))
+    def forward(self, output_dict):
+        # assert isinstance(
+        #     output, list
+        # ), "Model output should be a list of tensors. Got Type {}".format(type(output))
+
+        output_0 = output_dict[0]['dc_feats'] if output_dict[0]['dc_feats'] is not None else output_dict[0]['vdc_feats'] #query features (8, 128)
+        output_1 = output_dict[1]['dc_feats'] if output_dict[1]['dc_feats'] is not None else output_dict[1]['vdc_feats'] #key_features = moco features (8, 128)
+        if self.other_queue:
+            output_2 = output_dict[0]['vdc_feats'] #query features (8 * num voxels, 128)
+            output_3 = output_dict[1]['vdc_feats'] #key_features = moco features (8 * num voxels, 128)
         
         if self.normalize_embedding:
-            normalized_output1 = nn.functional.normalize(output[0], dim=1, p=2) #query pointnet embedding
-            normalized_output2 = nn.functional.normalize(output[1], dim=1, p=2) #key pointnet embedding
+            normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query dc embedding or vdc
+            normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key dc embedding or vdc
             if self.other_queue:
-                normalized_output3 = nn.functional.normalize(output[2], dim=1, p=2) #query unet embedding
-                normalized_output4 = nn.functional.normalize(output[3], dim=1, p=2) #key unet embedding
+                normalized_output3 = nn.functional.normalize(output_2, dim=1, p=2) #query vdc embedding
+                normalized_output4 = nn.functional.normalize(output_3, dim=1, p=2) #key vdc embedding
 
         # Voxelized Depth Contrast
-        if vox_coords[0] is not None:
-            coords_0 = vox_coords[0] # vox_coords from query encoder = list of len total num voxels=1181, each element has a numpy array with a voxel coord = bzyx
-            coords_1 = vox_coords[1] # vox_coords from key encoder
+        if output_dict[0]['vdc_voxel_bzyx'] is not None:
+            coords_0 = output_dict[0]['vdc_voxel_bzyx'] # vox_coords from query encoder = list of len total num voxels=1181, each element has a numpy array with a voxel coord = bzyx
+            coords_1 = output_dict[1]['vdc_voxel_bzyx'] # vox_coords from key encoder
 
             # Find matching vox_coords in both in order to rearrange normalized output1 and output2 in the order of matching voxel features
             map_coord0_idx0 = {str(coords_0[i, :]): i for i in range(coords_0.shape[0])}
@@ -139,8 +145,13 @@ class NCELossMoco(nn.Module):
                     matched_idx_0.append(idx_0)
                     matched_idx_1.append(idx_1)
 
-            normalized_output1 = normalized_output1[matched_idx_0, :] #(matched num voxels, 128)
-            normalized_output2 = normalized_output2[matched_idx_1, :] #(matched num voxels, 128)
+            if self.other_queue:
+                normalized_output3 = normalized_output3[matched_idx_0, :] #(matched num voxels, 128)
+                normalized_output4 = normalized_output4[matched_idx_1, :] #(matched num voxels, 128)
+            else:
+                normalized_output1 = normalized_output1[matched_idx_0, :] #(matched num voxels, 128)
+                normalized_output2 = normalized_output2[matched_idx_1, :] #(matched num voxels, 128)
+
 
         # positive logits: Nx1 = batch size of positive examples (or matched num voxels)x 1
         l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1) #(v_i_1).transpose() * v_i_2 => dim (n = matched num voxels)
@@ -155,19 +166,6 @@ class NCELossMoco(nn.Module):
         logits /= self.T
 
         if self.other_queue:
-            
-            l_pos_p2i = torch.einsum('nc,nc->n', [normalized_output1, normalized_output4]).unsqueeze(-1)
-            l_neg_p2i = torch.einsum('nc,ck->nk', [normalized_output1, self.queue_other.clone().detach()])
-            logits_p2i = torch.cat([l_pos_p2i, l_neg_p2i], dim=1)
-            logits_p2i /= self.T
-
-            
-            l_pos_i2p = torch.einsum('nc,nc->n', [normalized_output3, normalized_output2]).unsqueeze(-1)
-            l_neg_i2p = torch.einsum('nc,ck->nk', [normalized_output3, self.queue.clone().detach()])
-            logits_i2p = torch.cat([l_pos_i2p, l_neg_i2p], dim=1)
-            logits_i2p /= self.T
-
-            
             l_pos_other = torch.einsum('nc,nc->n', [normalized_output3, normalized_output4]).unsqueeze(-1)
             l_neg_other = torch.einsum('nc,ck->nk', [normalized_output3, self.queue_other.clone().detach()])
             logits_other = torch.cat([l_pos_other, l_neg_other], dim=1)
@@ -182,32 +180,25 @@ class NCELossMoco(nn.Module):
         labels = torch.zeros(
             logits.shape[0], device=logits.device, dtype=torch.int64
         ) # because zero'th class is the true class
+
+        labels_other = torch.zeros(
+            logits_other.shape[0], device=logits_other.device, dtype=torch.int64
+        ) # because zero'th class is the true class
         
         loss_npid = self.xe_criterion(torch.squeeze(logits), labels) #loss between pointnet query and key embedding
 
         loss_npid_other = torch.tensor(0)
-        loss_cmc_p2i = torch.tensor(0)
-        loss_cmc_i2p = torch.tensor(0)
         
+        curr_loss = 0
+        curr_loss += loss_npid * self.npid0_w
         if self.other_queue:
-            loss_cmc_p2i = self.xe_criterion(torch.squeeze(logits_p2i), labels) #loss between pointnet query and unet key embedding
-            loss_cmc_i2p = self.xe_criterion(torch.squeeze(logits_i2p), labels) #loss between unet query and pointnet key embedding
-            loss_npid_other = self.xe_criterion(torch.squeeze(logits_other), labels) #loss between unet query and key embedding
-            
-            curr_loss = 0
-            for ltype in self.loss_list:
-                if ltype == "CMC":
-                    curr_loss += loss_cmc_p2i * self.cmc0_w + loss_cmc_i2p * self.cmc1_w
-                elif ltype == "NPID":
-                    curr_loss += loss_npid * self.npid0_w
-                    curr_loss += loss_npid_other * self.npid1_w
-        else:
-            curr_loss = 0
-            curr_loss += loss_npid * self.npid0_w
+            loss_npid_other = self.xe_criterion(torch.squeeze(logits_other), labels_other) #loss between unet query and key embedding
+            curr_loss += loss_npid_other * self.npid1_w
+
                         
         loss = curr_loss
 
-        return loss, [loss_npid, loss_npid_other, loss_cmc_p2i, loss_cmc_i2p]
+        return loss, [loss_npid, loss_npid_other]
 
     def __repr__(self):
         repr_dict = {

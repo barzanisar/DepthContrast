@@ -179,14 +179,15 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         data_time.update(time.time() - end) # Time to load one batch
 
         if phase == 'train':
-            embedding, vox_coords, _ = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
+            output = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
         else:
             with torch.no_grad():
-                embedding, vox_coords, _ = model(sample)
+                output = model(sample)
 
         # compute loss
-        loss, loss_debug = criterion(embedding, vox_coords)
-        loss_meter.update(loss.item(), embedding[0].size(0))
+        
+        loss, loss_debug = criterion(output)
+        loss_meter.update(loss.item(), sample.size(0))
 
 
         # compute gradient and do SGD step during training

@@ -11,7 +11,21 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from models.trunks.mlp import MLP
-
+try:
+    try:
+        try:
+            from spconv.utils import VoxelGeneratorV2 as VoxelGenerator
+            SPCONV_VER = 1
+        except:
+            from spconv.utils import VoxelGenerator
+            SPCONV_VER = 1
+    except:
+        #from spconv.utils import Point2VoxelCPU3d as VoxelGenerator
+        #from spconv.utils import Point2VoxelGPU3d as VoxelGenerator
+        from spconv.pytorch.utils import PointToVoxel as VoxelGenerator
+        SPCONV_VER = 2
+except:
+    pass
 
 def post_act_block(in_channels, out_channels, kernel_size, indice_key=None, stride=1, padding=0,
                    conv_type='subm', norm_fn=None):
@@ -89,12 +103,39 @@ class SparseBasicBlock(spconv.SparseModule):
         out.features = self.relu(out.features)
 
         return out
+def point_to_voxel_func(device = torch.device("cpu:0")):
+    VOXEL_SIZE = [5.0, 5.0, 6.0]
+    ### Waymo lidar range
+    #POINT_RANGE = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
+    POINT_RANGE = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32) ### KITTI and DENSE
+    MAX_POINTS_PER_VOXEL = 2000
+    MAX_NUMBER_OF_VOXELS = 400
+    NUM_POINT_FEATURES= 3+128
+    if SPCONV_VER == 1:
+        voxel_generator = VoxelGenerator(
+            voxel_size=VOXEL_SIZE,
+            point_cloud_range=POINT_RANGE,
+            max_num_points=MAX_POINTS_PER_VOXEL,
+            max_voxels=MAX_NUMBER_OF_VOXELS,
+            device = device
+        )
+    else:
+        voxel_generator = VoxelGenerator(
+            vsize_xyz=VOXEL_SIZE,
+            coors_range_xyz=POINT_RANGE,
+            num_point_features=NUM_POINT_FEATURES,
+            max_num_points_per_voxel=MAX_POINTS_PER_VOXEL,
+            max_num_voxels=MAX_NUMBER_OF_VOXELS,
+            device = device
+        )
+
+    return voxel_generator
 
 import numpy as np
 class VoxelBackBone8x(nn.Module):
-    def __init__(self, use_mlp=False, mlp_dim=None, **kwargs):
+    def __init__(self, use_mlp=False, mlp_dim=None, linear_probe=False):
         super().__init__()
-
+        self.linear_probe = linear_probe
         input_channels = 4
         voxel_size = [0.05, 0.05, 0.1] #[0.1, 0.1, 0.2]
         point_cloud_range = np.array([0., -40., -3., 70.4, 40., 1.], dtype=np.float32) #DENSE dataset
@@ -197,40 +238,99 @@ class VoxelBackBone8x(nn.Module):
         # [200, 176, 5] -> [200, 176, 2]
         out = self.conv_out(x_conv4)
 
-        voxel_centers_x_and_xconv1 = get_voxel_centers(voxel_coords[:,1:], downsample_times=1, voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
-        voxel_centers_xconv2 = get_voxel_centers(x_conv2.indices[:,1:], downsample_times=2, voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
-        voxel_centers_xconv3 = get_voxel_centers(x_conv3.indices[:,1:], downsample_times=4, voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
-        voxel_centers_xconv4 = get_voxel_centers(x_conv4.indices[:,1:], downsample_times=8, voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
-        voxel_centers_out = get_voxel_centers(out.indices[:,1:], downsample_times=torch.tensor([8,8,16], device=out.indices.device), voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
+        # voxel_centers_x_and_xconv1 = get_voxel_centers(voxel_coords[:,1:], downsample_times=1, voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
+        # voxel_centers_xconv2 = get_voxel_centers(x_conv2.indices[:,1:], downsample_times=2, voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
+        # voxel_centers_xconv3 = get_voxel_centers(x_conv3.indices[:,1:], downsample_times=4, voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
+        # voxel_centers_xconv4 = get_voxel_centers(x_conv4.indices[:,1:], downsample_times=8, voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
+
+        # Dims:
+        # dc_feats: (8, 128)
+        # vdc_feats: (8 * num_big_voxels in a pc, 128)
+        # vdc_voxel_bzyx : (8 * num_big_voxels in a pc, 4) = batch, z, y, x ??
+        # linear_probe_feats: list of 8, each element's dim (num out voxels in a pc, 128) same as out.features but in diff view 
+        # linear_probe_xyz: list of 8, each element's dim (num out voxels in a pc, 3)
+        out_dict = {'dc_feats': None, \
+            'vdc_feats': None, 'vdc_voxel_bzyx': None, \
+            'linear_probe_feats': None, 'linear_probe_xyz': None, \
+            'linear_probe_voxel_size': None}       
         
-        end_points = {}
+        dc_feat_dict = {}
 
-        end_points['conv4_features'] = [out.features] #[x_conv4.features, x_conv3.features]
-        end_points['indice'] = [out.indices] #[x_conv4.indices, x_conv3.indices]
+        dc_feat_dict['conv4_features'] = [out.features] #[x_conv4.features, x_conv3.features]
+        dc_feat_dict['indice'] = [out.indices] #[x_conv4.indices, x_conv3.indices]
         
-        out_feats = [None] * len(out_feat_keys)
-
-        for key in out_feat_keys:
-            feat = end_points[key+"_features"]
-
-            featlist = []
-            for i in range(batch_size):
-                tempfeat = []
-                for idx in range(len(end_points['indice'])):
-                    temp_idx = end_points['indice'][idx][:,0] == i
-                    temp_f = end_points['conv4_features'][idx][temp_idx].unsqueeze(0).permute(0, 2, 1).contiguous()
-                    tempfeat.append(F.max_pool1d(temp_f, temp_f.shape[-1]).squeeze(-1)) #(1, 64, numvox in one pc for that conv block idx= 10754)-->(1, 64) max pool to get one vector for one pc
-                featlist.append(torch.cat(tempfeat, -1)) # featlist.append((1, 128) feature for pc 0)
-            feat = torch.cat(featlist, 0) #(8 pcs, 128) -->change to (num big voxels, 128)
+        if self.linear_probe:
+            out_xyz = get_voxel_centers(out.indices[:,1:], downsample_times=torch.tensor([8,8,16], device=out.indices.device), voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
+            batch_voxel_features_list = []
+            out_xyz_list = []
             if self.use_mlp:
-                feat = self.head(feat)
-            out_feats[out_feat_keys.index(key)] = feat ### Just use smlp
-        
-        
-        vox_coords = None #For Voxelized depth contrast 
-        point_coords = None #For linear probe
+                out_features = self.head(out.features)
 
-        return out_feats, vox_coords, point_coords
+            for i in range(batch_size):
+                voxel_idx_in_pc_i = out.indices[:,0] == i # (true false mask of len num vox total in all pcs)
+                features_in_pc_i = out_features[voxel_idx_in_pc_i] #(num vox in pc i, 128)
+                xyz_pc_i = out_xyz[voxel_idx_in_pc_i] #(num vox in pc i, 3)
+                xyz_pc_i = xyz_pc_i @ aug_matrix[i] # undo transformation
+                out_xyz_list.append(xyz_pc_i)
+                batch_voxel_features_list.append(features_in_pc_i)
+
+            #batch_voxel_feats = torch.stack(batch_voxel_features_list) #(total num voxels=1181, 128) = ( 8, numvoxels in each pc, 128)
+            #out_xyz_list = torch.stack(out_xyz_list)
+            
+            out_dict['linear_probe_feats'] = batch_voxel_features_list
+            out_dict['linear_probe_xyz'] = out_xyz_list
+            out_dict['linear_probe_voxel_size'] = np.array(self.voxel_size) * np.array([8,8,16])
+        else:
+            if 'vdc_feats' in out_feat_keys:
+                out_xyz = get_voxel_centers(out.indices[:,1:], downsample_times=torch.tensor([8,8,16], device=out.indices.device), voxel_size=self.voxel_size, point_cloud_range = self.point_cloud_range)
+                voxel_generator = point_to_voxel_func(device=out.indices.device)
+                batch_voxel_features_list = []
+                vox_coords = []
+
+                for i in range(batch_size):
+                    voxel_idx_in_pc_i = out.indices[:,0] == i # (true false mask of len num vox total in all pcs)
+                    features_in_pc_i = out.features[voxel_idx_in_pc_i] #(num vox in pc i, 128)
+                    xyz_pc_i = out_xyz[voxel_idx_in_pc_i] #(num vox in pc i, 3)
+                    xyz_pc_i = xyz_pc_i @ aug_matrix[i] # undo transformation
+                    xyz_features = torch.cat([xyz_pc_i, features_in_pc_i], 1) # (num voxels in pc i, 131=3+128)
+
+                    # voxelize
+                    voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_features)
+                    vox_coords.append(np.pad(coordinates.cpu(), ((0, 0), (1, 0)), mode='constant', constant_values=i))
+                    # Take max pool of features inside each big voxel
+                    voxel_features = F.max_pool1d(voxel_features.permute(0, 2, 1).contiguous(), voxel_features.shape[1]).squeeze(-1) #(num big voxels, 128)
+                    batch_voxel_features_list.append(voxel_features)
+
+                batch_voxel_feats = torch.cat(batch_voxel_features_list, 0) #(total num voxels=1181, 128) = ( 8 * numvoxels in each pc, 128)
+                vox_coords = np.concatenate(vox_coords, axis=0) #(total num vox = 1181, 4)  = [batch_idx, z_idx,y_idx,x_idx]
+                
+                # Projection head (tot num voxels, 128) -> (tot num voxels, 128)
+                if self.use_mlp:
+                    batch_voxel_feats = self.head(batch_voxel_feats)
+                out_dict['vdc_feats'] = batch_voxel_feats
+                out_dict['vdc_voxel_bzyx'] = vox_coords
+
+            if 'dc_feats' in out_feat_keys:
+                featlist = [] # list of (1, 128) features for all 8 pcs = [(1, 128) for pc 0, (1, 128) for pc 1, ...]
+                for i in range(batch_size):
+                    tempfeat = [] # list of max pooled features from diff levels for pc i = [conv4 = (1, 64), conv3 = (1, 64)] OR [out = (1, 128)]
+                    for idx in range(len(dc_feat_dict['indice'])): # for each feature level
+                        temp_idx = dc_feat_dict['indice'][idx][:,0] == i # dim = (num voxels in pc i), gives idx of all voxels in pc i
+                        temp_f = dc_feat_dict['conv4_features'][idx][temp_idx].unsqueeze(0).permute(0, 2, 1).contiguous() # end_points['conv4_features'][idx][temp_idx] has dim (num_voxels_pc_i, 128) -> (1, 128, num voxels pc i)
+                        tempfeat.append(F.max_pool1d(temp_f, temp_f.shape[-1]).squeeze(-1)) #(1, 64, numvox in pc i)-->(1, 64) max pool to get one vector for one pc
+                    featlist.append(torch.cat(tempfeat, -1)) # featlist.append((1, 128) feature for pc 0)
+                feat = torch.cat(featlist, 0) #(8 pcs, 128)
+                if self.use_mlp:
+                    feat = self.head(feat)
+                out_dict['dc_feats'] = feat
+        
+                #out_feats = [feat]
+        
+        
+        # vox_coords = None #For Voxelized depth contrast 
+        # point_coords = None #For linear probe
+
+        return out_dict
 
 
 class VoxelResBackBone8x(nn.Module):
