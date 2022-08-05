@@ -1,0 +1,7 @@
+{
+    "python.pythonPath": "/home/barza/anaconda3/envs/ssl/bin/python",
+    "[python]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4  
+      }
+}

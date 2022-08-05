@@ -116,6 +116,11 @@ class NCELossMoco(nn.Module):
         # assert isinstance(
         #     output, list
         # ), "Model output should be a list of tensors. Got Type {}".format(type(output))
+        if output_dict[0]['dc_feats'] is None or output_dict[0]['vdc_feats'] is None:
+            assert self.other_queue == False
+        else:
+            assert self.other_queue == True 
+            assert self.npid1_w > 0.0
 
         output_0 = output_dict[0]['dc_feats'] if output_dict[0]['dc_feats'] is not None else output_dict[0]['vdc_feats'] #query features (8, 128)
         output_1 = output_dict[1]['dc_feats'] if output_dict[1]['dc_feats'] is not None else output_dict[1]['vdc_feats'] #key_features = moco features (8, 128)

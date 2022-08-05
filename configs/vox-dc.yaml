@@ -8,7 +8,7 @@ log2wb: true
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 10 # print progress after processing every <freq> iters or batches
-ckpt_save_interval: 50
+ckpt_save_interval: 20
 
 WANDB:
   ENABLED: True
@@ -24,12 +24,20 @@ dataset:
     train: ['dense_infos_train_all_60.pkl']
   BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: objects #sample_index, objects, class_names
-  DATA_TYPE: vox
+  DATA_TYPE: vox #point, point_vox
   SENSOR_TYPE: 'hdl64'
   SIGNAL_TYPE: 'strongest'
   Lidar: True
   VOX: True
   APPLY_WEATHER_AUG: False # False for linear Probe
+  DROR: 0.45
+  UPSAMPLE: '1in1'
+  COUPLED: True
+  WET_SURFACE: '1in10' #'1in10'
+  SNOW: 'uniform_gunn_1in2' #'1in10'
+  FOG_AUGMENTATION: 'CVL_1in2'
+  FOG_NOISE_VARIANT: 'v2'
+  FOG_GAIN: True
   FOV_POINTS_ONLY: False
   POINT_TRANSFORMS:
     - name: randomcuboidLidar
@@ -52,7 +60,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: False
-  num_epochs: 1000
+  num_epochs: 201
   lr:
     name: "cosine"
     base_lr: 0.12
@@ -64,7 +72,9 @@ model:
   model_input: ["vox", "vox_moco"]
   model_feature: [["dc_feats"], ["dc_feats"]]
   Lidar: True
+  VOX: True
   arch_vox: "VoxelBackBone8x"
+  linear_probe_dim: [128, 2]
   args_vox:
     use_mlp: True
     mlp_dim: [128, 128, 128]

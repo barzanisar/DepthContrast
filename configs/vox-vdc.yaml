@@ -1,0 +1,95 @@
+wb_extra_tags: ['VoxelBackBone8x-VDC', 'train_all_60']
+resume: true
+linear_probe: false # True for linear probe
+num_workers: 8
+
+log2tb: true
+log2wb: true
+
+test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
+print_freq: 10 # print progress after processing every <freq> iters or batches
+ckpt_save_interval: 20
+
+WANDB:
+  ENABLED: True
+  PROJECT: DepthContrast_dense
+  ENTITY: trailab
+  SUMMARY_HIGHEST_METRIC: None
+  dir: '/home/barza/DepthContrast/output'
+
+
+dataset:
+  DATASET_NAMES: [DenseDataset]
+  INFO_PATHS: 
+    train: ['dense_infos_train_all_60.pkl']
+  BATCHSIZE_PER_REPLICA: 8
+  LABEL_TYPE: objects #sample_index, objects, class_names
+  DATA_TYPE: vox #point, point_vox
+  SENSOR_TYPE: 'hdl64'
+  SIGNAL_TYPE: 'strongest'
+  Lidar: True
+  VOX: True
+  APPLY_WEATHER_AUG: False # False for linear Probe
+  DROR: 0.45
+  UPSAMPLE: '1in1'
+  COUPLED: True
+  WET_SURFACE: '1in10' #'1in10'
+  SNOW: 'uniform_gunn_1in2' #'1in10'
+  FOG_AUGMENTATION: 'CVL_1in2'
+  FOG_NOISE_VARIANT: 'v2'
+  FOG_GAIN: True
+  FOV_POINTS_ONLY: False
+  POINT_TRANSFORMS:
+    - name: randomcuboidLidar
+      crop: 0.5
+      npoints: 10000
+      randcrop: 1.0
+      aspect: 0.75
+    - name: randomdrop
+      crop: 0.2
+    - name: RandomFlipLidar
+    - name: RandomRotateLidar
+    - name: RandomScaleLidar
+    - name: ToTensorLidar
+  COLLATE_FUNCTION: "vox_moco_collator"
+  INPUT_KEY_NAMES: ["vox", "vox_moco"]
+  DROP_LAST: True
+
+optimizer:
+  name: "sgd"
+  weight_decay: 0.0001
+  momentum: 0.9
+  nesterov: False
+  num_epochs: 201
+  lr:
+    name: "cosine"
+    base_lr: 0.12
+    final_lr: 0.00012
+
+model:
+  name: "VoxelBackBone8x-VDC"
+  model_dir: "checkpoints/VoxelBackBone8x"
+  model_input: ["vox", "vox_moco"]
+  model_feature: [["vdc_feats"], ["vdc_feats"]]
+  Lidar: True
+  VOX: True
+  arch_vox: "VoxelBackBone8x"
+  linear_probe_dim: [128, 2]
+  args_vox:
+    use_mlp: True
+    mlp_dim: [128, 128, 128]
+
+loss:
+  name: "NCELossMoco"
+  args:
+    two_domain: True
+    LOSS_TYPE: NPID
+    OTHER_INPUT: False
+    within_format_weight0: 1.0
+    within_format_weight1: 0.5
+    NCE_LOSS:
+      NORM_EMBEDDING: True
+      TEMPERATURE: 0.1
+      LOSS_TYPE: cross_entropy
+      NUM_NEGATIVES: 65536
+      EMBEDDING_DIM: 128

@@ -1,0 +1,192 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: extract splits",
+            "type": "python",
+            "request": "launch",
+            "program": "extract_splits.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/data/dense"
+        },
+        {
+            "name": "Python: extract pc",
+            "type": "python",
+            "request": "launch",
+            "program": "extract_pointcloud.py",
+            "cwd": "${workspaceFolder}/data/dense",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "DC: vox-main",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/main_dist.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/vox_lidar_template.yaml"
+            ]
+        },
+        {
+            "name": "DC: pointnet-main",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/main_dist.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/pointnet_train_all_60/dc/dc_snow_coupled_fog_cube_upsample.yaml"
+            ]
+        },
+        {
+            "name": "DC: pointnet-main-dist",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [ "--nproc_per_node=1", 
+                "${workspaceFolder}/tools/main_dist.py", 
+                "--launcher", "pytorch", 
+                "--multiprocessing-distributed", 
+                "--cfg", "configs/pointnet_train_all_60/dc/dc_snow_coupled_fog_cube_upsample.yaml"
+            ]
+        },
+        {
+            "name": "DC: linear probe",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/linear_probe.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/point_within_lidar_dc_linear_probe.yaml"
+            ]
+        },
+        {
+            "name": "VDC: main-dist",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/main_dist.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/point_within_lidar_vdc.yaml"
+            ]
+        },
+        {
+            "name": "VDC: linear probe",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/linear_probe.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/vdc/vdc_lp_classes_1layer_gamma0_lr0p01_part2.yaml"
+            ]
+        },
+        {
+            "name": "DC: linear probe-dist",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [ "--nproc_per_node=1", 
+                "${workspaceFolder}/tools/linear_probe.py", 
+                "--launcher", "pytorch", 
+                "--multiprocessing-distributed", 
+                "--cfg", "configs/point_within_lidar_dc_linear_probe.yaml"
+            ]
+        },
+        {
+            "name": "VDC: linear probe-dist",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [ "--nproc_per_node=1", 
+                "${workspaceFolder}/tools/linear_probe.py", 
+                "--launcher", "pytorch", 
+                "--multiprocessing-distributed", 
+                "--cfg", "configs/point_within_lidar_vdc_linear_probe.yaml"
+            ]
+        },
+        // {
+        //     "name": "Snow_sim :Precompute",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "program": "${workspaceFolder}/lib/LiDAR_snow_sim/tools/snowfall/precompute.py",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceRoot}"
+        //     }
+        // },
+        {
+            "name": "precompute-FOV3000",
+            "type": "python",
+            "request": "launch",
+            "module": "lib.LiDAR_snow_sim.tools.snowfall.precompute",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--split", "train_clear_FOV3000_60.txt", "--snowfall_rate_index", "-1", "--fov"]
+        },
+        {
+            "name": "precompute-360",
+            "type": "python",
+            "request": "launch",
+            "module": "lib.LiDAR_snow_sim.tools.snowfall.precompute",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--split", "train_clear_60_0.txt", "--snowfall_rate_index", "-1"]
+        },
+        {
+            "name": "pc_viewer",
+            "type": "python",
+            "request": "launch",
+            "module": "lib.LiDAR_snow_sim.tools.visual_utils.pc_viewer",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "dror",
+            "type": "python",
+            "request": "launch",
+            "module": "lib.cadc_devkit.other.dror",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+    ]
+}
