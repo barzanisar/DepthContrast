@@ -65,9 +65,9 @@ def point_to_voxel_func(device = torch.device("cpu:0")):
     return voxel_generator
 
 class PointNet2MSG(nn.Module):
-    def __init__(self, use_mlp=False, mlp_dim=None):
+    def __init__(self, use_mlp=False, mlp_dim=None, linear_probe = False):
         super().__init__()
-
+        self.linear_probe = linear_probe
         input_channels = 4
         
         self.SA_modules = nn.ModuleList()
@@ -137,15 +137,6 @@ class PointNet2MSG(nn.Module):
         return xyz, features
 
     def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None):
-        raise NotImplementedError
-        
-
-class PointNet2MSG_DepthContrast(PointNet2MSG):
-    def __init__(self, use_mlp=False, mlp_dim=None, linear_probe = False):
-        super().__init__(use_mlp, mlp_dim)
-        self.linear_probe = linear_probe
-
-    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None):
         """
         Args:
             batch_dict:
@@ -212,7 +203,7 @@ class PointNet2MSG_DepthContrast(PointNet2MSG):
 
                     #Or max pool point features inside each voxel to get vfe
                     voxel_features = F.max_pool1d(voxel_features.permute(0, 2, 1).contiguous(), voxel_features.shape[1]).squeeze(-1)
-                    batch_voxel_features_list.append(voxel_features)
+                    batch_voxel_features_list.append(voxel_features[:, 3:])
 
                 batch_voxel_feats = torch.cat(batch_voxel_features_list, 0) #(total num voxels=1181, 128) = ( 8 * numvoxels in each pc, 128)
                 vox_coords = np.concatenate(vox_coords, axis=0) #(total num vox = 1181, 4)  = [batch_idx, z_idx,y_idx,x_idx]
@@ -224,13 +215,13 @@ class PointNet2MSG_DepthContrast(PointNet2MSG):
                 out_dict['vdc_voxel_bzyx'] = vox_coords
             
             if 'dc_feats' in out_feat_keys:
-                nump = point_features.shape[-1] # num points original
+                nump = point_features.shape[-1] # 16384
                 # get one feature vector of dim 128 for the entire point cloud
-                feat = torch.squeeze(F.max_pool1d(point_features, nump))
+                feat = torch.squeeze(F.max_pool1d(point_features, nump)) # (8,128)
                 if self.use_mlp:
                     feat = self.head(feat) #linear probe out (8=batch, 16384=npoints, 5=nclasses), #Dc out (8, 128)
                 out_dict['dc_feats'] = feat
 
 
         # out_feats[0] = (1181, 128), vox_coords = (1181, 4=bzyx), point_coords = (8, 16384, 3=xyz)
-        return out_dict
+        return out_dict        

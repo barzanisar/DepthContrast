@@ -3,15 +3,15 @@ resume: true
 linear_probe: false # True for linear probe
 num_workers: 8
 
-log2tb: true
-log2wb: true
+log2tb: false
+log2wb: false
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 10 # print progress after processing every <freq> iters or batches
 ckpt_save_interval: 50
 
 WANDB:
-  ENABLED: True
+  ENABLED: False
   PROJECT: DepthContrast_dense
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
@@ -70,10 +70,10 @@ model:
   name: "dc_snow_coupled_fog_cube_upsample"
   model_dir: "checkpoints/pointnetMSG_train_all_60/dc"
   model_input: ["points", "points_moco"]
-  model_feature: [["fp2"], ["fp2"]]
+  model_feature: [["dc_feats", "vdc_feats"], ["dc_feats", "vdc_feats"]]
   Lidar: True
   VOX: False
-  arch_point: "pointnet_msg_depthcontrast"
+  arch_point: "pointnet_msg"
   linear_probe_dim: [128, 2]
   args_point:
     use_mlp: True
@@ -84,9 +84,9 @@ loss:
   args:
     two_domain: True
     LOSS_TYPE: NPID
-    OTHER_INPUT: False
+    OTHER_INPUT: True
     within_format_weight0: 1.0
-    within_format_weight1: 0.0
+    within_format_weight1: 0.5
     across_format_weight0: 0.0
     across_format_weight1: 0.0
     NCE_LOSS:
