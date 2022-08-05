@@ -1,21 +1,21 @@
-wb_extra_tags: ['VoxelBackBone8x', 'train_all_60']
+wb_extra_tags: ['VoxelBackBone8x-DC', 'train_all_60']
 resume: true
 linear_probe: false # True for linear probe
 num_workers: 8
 
-log2tb: false
-log2wb: false
+log2tb: true
+log2wb: true
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 10 # print progress after processing every <freq> iters or batches
 ckpt_save_interval: 50
 
 WANDB:
-  ENABLED: False
+  ENABLED: True
   PROJECT: DepthContrast_dense
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
-  dir: '/DepthContrast/output'
+  dir: '/home/barza/DepthContrast/output'
 
 
 dataset:
@@ -59,10 +59,10 @@ optimizer:
     final_lr: 0.00012
 
 model:
-  name: "VoxelBackBone8x"
+  name: "VoxelBackBone8x-DC"
   model_dir: "checkpoints/VoxelBackBone8x"
   model_input: ["vox", "vox_moco"]
-  model_feature: [["dc_feats", "vdc_feats"], ["dc_feats", "vdc_feats"]]
+  model_feature: [["dc_feats"], ["dc_feats"]]
   Lidar: True
   arch_vox: "VoxelBackBone8x"
   args_vox:
@@ -74,11 +74,9 @@ loss:
   args:
     two_domain: True
     LOSS_TYPE: NPID
-    OTHER_INPUT: True
+    OTHER_INPUT: False
     within_format_weight0: 1.0
-    within_format_weight1: 1.0
-    across_format_weight0: 0.0
-    across_format_weight1: 0.0
+    within_format_weight1: 0.5
     NCE_LOSS:
       NORM_EMBEDDING: True
       TEMPERATURE: 0.1

@@ -146,7 +146,7 @@ class VoxelBackBone8x(nn.Module):
         self.voxel_size = voxel_size
         self.point_cloud_range = point_cloud_range
 
-        self.sparse_shape = grid_size[::-1] + [1, 0, 0] #[41, 1408, 1600]
+        self.sparse_shape = grid_size[::-1] + [1, 0, 0] #[41, 1408, 1600] = z,y,x
 
         norm_fn = partial(nn.BatchNorm1d, eps=1e-3, momentum=0.01)
 
@@ -299,7 +299,7 @@ class VoxelBackBone8x(nn.Module):
                     vox_coords.append(np.pad(coordinates.cpu(), ((0, 0), (1, 0)), mode='constant', constant_values=i))
                     # Take max pool of features inside each big voxel
                     voxel_features = F.max_pool1d(voxel_features.permute(0, 2, 1).contiguous(), voxel_features.shape[1]).squeeze(-1) #(num big voxels, 128)
-                    batch_voxel_features_list.append(voxel_features)
+                    batch_voxel_features_list.append(voxel_features[:,3:])
 
                 batch_voxel_feats = torch.cat(batch_voxel_features_list, 0) #(total num voxels=1181, 128) = ( 8 * numvoxels in each pc, 128)
                 vox_coords = np.concatenate(vox_coords, axis=0) #(total num vox = 1181, 4)  = [batch_idx, z_idx,y_idx,x_idx]
@@ -317,7 +317,13 @@ class VoxelBackBone8x(nn.Module):
                     for idx in range(len(dc_feat_dict['indice'])): # for each feature level
                         temp_idx = dc_feat_dict['indice'][idx][:,0] == i # dim = (num voxels in pc i), gives idx of all voxels in pc i
                         temp_f = dc_feat_dict['conv4_features'][idx][temp_idx].unsqueeze(0).permute(0, 2, 1).contiguous() # end_points['conv4_features'][idx][temp_idx] has dim (num_voxels_pc_i, 128) -> (1, 128, num voxels pc i)
-                        tempfeat.append(F.max_pool1d(temp_f, temp_f.shape[-1]).squeeze(-1)) #(1, 64, numvox in pc i)-->(1, 64) max pool to get one vector for one pc
+                        try:
+                            tempfeat.append(F.max_pool1d(temp_f, temp_f.shape[-1]).squeeze(-1)) #(1, 64, numvox in pc i)-->(1, 64) max pool to get one vector for one pc
+                        except:
+                            print(temp_f)
+                            print("Shape: ", temp_f.shape)
+                            print("Min: ", temp_f.min())
+                            print("Max: ", temp_f.max())
                     featlist.append(torch.cat(tempfeat, -1)) # featlist.append((1, 128) feature for pc 0)
                 feat = torch.cat(featlist, 0) #(8 pcs, 128)
                 if self.use_mlp:

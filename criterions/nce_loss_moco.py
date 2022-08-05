@@ -144,7 +144,7 @@ class NCELossMoco(nn.Module):
                     idx_0 = map_coord0_idx0[str(coords_1[idx_1, :])]
                     matched_idx_0.append(idx_0)
                     matched_idx_1.append(idx_1)
-
+            # TODO: choose high similarity voxels
             if self.other_queue:
                 normalized_output3 = normalized_output3[matched_idx_0, :] #(matched num voxels, 128)
                 normalized_output4 = normalized_output4[matched_idx_1, :] #(matched num voxels, 128)
@@ -181,10 +181,11 @@ class NCELossMoco(nn.Module):
             logits.shape[0], device=logits.device, dtype=torch.int64
         ) # because zero'th class is the true class
 
-        labels_other = torch.zeros(
-            logits_other.shape[0], device=logits_other.device, dtype=torch.int64
-        ) # because zero'th class is the true class
-        
+        if self.other_queue:
+            labels_other = torch.zeros(
+                logits_other.shape[0], device=logits_other.device, dtype=torch.int64
+            ) # because zero'th class is the true class
+            
         loss_npid = self.xe_criterion(torch.squeeze(logits), labels) #loss between pointnet query and key embedding
 
         loss_npid_other = torch.tensor(0)
