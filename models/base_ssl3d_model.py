@@ -77,16 +77,16 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         if "vox" not in input_key:
             assert isinstance(batch, torch.Tensor)
 
-        if ('vox' in input_key) and ("Lidar" not in self.config):
-            points = batch
-            points_coords = points[0]
-            points_feats = points[1]
+        # if ('vox' in input_key) and ("Lidar" not in self.config):
+        #     points = batch
+        #     points_coords = points[0]
+        #     points_feats = points[1]
 
-            ### Invariant to even and odd coords
-            points_coords[:, 1:] += (torch.rand(3) * 100).type_as(points_coords)
-            points_feats = points_feats/255.0 - 0.5
+        #     ### Invariant to even and odd coords
+        #     points_coords[:, 1:] += (torch.rand(3) * 100).type_as(points_coords)
+        #     points_feats = points_feats/255.0 - 0.5
 
-            batch = SparseTensor(points_feats, points_coords.float())
+        #     batch = SparseTensor(points_feats, points_coords.float())
 
         if ('vox' in input_key) and ("Lidar" in self.config):
             # Copy to GPU
@@ -215,12 +215,12 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         with torch.no_grad():
             self._momentum_update_key(target)  # update the key encoder
             # shuffle for making use of BN
-            if torch.distributed.is_initialized():
-                if "vox" not in input_key: 
-                    batch, idx_unshuffle = self._batch_shuffle_ddp(batch, vox=False)
-            else:
-                if ('vox' in input_key) and ("Lidar" not in self.config):
-                    batch = SparseTensor(points_feats, points_coords.float())
+            # if torch.distributed.is_initialized():
+            #     if "vox" not in input_key: 
+            #         batch, idx_unshuffle = self._batch_shuffle_ddp(batch, vox=False)
+            # else:
+            #     if ('vox' in input_key) and ("Lidar" not in self.config):
+            #         batch = SparseTensor(points_feats, points_coords.float())
                 
             # Copy to GPU
             if ("Lidar" in self.config) and ("vox" in input_key):
@@ -239,17 +239,20 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                     )
             
             output = self.trunk[target](batch, feature_names, aug_matrix)
-            if torch.distributed.is_initialized():
-                if "vox" not in input_key:
-                    if 'dc_feats' in feature_names:
-                        output['dc_feats'] = [self._batch_unshuffle_ddp(output['dc_feats'], idx_unshuffle)]
-                    if 'vdc_feats' in feature_names:
-                        output['vdc_feats'] = [self._batch_unshuffle_ddp(output['vdc_feats'], idx_unshuffle)]
-                    if self.linear_probe:
-                        output['linear_probe_feats'] = [self._batch_unshuffle_ddp(output['linear_probe_feats'], idx_unshuffle)]
-                return output
-            else:
-                return output
+            # idx_unshuffle assumes that output features.shape[0] is 8 i.e. equal to number of pcs in the batch
+            # Not compatible with Voxelized DC!
+            # if torch.distributed.is_initialized():
+            #     if "vox" not in input_key:
+            #         if 'dc_feats' in feature_names:
+            #             output['dc_feats'] = [self._batch_unshuffle_ddp(output['dc_feats'], idx_unshuffle)]
+            #         if 'vdc_feats' in feature_names:
+            #             output['vdc_feats'] = [self._batch_unshuffle_ddp(output['vdc_feats'], idx_unshuffle)]
+            #         if self.linear_probe:
+            #             output['linear_probe_feats'] = [self._batch_unshuffle_ddp(output['linear_probe_feats'], idx_unshuffle)]
+            #     return output
+            # else:
+            #     return output
+            return output
 
     def forward(self, batch):
         return self.multi_input_with_head_mapping_forward(batch)
