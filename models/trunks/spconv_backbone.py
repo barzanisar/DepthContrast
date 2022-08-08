@@ -11,6 +11,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from models.trunks.mlp import MLP
+#from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
+
 try:
     try:
         try:
@@ -103,17 +105,16 @@ class SparseBasicBlock(spconv.SparseModule):
         out.features = self.relu(out.features)
 
         return out
-def point_to_voxel_func(device = torch.device("cpu:0")):
-    VOXEL_SIZE = [5.0, 5.0, 6.0]
+def point_to_voxel_func(device = torch.device("cpu:0"), voxel_size =  [5.0, 5.0, 6.0]):
     ### Waymo lidar range
     #POINT_RANGE = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
     POINT_RANGE = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32) ### KITTI and DENSE
-    MAX_POINTS_PER_VOXEL = 2000
+    MAX_POINTS_PER_VOXEL = 500
     MAX_NUMBER_OF_VOXELS = 400
     NUM_POINT_FEATURES= 3+128
     if SPCONV_VER == 1:
         voxel_generator = VoxelGenerator(
-            voxel_size=VOXEL_SIZE,
+            voxel_size=voxel_size,
             point_cloud_range=POINT_RANGE,
             max_num_points=MAX_POINTS_PER_VOXEL,
             max_voxels=MAX_NUMBER_OF_VOXELS,
@@ -121,7 +122,7 @@ def point_to_voxel_func(device = torch.device("cpu:0")):
         )
     else:
         voxel_generator = VoxelGenerator(
-            vsize_xyz=VOXEL_SIZE,
+            vsize_xyz=voxel_size,
             coors_range_xyz=POINT_RANGE,
             num_point_features=NUM_POINT_FEATURES,
             max_num_points_per_voxel=MAX_POINTS_PER_VOXEL,
@@ -296,6 +297,37 @@ class VoxelBackBone8x(nn.Module):
 
                     # voxelize
                     voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_features)
+                    
+                    # try:
+                    #     #V.draw_scenes(points=xyz_pc_i)
+                    #     voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_features)
+                    # except:
+                    #     b=1
+                    #     V.draw_scenes(points=xyz_pc_i)
+                    #     V.draw_scenes(points=original_vox_features[:,:3])
+                    #     dist = np.linalg.norm(xyz_pc_i.cpu().numpy()[:, 0:3], axis=1)
+                    #     min_value = np.min(dist)
+                    #     max_value = np.max(dist)
+                    #     try:
+                    #         voxel_generator = point_to_voxel_func(device=out.indices.device, voxel_size =  [2.0, 2.0, 6.0])
+                    #         voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_features)
+                    #     except:
+                    #         try:
+                    #             voxel_generator = point_to_voxel_func(device=out.indices.device, voxel_size =  [1.0, 1.0, 6.0])
+                    #             voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_features)
+                    #         except:
+                    #             try:
+                    #                 voxel_generator = point_to_voxel_func(device=out.indices.device, voxel_size =  [50.0, 50.0, 6.0])
+                    #                 voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_features)
+                    #             except:
+                    #                 try:
+                    #                     voxel_generator = point_to_voxel_func(device=out.indices.device, voxel_size =  [0.5, 0.5, 6.0])
+                    #                     voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_features)
+                    #                 except:
+                    #                     voxel_generator = point_to_voxel_func(device=out.indices.device, voxel_size =  [10.0, 10.0, 6.0])
+                    #                     voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_features)
+                    #     b=1
+
                     vox_coords.append(np.pad(coordinates.cpu(), ((0, 0), (1, 0)), mode='constant', constant_values=i))
                     # Take max pool of features inside each big voxel
                     voxel_features = F.max_pool1d(voxel_features.permute(0, 2, 1).contiguous(), voxel_features.shape[1]).squeeze(-1) #(num big voxels, 128)
