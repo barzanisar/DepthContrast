@@ -20,9 +20,8 @@ from datasets.transforms.augment3d import get_transform3d
 import scipy.stats as stats
 import open3d as o3d
 from pcdet.utils import box_utils, calibration_kitti, common_utils, object3d_kitti
-from lib.LiDAR_snow_sim.tools.snowfall.simulation import augment
 from lib.LiDAR_snow_sim.tools.wet_ground.augmentation import ground_water_augmentation
-from lib.LiDAR_snow_sim.tools.snowfall.sampling import snowfall_rate_to_rainfall_rate, compute_occupancy
+from lib.LiDAR_snow_sim.tools.snowfall.sampling import snowfall_rate_to_rainfall_rate
 
 from lib.LiDAR_fog_sim.fog_simulation import *
 from lib.LiDAR_fog_sim.SeeingThroughFog.tools.DatasetFoggification.beta_modification import BetaRadomization
