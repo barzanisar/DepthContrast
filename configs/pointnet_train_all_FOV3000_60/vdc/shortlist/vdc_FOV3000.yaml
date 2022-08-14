@@ -68,9 +68,8 @@ model:
 loss:
   name: "NCELossMoco"
   args:
-    two_domain: True
+    model_type: VDC #DC, DC_VDC
     LOSS_TYPE: NPID
-    OTHER_INPUT: False
     within_format_weight0: 1.0
     within_format_weight1: 0.0
     NCE_LOSS:

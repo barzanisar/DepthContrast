@@ -265,12 +265,12 @@ def distribute_model_to_cuda(models, args):
             if args.local_rank is not None:
                 torch.cuda.set_device(args.local_rank)
                 models[i].cuda(args.local_rank)
-                models[i] = torch.nn.parallel.DistributedDataParallel(models[i], device_ids=[args.local_rank % torch.cuda.device_count()]) #device_ids should always be local_rank!
+                models[i] = torch.nn.parallel.DistributedDataParallel(models[i], device_ids=[args.local_rank % torch.cuda.device_count()], find_unused_parameters=True) #device_ids should always be local_rank!
             else:
                 models[i].cuda()
                 # DistributedDataParallel will divide and allocate batch_size to all
                 # available GPUs if device_ids are not set
-                models[i] = torch.nn.parallel.DistributedDataParallel(models[i])
+                models[i] = torch.nn.parallel.DistributedDataParallel(models[i], find_unused_parameters=True)
         elif args.local_rank is not None:
             torch.cuda.set_device(args.local_rank)
             models[i] = models[i].cuda(args.local_rank)

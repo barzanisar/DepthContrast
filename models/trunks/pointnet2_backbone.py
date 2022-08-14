@@ -170,9 +170,10 @@ class PointNet2MSG(nn.Module):
             assert l_features[i - 1].is_contiguous()
 
         point_features = l_features[0] #(B=8, 128, num points = 16384)
-        out_dict = {'dc_feats': None, \
-            'vdc_feats': None, 'vdc_voxel_bzyx': None, \
-            'linear_probe_feats': None, 'linear_probe_xyz': None}      
+        # out_dict = {'dc_feats': None, \
+        #     'vdc_feats': None, 'vdc_voxel_bzyx': None, \
+        #     'linear_probe_feats': None, 'linear_probe_xyz': None}      
+        out_dict = {}
 
 
         if self.linear_probe:

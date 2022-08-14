@@ -52,7 +52,8 @@ class NCELossMoco(nn.Module):
 
         self.loss_type = config["NCE_LOSS"]["LOSS_TYPE"]
         self.loss_list = config["LOSS_TYPE"].split(",")
-        self.other_queue = config["OTHER_INPUT"]
+        self.other_queue = True if config["model_type"] == "DC_VDC" else False
+        self.model_type = config["model_type"]
 
         self.npid0_w = float(config["within_format_weight0"])
         self.npid1_w = float(config["within_format_weight1"])
@@ -116,17 +117,23 @@ class NCELossMoco(nn.Module):
         # assert isinstance(
         #     output, list
         # ), "Model output should be a list of tensors. Got Type {}".format(type(output))
-        if output_dict[0]['dc_feats'] is None or output_dict[0]['vdc_feats'] is None:
-            assert self.other_queue == False
-        else:
-            assert self.other_queue == True 
-            assert self.npid1_w > 0.0
 
-        output_0 = output_dict[0]['dc_feats'] if output_dict[0]['dc_feats'] is not None else output_dict[0]['vdc_feats'] #query features (8, 128)
-        output_1 = output_dict[1]['dc_feats'] if output_dict[1]['dc_feats'] is not None else output_dict[1]['vdc_feats'] #key_features = moco features (8, 128)
-        if self.other_queue:
-            output_2 = output_dict[0]['vdc_feats'] #query features (8 * num voxels, 128)
-            output_3 = output_dict[1]['vdc_feats'] #key_features = moco features (8 * num voxels, 128)
+        # if output_dict[0]['dc_feats'] is None or output_dict[0]['vdc_feats'] is None:
+        #     assert self.other_queue == False
+        # else:
+        #     assert self.other_queue == True 
+        #     assert self.npid1_w > 0.0
+        if self.model_type in ['DC', 'DC_VDC']:
+            output_0 = output_dict[0]['dc_feats'] #query features (8, 128)
+            output_1 = output_dict[1]['dc_feats'] #key_features = moco features (8, 128)
+            if self.model_type == 'DC_VDC':
+                output_2 = output_dict[0]['vdc_feats'] #query features (8 * num voxels, 128)
+                output_3 = output_dict[1]['vdc_feats'] #key_features = moco features (8 * num voxels, 128)
+        else:
+            # model type = VDC
+            output_0 = output_dict[0]['vdc_feats']
+            output_1 = output_dict[1]['vdc_feats']
+    
         
         if self.normalize_embedding:
             normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query dc embedding or vdc
@@ -136,7 +143,7 @@ class NCELossMoco(nn.Module):
                 normalized_output4 = nn.functional.normalize(output_3, dim=1, p=2) #key vdc embedding
 
         # Voxelized Depth Contrast
-        if output_dict[0]['vdc_voxel_bzyx'] is not None:
+        if self.model_type in ['VDC', 'DC_VDC']:
             coords_0 = output_dict[0]['vdc_voxel_bzyx'] # vox_coords from query encoder = list of len total num voxels=1181, each element has a numpy array with a voxel coord = bzyx
             coords_1 = output_dict[1]['vdc_voxel_bzyx'] # vox_coords from key encoder
 
