@@ -146,7 +146,7 @@ def main_worker(gpu, ngpus, args, cfg):
     ############################ TRAIN #########################################
     test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
     for epoch in range(start_epoch, end_epoch):
-        if (epoch >= cfg['save_ckpt_after_epochs'] and epoch % cfg['ckpt_save_interval']) == 0:
+        if (epoch >= cfg['save_ckpt_after_epochs'] and epoch % cfg['ckpt_save_interval']== 0):
             ckp_manager.save(epoch, model=model, train_criterion=train_criterion, optimizer=optimizer, filename='checkpoint-ep{}.pth.tar'.format(epoch))
             logger.add_line(f'Saved checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
 

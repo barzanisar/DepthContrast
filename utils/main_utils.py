@@ -426,14 +426,16 @@ class CheckpointManager(object):
         start_epoch = ckp['epoch']
         for k in kwargs:
             if (k == 'model'):
-                newparam = {}
-                for tempk in ckp[k]:
-                    if tempk[:7] == 'module.':
-                        newparam[tempk[7:]] = ckp[k][tempk]
-                    else:
-                        newparam[tempk] = ckp[k][tempk]
-                ### Fix the module issue
-                kwargs[k].load_state_dict(newparam)
+                try:
+                    kwargs[k].load_state_dict(ckp[k])
+                except:
+                    newparam = {}
+                    for tempk in ckp[k]:
+                        if tempk[:7] == 'module.':
+                            newparam[tempk[7:]] = ckp[k][tempk]
+                        else:
+                            newparam[tempk] = ckp[k][tempk]
+                    ### Fix the module issue
             else:
                 kwargs[k].load_state_dict(ckp[k])
         return start_epoch
