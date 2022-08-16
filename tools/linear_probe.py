@@ -176,9 +176,9 @@ def main_worker(gpu, ngpus, args, cfg):
     val_epoch_accuracy = -1
     val_epoch_obj_accuracy = -1
     for epoch in range(start_epoch, end_epoch):
-        if (epoch % cfg['ckpt_save_interval']) == 0:
-            #ckp_manager_linear.save(epoch, model=model, train_criterion=train_criterion, optimizer=optimizer, filename='checkpoint-ep{}.pth.tar'.format(epoch))
-            logger.add_line(f'Saved linear_probe checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
+        # if (epoch % cfg['ckpt_save_interval']) == 0:
+        #     #ckp_manager_linear.save(epoch, model=model, train_criterion=train_criterion, optimizer=optimizer, filename='checkpoint-ep{}.pth.tar'.format(epoch))
+        #     logger.add_line(f'Saved linear_probe checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
 
         if args.multiprocessing_distributed:
             train_loader.sampler.set_epoch(epoch)
@@ -195,7 +195,7 @@ def main_worker(gpu, ngpus, args, cfg):
 
         #TODO
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
-            #ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
+            ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
             logger.add_line(f'Saved linear_probe checkpoint for testing {ckp_manager_linear.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
         if accuracy > val_epoch_accuracy:
             logger.add_line('='*30 + 'VALIDATION ACCURACY INCREASED' + '='*30)
@@ -302,15 +302,15 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
 
         if phase == 'train':
-            output, _, point_coords = model(sample) #output=(batch_size, Npoints, num classes), coords=(8pcs, Npoints, 3)
+            output_dict = model(sample) #output=(batch_size, Npoints, num classes), coords=(8pcs, Npoints, 3)
         else:
             with torch.no_grad():
-                output, _, point_coords = model(sample)
+                output_dict = model(sample)
         
-        #TODO: remove output list
-        output = output[0]
+
+        output = output_dict[0]['linear_probe_feats']
         # compute loss
-        labels = main_utils.get_labels(sample['gt_boxes_lidar'], point_coords[0].detach().cpu().numpy(), cfg['dataset']['LABEL_TYPE']) #(8, 16384)
+        labels = main_utils.get_labels(sample['gt_boxes_lidar'], output_dict[0]['linear_probe_xyz'].detach().cpu().numpy(), cfg['dataset']['LABEL_TYPE']) #(8, 16384)
         
         # Ignore ridable vehicle
         output, labels = ignore_cyclist(output, labels)

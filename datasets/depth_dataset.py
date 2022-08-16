@@ -153,9 +153,10 @@ class DepthContrastDataset(Dataset):
         points = data_dict['data']
         #points = self.crop_pc(points)
         
-        #Crop given point cloud range
-        points_moco = data_dict['data_moco']
-        #points_moco = self.crop_pc(points_moco)
+        if not self.linear_probe:
+            #Crop given point cloud range
+            points_moco = data_dict['data_moco']
+            #points_moco = self.crop_pc(points_moco)
 
 
         cfg = self.cfg
@@ -164,23 +165,29 @@ class DepthContrastDataset(Dataset):
         if cfg["DATA_TYPE"] == "point_vox":
             # Across format
             item = {"data": [], "data_aug_matrix": [], 
-            "data_moco": [], "data_moco_aug_matrix": [], 
-            "vox": [], "vox_aug_matrix": [], 
-            "vox_moco": [], "vox_moco_aug_matrix": []}
+            "vox": [], "vox_aug_matrix": []}
 
             item["data"].append(points)
-            item["data_moco"].append(points_moco)
             item["vox"].append(np.copy(points))
-            item["vox_moco"].append(np.copy(points_moco))
+            
+            if not self.linear_probe:
+                item["data_moco"] = []
+                item["data_moco_aug_matrix"] = []
+                item["vox_moco"] = []
+                item["vox_moco_aug_matrix"] = []
+                item["data_moco"].append(points_moco)
+                item["vox_moco"].append(np.copy(points_moco))
 
             #item["data_valid"].append(1)
         else:
             # Within format: data is either points or later is voxelized
-            item = {"data": [], "data_aug_matrix": [], 
-            "data_moco": [], "data_moco_aug_matrix": []}
-
+            item = {"data": [], "data_aug_matrix": []}
             item["data"].append(points)
-            item["data_moco"].append(points_moco)
+
+            if not self.linear_probe:
+                item["data_moco"] = []
+                item["data_moco_aug_matrix"] = []
+                item["data_moco"].append(points_moco)
 
         # Apply the transformation here
         if (cfg["DATA_TYPE"] == "point_vox"):
@@ -189,12 +196,13 @@ class DepthContrastDataset(Dataset):
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"])
             item["data"] = tempdata["data"]
             item["data_aug_matrix"] = tempdata['aug_trans_matrix']
-
-            # Points MoCo
-            tempitem = {"data": item["data_moco"]}
-            tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"])
-            item["data_moco"] = tempdata["data"]
-            item["data_moco_aug_matrix"] = tempdata['aug_trans_matrix']
+            
+            if not self.linear_probe:
+                # Points MoCo
+                tempitem = {"data": item["data_moco"]}
+                tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"])
+                item["data_moco"] = tempdata["data"]
+                item["data_moco_aug_matrix"] = tempdata['aug_trans_matrix']
 
             # Vox
             tempitem = {"data": item["vox"]}
@@ -205,14 +213,15 @@ class DepthContrastDataset(Dataset):
             item["vox"] = [self.toVox(coords, feats, labels)]
             item["vox_aug_matrix"] = tempdata['aug_trans_matrix']
 
-            # Vox MoCo
-            tempitem = {"data": item["vox_moco"]}
-            tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=True)
-            coords = tempdata["data"][0][:, :3]
-            feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
-            labels = np.zeros(coords.shape[0]).astype(np.int32)
-            item["vox_moco"] = [self.toVox(coords, feats, labels)]
-            item["vox_moco_aug_matrix"] = tempdata['aug_trans_matrix']
+            if not self.linear_probe:
+                # Vox MoCo
+                tempitem = {"data": item["vox_moco"]}
+                tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=True)
+                coords = tempdata["data"][0][:, :3]
+                feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
+                labels = np.zeros(coords.shape[0]).astype(np.int32)
+                item["vox_moco"] = [self.toVox(coords, feats, labels)]
+                item["vox_moco_aug_matrix"] = tempdata['aug_trans_matrix']
         else:
             # Points -> transform -> voxelize if Vox
             tempitem = {"data": item["data"]}
@@ -226,18 +235,21 @@ class DepthContrastDataset(Dataset):
                 item["data"] = tempdata["data"]
             item["data_aug_matrix"] = tempdata['aug_trans_matrix']
             
-            # Points MoCo-> transform -> voxelize if Vox
-            tempitem = {"data": item["data_moco"]}
-            tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=cfg["VOX"])
-            if cfg["VOX"]:
-                coords = tempdata["data"][0][:, :3]
-                feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
-                labels = np.zeros(coords.shape[0]).astype(np.int32)
-                item["data_moco"] = [self.toVox(coords, feats, labels)]
-            else:
-                item["data_moco"] = tempdata["data"]
-            item["data_moco_aug_matrix"] = tempdata['aug_trans_matrix']
-            
+            if not self.linear_probe:
+                # Points MoCo-> transform -> voxelize if Vox
+                tempitem = {"data": item["data_moco"]}
+                tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=cfg["VOX"])
+                if cfg["VOX"]:
+                    coords = tempdata["data"][0][:, :3]
+                    feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
+                    labels = np.zeros(coords.shape[0]).astype(np.int32)
+                    item["data_moco"] = [self.toVox(coords, feats, labels)]
+                else:
+                    item["data_moco"] = tempdata["data"]
+                item["data_moco_aug_matrix"] = tempdata['aug_trans_matrix']
+
+        if self.linear_probe:
+            item['linear_probe'] = True    
         data_dict.update(item)
 
         return data_dict
@@ -668,39 +680,23 @@ class DenseDataset(DepthContrastDataset):
             data_dict['gt_boxes_lidar'] = info['annos']['gt_boxes_lidar']
             assert data_dict['gt_names'].shape[0] == data_dict['gt_boxes_lidar'].shape[0]
 
-            limit_by_mor = self.cfg.get('LIMIT_BY_MOR', False)
-
-            if limit_by_mor:
-                distances = np.linalg.norm(data_dict['gt_boxes_lidar'][:, 0:3], axis=1)
-                mor_mask = distances < mor
-
-                data_dict['gt_names'] = data_dict['gt_names'][mor_mask]
-                data_dict['gt_boxes_lidar'] = data_dict['gt_boxes_lidar'][mor_mask]
-            
-            filter_out_of_mor_boxes = self.cfg.get('FILTER_OUT_OF_MOR_BOXES', False)
-
-            # filter out empty bounding boxes that are outside of MOR
-            if filter_out_of_mor_boxes:
-
-                max_point_dist = max(np.linalg.norm(points[:, 0:3], axis=1))
-                box_distances = np.linalg.norm(data_dict['gt_boxes_lidar'][:, 0:3], axis=1)
-
-                box_mask = box_distances < max_point_dist
-                data_dict['gt_boxes_lidar'] = data_dict['gt_boxes_lidar'][box_mask]
-
         # # TODO: mask boxes outside point cloud range
         # if not pc_cropped:
         #     points_moco = self.crop_pc(points_moco)
         #     pc_cropped = True
 
         points = self.crop_pc(points)
-        points_moco = self.crop_pc(points_moco)
-        # Prepare points and Transform 
+        
+       
         data_dict['data'] = points[:,:4] #x,y,z,i #drop channel or label
-        data_dict['data_moco'] = points_moco[:,:4] #x,y,z,i #drop channel or label 
+
+        if not self.linear_probe:
+            points_moco = self.crop_pc(points_moco)
+            data_dict['data_moco'] = points_moco[:,:4] #x,y,z,i #drop channel or label 
 
         #V.draw_scenes(points=points, color_feature='intensity')
         #V.draw_scenes(points=points_moco, color_feature='intensity')
+        # Prepare points and Transform 
         data_dict = self.prepare_data(data_dict, index)
 
         return data_dict
