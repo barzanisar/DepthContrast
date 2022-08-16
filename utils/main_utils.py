@@ -436,6 +436,7 @@ class CheckpointManager(object):
                         else:
                             newparam[tempk] = ckp[k][tempk]
                     ### Fix the module issue
+                    kwargs[k].load_state_dict(newparam)
             else:
                 kwargs[k].load_state_dict(ckp[k])
         return start_epoch
