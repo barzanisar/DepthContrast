@@ -1,4 +1,4 @@
-wb_extra_tags: ['pointnet', 'train_all_FOV3000_60']
+wb_extra_tags: ['pointnet', 'train_all_FOV3000_60', 'dc']
 resume: true
 linear_probe: false # True for linear probe
 num_workers: 8
@@ -9,6 +9,7 @@ log2wb: true
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 10 # print progress after processing every <freq> iters or batches
 ckpt_save_interval: 20
+save_ckpt_after_epochs: 300
 
 WANDB:
   ENABLED: True
@@ -52,7 +53,6 @@ dataset:
     - name: RandomScaleLidar
     - name: ToTensorLidar
   COLLATE_FUNCTION: "point_moco_collator"
-  INPUT_KEY_NAMES: ["points", "points_moco"]
   DROP_LAST: True
 
 optimizer:
@@ -60,20 +60,20 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: False
-  num_epochs: 201
+  num_epochs: 401
   lr:
     name: "cosine"
     base_lr: 0.1 #0.1 for linear_probe
-    final_lr: 0 #0 for linear_probe
+    final_lr: 0.0001 #0 for linear_probe
 
 model:
   name: "dc_snow1in10_wet_fog1in10_cubeF_upsampleF_FOV3000"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/dc"
   model_input: ["points", "points_moco"]
-  model_feature: [["fp2"], ["fp2"]]
+  model_feature: [["dc_feats"], ["dc_feats"]]
   Lidar: True
   VOX: False
-  arch_point: "pointnet_msg_depthcontrast"
+  arch_point: "pointnet_msg"
   linear_probe_dim: [128, 2]
   args_point:
     use_mlp: True
@@ -82,13 +82,9 @@ model:
 loss:
   name: "NCELossMoco"
   args:
-    two_domain: True
-    LOSS_TYPE: NPID
-    OTHER_INPUT: False
+    model_type: DC #DC, VDC
     within_format_weight0: 1.0
     within_format_weight1: 0.0
-    across_format_weight0: 0.0
-    across_format_weight1: 0.0
     NCE_LOSS:
       NORM_EMBEDDING: True
       TEMPERATURE: 0.1

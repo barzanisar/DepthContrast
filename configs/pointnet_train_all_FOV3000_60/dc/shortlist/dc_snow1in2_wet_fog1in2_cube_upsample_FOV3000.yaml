@@ -30,13 +30,13 @@ dataset:
   SIGNAL_TYPE: 'strongest'
   Lidar: True
   VOX: False
-  APPLY_WEATHER_AUG: False # False for linear Probe
+  APPLY_WEATHER_AUG: True # False for linear probe
   DROR: 0.45
   UPSAMPLE: '1in1'
   COUPLED: True
   WET_SURFACE: '1in10' #'1in10'
   SNOW: 'uniform_gunn_1in2' #'1in10'
-  FOG_AUGMENTATION: 'CVL_uniform'
+  FOG_AUGMENTATION: 'CVL_1in2'
   FOG_NOISE_VARIANT: 'v2'
   FOG_GAIN: True
   FOV_POINTS_ONLY: True
@@ -53,7 +53,6 @@ dataset:
     - name: RandomScaleLidar
     - name: ToTensorLidar
   COLLATE_FUNCTION: "point_moco_collator"
-  INPUT_KEY_NAMES: ["points", "points_moco"]
   DROP_LAST: True
 
 optimizer:
@@ -65,10 +64,10 @@ optimizer:
   lr:
     name: "cosine"
     base_lr: 0.1 #0.1 for linear_probe
-    final_lr: 0.0001 #0 for linear probe
+    final_lr: 0.0001 #0 for linear_probe
 
 model:
-  name: "dc"
+  name: "dc_snow1in2_wet_fog1in2_cube_upsample_FOV3000"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/dc"
   model_input: ["points", "points_moco"]
   model_feature: [["dc_feats"], ["dc_feats"]]
