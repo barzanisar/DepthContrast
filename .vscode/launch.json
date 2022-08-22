@@ -29,7 +29,7 @@
             },
             "args": [
                 "--cfg",
-                "configs/vox_lidar_template.yaml"
+                "configs/vox-vdc.yaml"
             ]
         },
         {
@@ -44,11 +44,11 @@
             },
             "args": [
                 "--cfg",
-                "configs/pointnet_train_all_60/dc/dc_snow_coupled_fog_cube_upsample.yaml"
+                "configs/pointnet_train_all_FOV3000_60/dc/shortlist/dc_snow1in2_wet_fog1in2_cube_upsample_FOV3000.yaml"
             ]
         },
         {
-            "name": "DC: pointnet-main-dist",
+            "name": "VDC: pointnet-main-dist",
             "type": "python",
             "request": "launch",
             "module": "torch.distributed.launch",
@@ -61,7 +61,7 @@
                 "${workspaceFolder}/tools/main_dist.py", 
                 "--launcher", "pytorch", 
                 "--multiprocessing-distributed", 
-                "--cfg", "configs/pointnet_train_all_60/dc/dc_snow_coupled_fog_cube_upsample.yaml"
+                "--cfg", "configs/pointnet_train_all_FOV3000_60/vdc/shortlist/vdc_FOV3000.yaml"
             ]
         },
         {
@@ -91,7 +91,7 @@
             },
             "args": [
                 "--cfg",
-                "configs/point_within_lidar_vdc.yaml"
+                "configs/pointnet_train_all_FOV3000_60/vdc/shortlist/vdc_snow1in10_wet_fog1in10_cubeF_upsample_FOV3000.yaml"
             ]
         },
         {
@@ -106,7 +106,7 @@
             },
             "args": [
                 "--cfg",
-                "configs/vdc/vdc_lp_classes_1layer_gamma0_lr0p01_part2.yaml"
+                "configs/pointnet_train_all_FOV3000_60/dc_vdc/shortlist/linear_probe/dc_vdc_snow1in10_wet_fog1in10_cubeF_upsample_FOV3000.yaml"
             ]
         },
         {
@@ -140,7 +140,7 @@
                 "${workspaceFolder}/tools/linear_probe.py", 
                 "--launcher", "pytorch", 
                 "--multiprocessing-distributed", 
-                "--cfg", "configs/point_within_lidar_vdc_linear_probe.yaml"
+                "--cfg", "configs/pointnet_train_all_FOV3000_60/vdc/shortlist/linear_probe/vdc_FOV3000.yaml"
             ]
         },
         // {
