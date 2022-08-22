@@ -51,7 +51,6 @@ class NCELossMoco(nn.Module):
         ], f"Supported types are cross_entropy."
 
         self.loss_type = config["NCE_LOSS"]["LOSS_TYPE"]
-        self.loss_list = config["LOSS_TYPE"].split(",")
         self.other_queue = True if config["model_type"] == "DC_VDC" else False
         self.model_type = config["model_type"]
 
