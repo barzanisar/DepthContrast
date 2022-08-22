@@ -379,11 +379,12 @@ def get_labels(batch_gt_boxes_lidar, coords, label_type = 'class_names'):
 
 
 class CheckpointManager(object):
-    def __init__(self, checkpoint_dir, rank=0, dist=False):
+    def __init__(self, checkpoint_dir, logger, rank=0, dist=False):
         self.checkpoint_dir = checkpoint_dir
         self.rank = rank
         self.best_metric = 0.
         self.dist = dist #distributed
+        self.logger = logger
 
     def save(self, epoch, filename=None, eval_metric=0., **kwargs):
         if self.rank != 0:
@@ -423,6 +424,7 @@ class CheckpointManager(object):
     def restore(self, fn=None, restore_last=False, restore_best=False, **kwargs):
         checkpoint_fn = f'{self.checkpoint_dir}/{fn}' if fn is not None else self.checkpoint_fn(restore_last, restore_best)
         ckp = torch.load(checkpoint_fn, map_location={'cuda:0': 'cpu'})
+        self.logger.add_line(f"Loading chkpoint from: {checkpoint_fn}")
         start_epoch = ckp['epoch']
         for k in kwargs:
             if (k == 'model'):
