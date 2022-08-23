@@ -109,8 +109,8 @@ def main_worker(gpu, ngpus, args, cfg):
     args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
     logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
     wandb_utils.init(cfg, args, job_type='linear_probe')
-    ckp_manager_base_model = main_utils.CheckpointManager(model_dir.split('/linear_probe')[0] + '/train', rank=args.rank, dist=args.multiprocessing_distributed)
-    ckp_manager_linear = main_utils.CheckpointManager(model_dir, rank=args.rank, dist=args.multiprocessing_distributed)
+    ckp_manager_base_model = main_utils.CheckpointManager(model_dir.split('/linear_probe')[0] + '/train', logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
+    ckp_manager_linear = main_utils.CheckpointManager(model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
 
     # Define model
     model = main_utils.build_model(cfg['model'], logger=logger, linear_probe=True)

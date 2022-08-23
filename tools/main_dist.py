@@ -129,7 +129,7 @@ def main_worker(gpu, ngpus, args, cfg):
         params=list(model.parameters())+list(train_criterion.parameters()),
         cfg=cfg['optimizer'],
         logger=logger)
-    ckp_manager = main_utils.CheckpointManager(model_dir, rank=args.rank, dist=args.multiprocessing_distributed)
+    ckp_manager = main_utils.CheckpointManager(model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
     
     # Optionally resume from a checkpoint
     start_epoch, end_epoch = 0, cfg['optimizer']['num_epochs']
