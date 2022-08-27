@@ -4,8 +4,10 @@ import pickle
 
 from sklearn.metrics import pairwise_distances
 from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
+import umap
 
 # Compute distances between class clusters
 def class_feature_distances(features, labels, tag, class_names=['background', 'objects']):
@@ -70,9 +72,11 @@ def class_feature_distances(features, labels, tag, class_names=['background', 'o
     pickle.dump(tsne_summary, open("cosine_summary.pkl", "wb"))
 
 
-def visualize_tsne(features, labels, tag, class_names=['background', 'objects']):
-    
-    tsne = TSNE(n_components=2).fit_transform(features)
+def visualize_tsne(features, labels, class_names=['background', 'objects']):
+    features = StandardScaler().fit_transform(features)
+    reducer = umap.UMAP(n_components=2, init='random', random_state=0)
+    tsne = reducer.fit_transform(features)
+    #tsne = TSNE(n_components=2).fit_transform(features)
 
     num_classes = len(class_names)
     # We choose a color palette with seaborn.
@@ -117,7 +121,7 @@ def visualize_tsne(features, labels, tag, class_names=['background', 'objects'])
     plt.ylabel("x2")
     plt.title(f"TSNE")
 
-    filename = f"tsne_{tag}.pdf"
+    #filename = f"tsne_{tag}.pdf"
     # finally, show the plot
     #plt.savefig(filename)
     plt.show()
