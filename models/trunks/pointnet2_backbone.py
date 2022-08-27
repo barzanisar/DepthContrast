@@ -13,7 +13,6 @@ import sys
 import numpy as np
 
 from models.trunks.mlp import MLP
-import pickle
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) #trunks
 ROOT_DIR = os.path.dirname(ROOT_DIR) #models
@@ -129,9 +128,6 @@ class PointNet2MSG(nn.Module):
         if use_mlp:
             self.use_mlp = True
             self.head = MLP(mlp_dim) # projection head
-
-        self.forward_cnt = 0
-
             
     def break_up_pc(self, pc):
         #batch_idx = pc[:, 0]
@@ -139,7 +135,7 @@ class PointNet2MSG(nn.Module):
         features = (pc[:, :, 3:].contiguous() if pc.size(-1) > 3 else None)
         return xyz, features
 
-    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None, tag=None):
+    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None):
         """
         Args:
             batch_dict:
@@ -182,7 +178,7 @@ class PointNet2MSG(nn.Module):
         if self.linear_probe:
             xyz = xyz @ aug_matrix.inverse()
             feat = point_features.view(batch_size, -1, point_features.shape[-1]).permute(0, 2, 1).contiguous() #(8, 128, npoints=16384) -> (8, 16384, 128) 
-            out_dict['point_features'] = feat
+            #out_dict['point_features'] = feat
             if self.use_mlp:
                 feat = self.head(feat)
             out_dict['linear_probe_feats'] = feat
@@ -194,9 +190,6 @@ class PointNet2MSG(nn.Module):
                 xyz_point_features = torch.cat([xyz, point_features.permute(0, 2, 1).contiguous()], 2) # (8, 16384, 131=3+128)
                 batch_voxel_features_list = []
                 vox_coords = []
-                debug_dict = {'forward_cnt' : self.forward_cnt,
-                'pointcloud': pointcloud,
-                'xyz_point_features': xyz_point_features}
                 
                 voxel_generator = point_to_voxel_func(device=xyz_point_features.device)
                 for pc_idx in range(batch_size):
@@ -221,21 +214,12 @@ class PointNet2MSG(nn.Module):
 
                 batch_voxel_feats = torch.cat(batch_voxel_features_list, 0) #(total num voxels=1181, 128) = ( 8 * numvoxels in each pc, 128)
                 vox_coords = np.concatenate(vox_coords, axis=0) #(total num vox = 1181, 4)  = [batch_idx, z_idx,y_idx,x_idx]
-                debug_dict['batch_voxel_feats'] = batch_voxel_feats
-                debug_dict['vox_coords'] = vox_coords
-
 
                 # Projection head (tot num voxels, 128) -> (tot num voxels, 128)
                 if self.use_mlp:
                     batch_voxel_feats = self.head(batch_voxel_feats)
                 out_dict['vdc_feats'] = batch_voxel_feats
                 out_dict['vdc_voxel_bzyx'] = vox_coords
-                debug_dict['batch_voxel_embed'] = batch_voxel_feats
-                
-                if tag is None:
-                    # with open(f'/home/barza/DepthContrast/checkpoints/pointnetMSG_train_all_FOV3000_60/vdc/vdc_snow1in10_wet_fog1in10_cubeF_upsample_FOV3000_try/train/vdc_feats_{self.forward_cnt}.pkl',  'wb') as f:
-                    #     pickle.dump(debug_dict, f)
-                    self.forward_cnt +=1
             
             if 'dc_feats' in out_feat_keys:
                 nump = point_features.shape[-1] # 16384
