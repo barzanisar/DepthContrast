@@ -13,6 +13,7 @@ import sys
 import numpy as np
 
 from models.trunks.mlp import MLP
+import pickle
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) #trunks
 ROOT_DIR = os.path.dirname(ROOT_DIR) #models
@@ -124,10 +125,12 @@ class PointNet2MSG(nn.Module):
         self.all_feat_names = [
             "fp2",
         ]
-
+        self.use_mlp = False
         if use_mlp:
             self.use_mlp = True
             self.head = MLP(mlp_dim) # projection head
+
+        self.forward_cnt = 0
 
             
     def break_up_pc(self, pc):
@@ -136,7 +139,7 @@ class PointNet2MSG(nn.Module):
         features = (pc[:, :, 3:].contiguous() if pc.size(-1) > 3 else None)
         return xyz, features
 
-    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None):
+    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None, tag=None):
         """
         Args:
             batch_dict:
@@ -179,6 +182,7 @@ class PointNet2MSG(nn.Module):
         if self.linear_probe:
             xyz = xyz @ aug_matrix.inverse()
             feat = point_features.view(batch_size, -1, point_features.shape[-1]).permute(0, 2, 1).contiguous() #(8, 128, npoints=16384) -> (8, 16384, 128) 
+            out_dict['point_features'] = feat
             if self.use_mlp:
                 feat = self.head(feat)
             out_dict['linear_probe_feats'] = feat
@@ -187,33 +191,51 @@ class PointNet2MSG(nn.Module):
             if 'vdc_feats' in out_feat_keys:
                 xyz = xyz @ aug_matrix.inverse()
                 #Voxelize pointcloud and avg/max pool point features in each voxel to get voxel wise features
-                xyz_point_features = torch.cat([xyz, point_features.permute(0, 2, 1).contiguous()], 2) # (8, 16394, 131=3+128)
+                xyz_point_features = torch.cat([xyz, point_features.permute(0, 2, 1).contiguous()], 2) # (8, 16384, 131=3+128)
                 batch_voxel_features_list = []
                 vox_coords = []
+                debug_dict = {'forward_cnt' : self.forward_cnt,
+                'pointcloud': pointcloud,
+                'xyz_point_features': xyz_point_features}
                 
                 voxel_generator = point_to_voxel_func(device=xyz_point_features.device)
                 for pc_idx in range(batch_size):
-                    voxel_features, coordinates, voxel_num_points = voxel_generator(xyz_point_features[pc_idx]) # voxel_features = (num voxels, max points per voxel, 3+features_dim) #coords = z_grid_idx, y_idx, x_idx 
-                    vox_coords.append(np.pad(coordinates.cpu(), ((0, 0), (1, 0)), mode='constant', constant_values=pc_idx))
-                    # # Mean VFE: find mean of point features in each voxel # try max as well
+                    _, coordinates, _, pc_voxel_id = voxel_generator(xyz_point_features[pc_idx]) # voxel_features = (num voxels, max points per voxel, 3+features_dim) #coords = z_grid_idx, y_idx, x_idx 
+                    vox_coords.append(np.pad(coordinates.cpu(), ((0, 0), (1, 0)), mode='constant', constant_values=pc_idx)) #[batch_idx, z_idx,y_idx,x_idx]
+                    # # # Mean VFE: find mean of point features in each voxel # try max as well
                     # points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False)
                     # normalizer = torch.clamp_min(voxel_num_points.view(-1, 1), min=1.0).type_as(voxel_features)
                     # points_mean = points_mean / normalizer
                     # voxel_features = points_mean.contiguous()
                     # batch_voxel_features_list.append(voxel_features[:, 3:]) #only append features, not mean x,y,z, points
-
+                    num_voxels = coordinates.shape[0]
+                    new_voxel_features = []
+                    for i in range(num_voxels):
+                        point_indices_for_voxel_i = pc_voxel_id == i
+                        xyz_point_features_voxel_i = xyz_point_features[pc_idx][point_indices_for_voxel_i].unsqueeze(0)
+                        voxel_i_feature = F.max_pool1d(xyz_point_features_voxel_i.permute(0, 2, 1).contiguous(), xyz_point_features_voxel_i.shape[1]).squeeze(-1)
+                        new_voxel_features.append(voxel_i_feature)
+                    all_voxel_features = torch.stack([feat for feat in new_voxel_features]).squeeze(1)
                     #Or max pool point features inside each voxel to get vfe
-                    voxel_features = F.max_pool1d(voxel_features.permute(0, 2, 1).contiguous(), voxel_features.shape[1]).squeeze(-1)
-                    batch_voxel_features_list.append(voxel_features[:, 3:])
+                    batch_voxel_features_list.append(all_voxel_features[:, 3:])
 
                 batch_voxel_feats = torch.cat(batch_voxel_features_list, 0) #(total num voxels=1181, 128) = ( 8 * numvoxels in each pc, 128)
                 vox_coords = np.concatenate(vox_coords, axis=0) #(total num vox = 1181, 4)  = [batch_idx, z_idx,y_idx,x_idx]
-                
+                debug_dict['batch_voxel_feats'] = batch_voxel_feats
+                debug_dict['vox_coords'] = vox_coords
+
+
                 # Projection head (tot num voxels, 128) -> (tot num voxels, 128)
                 if self.use_mlp:
                     batch_voxel_feats = self.head(batch_voxel_feats)
                 out_dict['vdc_feats'] = batch_voxel_feats
                 out_dict['vdc_voxel_bzyx'] = vox_coords
+                debug_dict['batch_voxel_embed'] = batch_voxel_feats
+                
+                if tag is None:
+                    # with open(f'/home/barza/DepthContrast/checkpoints/pointnetMSG_train_all_FOV3000_60/vdc/vdc_snow1in10_wet_fog1in10_cubeF_upsample_FOV3000_try/train/vdc_feats_{self.forward_cnt}.pkl',  'wb') as f:
+                    #     pickle.dump(debug_dict, f)
+                    self.forward_cnt +=1
             
             if 'dc_feats' in out_feat_keys:
                 nump = point_features.shape[-1] # 16384
