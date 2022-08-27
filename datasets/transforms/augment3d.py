@@ -89,6 +89,8 @@ def get_transform3d(data, input_transforms_list, vox=False):
     counter = 0
     centers = []
     aug_trans_matrix_list=[]
+    np.random.seed(1024)
+
 
     DEBUG_REVERSE_TRANS = False
     # Compute augmentation transformation matrix
@@ -240,6 +242,10 @@ def get_transform3d(data, input_transforms_list, vox=False):
                     inverse_trans_new_points = new_points @ np.linalg.inv(aug_trans_matrix)
                     max_diff = np.abs(old_points - inverse_trans_new_points).max()
                     #print('max diff is: {}'.format(max_diff))
+                    # print(f'Old max: {np.max(old_points, axis=0)}, min: {np.min(old_points, axis=0)}')
+                    # print(f'New max: {np.max(new_points, axis=0)}, min: {np.min(new_points, axis=0)}')
+                    # print(f'Inverse New max: {np.max(inverse_trans_new_points, axis=0)}, min: {np.min(inverse_trans_new_points, axis=0)}')
+
                     assert max_diff < 0.001
               
                 aug_trans_matrix = torch.tensor(aug_trans_matrix).float()
