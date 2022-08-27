@@ -67,7 +67,7 @@ optimizer:
     final_lr: 0.0001 #0 for linear_probe
 
 model:
-  name: "dc_snow1in10_wet_fog1in10_cubeF_upsample_FOV3000"
+  name: "dc_snow1in10_wet_fog1in10_cube_upsample_FOV3000"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/dc"
   model_input: ["points", "points_moco"]
   model_feature: [["dc_feats"], ["dc_feats"]]
