@@ -147,7 +147,7 @@ class NCELossMoco(nn.Module):
             coords_1 = output_dict[1]['vdc_voxel_bzyx'] # vox_coords from key encoder
 
             # Find matching vox_coords in both in order to rearrange normalized output1 and output2 in the order of matching voxel features
-            map_coord0_idx0 = {str(coords_0[i, :]): i for i in range(coords_0.shape[0])}
+            map_coord0_idx0 = {str(coords_0[i, :]): i for i in range(coords_0.shape[0])} # {'bzyx': idx_0}
             matched_idx_0 = []
             matched_idx_1 = []
             for idx_1 in range(coords_1.shape[0]):
