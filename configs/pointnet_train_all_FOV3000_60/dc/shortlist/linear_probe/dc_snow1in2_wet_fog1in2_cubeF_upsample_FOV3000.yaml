@@ -9,8 +9,7 @@ log2wb: true
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 100 # print progress after processing every <freq> iters or batches
 ckpt_save_interval: 20
-save_ckpt_after_epochs: 200
-
+save_ckpt_after_epochs: 300
 
 WANDB:
   ENABLED: True
@@ -33,11 +32,11 @@ dataset:
   VOX: False
   APPLY_WEATHER_AUG: True # False for linear probe
   DROR: 0.45
-  UPSAMPLE: '1in0'
+  UPSAMPLE: '1in1'
   COUPLED: False
   WET_SURFACE: '1in10' #'1in10'
-  SNOW: 'uniform_gunn_1in10' #'1in10'
-  FOG_AUGMENTATION: 'CVL_1in10'
+  SNOW: 'uniform_gunn_1in2' #'1in10'
+  FOG_AUGMENTATION: 'CVL_1in2'
   FOG_NOISE_VARIANT: 'v2'
   FOG_GAIN: True
   FOV_POINTS_ONLY: True
@@ -58,7 +57,7 @@ optimizer:
     final_lr: 0.0001 #0 for linear_probe
 
 model:
-  name: "dc_snow1in10_wet_fog1in10_cubeF_upsampleF_FOV3000"
+  name: "dc_snow1in2_wet_fog1in2_cubeF_upsample_FOV3000"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/dc"
   model_input: ["points"]
   model_feature: [["dc_feats"], ["dc_feats"]]
