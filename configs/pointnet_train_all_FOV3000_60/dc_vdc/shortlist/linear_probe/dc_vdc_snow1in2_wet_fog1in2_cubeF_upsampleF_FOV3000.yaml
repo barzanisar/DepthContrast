@@ -23,7 +23,7 @@ dataset:
   INFO_PATHS: 
     train: ['dense_infos_train_all_FOV3000_60.pkl']
     val: ['dense_infos_val_all_FOV3000_15.pkl']
-  BATCHSIZE_PER_REPLICA: 10
+  BATCHSIZE_PER_REPLICA: 16
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
   SENSOR_TYPE: 'hdl64'
@@ -41,9 +41,6 @@ dataset:
   FOG_GAIN: True
   FOV_POINTS_ONLY: True
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
-    # - name: RandomFlipLidar
-    # - name: RandomRotateLidar
-    # - name: RandomScaleLidar
     - name: ToTensorLidar
   COLLATE_FUNCTION: "point_moco_collator"
   DROP_LAST: True
