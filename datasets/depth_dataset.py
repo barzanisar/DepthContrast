@@ -60,6 +60,7 @@ import torch
 WAYMO_POINT_RANGE = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
 # KITTI and DENSE range
 DENSE_POINT_RANGE = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32)
+np.random.seed(1024)
 
 class Namespace:
     def __init__(self, **kwargs):
@@ -331,6 +332,12 @@ class DenseDataset(DepthContrastDataset):
                 dense_infos.extend(infos)
 
         self.dense_infos.extend(dense_infos[:])
+
+        # To work on a subset of dense_infos for debugging, 
+        # comment the line above and uncomment below
+        # perm = np.random.permutation(len(dense_infos))
+        # idx = perm[:int(len(dense_infos)/10)]
+        # self.dense_infos.extend(np.array(dense_infos)[idx].tolist())
 
         if self.logger is not None:
             self.logger.add_line('Total skipped info %s' % num_skipped_infos)
