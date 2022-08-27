@@ -274,27 +274,27 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                 param_k.data.copy_(param_q.data)  # initialize
                 param_k.requires_grad = False  # not update by gradient
 
-        logger = self.logger
-        for model in trunks:
-            if logger is not None:
-                if isinstance(model, (list, tuple)):
-                    logger.add_line("=" * 30 + "   Model   " + "=" * 30)
-                    for m in model:
-                        logger.add_line(str(m))
-                    logger.add_line("=" * 30 + "   Parameters   " + "=" * 30)
-                    for m in model:
-                        logger.add_line(parameter_description(m))
-                else:
-                    logger.add_line("=" * 30 + "   Model   " + "=" * 30)
-                    logger.add_line(str(model))
-                    logger.add_line("=" * 30 + "   Parameters   " + "=" * 30)
-                    logger.add_line(parameter_description(model))
+        # logger = self.logger
+        # for model in trunks:
+        #     if logger is not None:
+        #         if isinstance(model, (list, tuple)):
+        #             logger.add_line("=" * 30 + "   Model   " + "=" * 30)
+        #             for m in model:
+        #                 logger.add_line(str(m))
+        #             logger.add_line("=" * 30 + "   Parameters   " + "=" * 30)
+        #             for m in model:
+        #                 logger.add_line(parameter_description(m))
+        #         else:
+        #             logger.add_line("=" * 30 + "   Model   " + "=" * 30)
+        #             logger.add_line(str(model))
+        #             logger.add_line("=" * 30 + "   Parameters   " + "=" * 30)
+        #             logger.add_line(parameter_description(model))
 
-                    """
-                    SA_modules.0.mlps.0.0.weight                     (layer 1)             | Trainable  | 16 x 4 x 1 x 1 (size of weight)| 64 (product of size)
-                    SA_modules.0.mlps.0.1.weight                    (batch norm)           | Trainable  | 16                             | 16
-                    SA_modules.0.mlps.0.1.bias                                             | Trainable  | 16                             | 16
-                    """
+        #             """
+        #             SA_modules.0.mlps.0.0.weight                     (layer 1)             | Trainable  | 16 x 4 x 1 x 1 (size of weight)| 64 (product of size)
+        #             SA_modules.0.mlps.0.1.weight                    (batch norm)           | Trainable  | 16                             | 16
+        #             SA_modules.0.mlps.0.1.bias                                             | Trainable  | 16                             | 16
+        #             """
         return trunks
 
     def _print_state_dict_shapes(self, state_dict):
