@@ -124,6 +124,8 @@ RUN python setup.py develop
 
 WORKDIR /DepthContrast
 RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
+RUN rm /usr/local/lib/python3.8/dist-packages/spconv/pytorch/utils.py
+COPY spconv/utils.py /usr/local/lib/python3.8/dist-packages/spconv/pytorch/utils.py
 RUN python -m pip --no-cache-dir install torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 RUN mkdir checkpoints &&  \
     mkdir configs &&  \
