@@ -9,7 +9,7 @@ DENSE_LIDAR=$(readlink -f ./data/dense/lidar_hdl64_strongest)
 SNOWFALL_LIDAR=$(readlink -f ./data/dense/snowfall_simulation)
 SNOWFALL_LIDAR_FOV=$(readlink -f ./data/dense/snowfall_simulation_FOV)
 SNOWFLAKES=$(readlink -f ./data/dense/snowflakes)
-DROR = $(readlink -f ./data/dense/DROR)
+DROR=$(readlink -f ./data/dense/DROR)
 
 # Setup volume linking (host link:container link)
 CUR_DIR=$(pwd)
@@ -22,7 +22,7 @@ DENSE_LIDAR=$DENSE_LIDAR:/DepthContrast/data/dense/lidar_hdl64_strongest
 SNOWFALL_LIDAR=$SNOWFALL_LIDAR:/DepthContrast/data/dense/snowfall_simulation
 SNOWFALL_LIDAR_FOV=$SNOWFALL_LIDAR_FOV:/DepthContrast/data/dense/snowfall_simulation_FOV
 SNOWFLAKES=$SNOWFLAKES:/DepthContrast/data/dense/snowflakes
-DROR=$SNOWFLAKES:/DepthContrast/data/dense/DROR
+DROR=$DROR:/DepthContrast/data/dense/DROR
 
 PCDET_VOLUMES=""
 for entry in $PROJ_DIR/third_party/OpenPCDet/pcdet/*
@@ -64,6 +64,6 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --volume $PROJ_DIR/lib:/DepthContrast/lib \
         $PCDET_VOLUMES \
         --rm \
-        depth_contrast_snow_sim:first_try bash
+        depth_contrast_vdc_dc:latest bash
 
 #--volume $WAYMO_PROCESSED \
