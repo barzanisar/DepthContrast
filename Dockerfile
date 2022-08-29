@@ -7,7 +7,7 @@
 # python        3.8 (apt)
 # pytorch       1.9 (pip)
 # ==================================================================
-FROM nvidia/cuda:11.1-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:11.1.1-cudnn8-devel-ubuntu20.04
 
 RUN rm -rf /var/lib/apt/lists/* \
            /etc/apt/sources.list.d/cuda.list \
