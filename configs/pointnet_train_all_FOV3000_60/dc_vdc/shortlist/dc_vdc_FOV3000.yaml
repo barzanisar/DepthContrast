@@ -23,7 +23,7 @@ dataset:
   INFO_PATHS: 
     train: ['dense_infos_train_all_FOV3000_60.pkl']
     val: ['dense_infos_val_clear_FOV3000_15.pkl']
-  BATCHSIZE_PER_REPLICA: 16
+  BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
   SENSOR_TYPE: 'hdl64'
