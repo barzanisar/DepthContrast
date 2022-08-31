@@ -7,9 +7,9 @@ log2tb: true
 log2wb: true
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
-print_freq: 10 # print progress after processing every <freq> iters or batches
+print_freq: 100 # print progress after processing every <freq> iters or batches
 ckpt_save_interval: 20
-save_ckpt_after_epochs: 200
+save_ckpt_after_epochs: 300
 
 WANDB:
   ENABLED: True
@@ -22,7 +22,7 @@ dataset:
   DATASET_NAMES: [DenseDataset]
   INFO_PATHS: 
     train: ['dense_infos_train_all_FOV3000_60.pkl']
-    val: ['dense_infos_val_clear_FOV3000_15.pkl']
+    val: ['dense_infos_val_all_FOV3000_15.pkl']
   BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
@@ -33,7 +33,7 @@ dataset:
   APPLY_WEATHER_AUG: True # False for linear probe
   DROR: 0.45
   UPSAMPLE: '1in1'
-  COUPLED: True
+  COUPLED: False
   WET_SURFACE: '1in10' #'1in10'
   SNOW: 'uniform_gunn_1in2' #'1in10'
   FOG_AUGMENTATION: 'CVL_1in2'
@@ -46,7 +46,6 @@ dataset:
     - name: RandomScaleLidar
     - name: ToTensorLidar
   COLLATE_FUNCTION: "point_moco_collator"
-  INPUT_KEY_NAMES: ["points", "points_moco"]
   DROP_LAST: True
 
 optimizer:
