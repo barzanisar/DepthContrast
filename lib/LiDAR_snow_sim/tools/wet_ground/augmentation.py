@@ -4,7 +4,7 @@ __license__ = "CC BY-NC 4.0 (https://creativecommons.org/licenses/by-nc/4.0/)"
 
 import numpy as np
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 from scipy.stats import linregress
 

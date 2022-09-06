@@ -16,7 +16,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # main.py script parameters
 SNOWFALL_RATE_INDEX=-1
 SPLIT='None'
-FOV=false
+FOV=true
 
 
 # Additional parameters
@@ -190,22 +190,26 @@ $SING_IMG
 "
 
 TRAIN_CMD=$BASE_CMD
-TRAIN_CMD+="python -m lib.LiDAR_snow_sim.tools.snowfall.precompute --split $SPLIT --snowfall_rate_index $SNOWFALL_RATE_INDEX"
-if [ $FOV == "true" ]
-then
-    TRAIN_CMD+=" --fov"
+TRAIN_CMD+="python -m lib.LiDAR_snow_sim.tools.snowfall.precompute --split $SPLIT --snowfall_rate_index $SNOWFALL_RATE_INDEX --fov"
+echo "Precomputing snow sim on FOV"
+echo "$TRAIN_CMD"
+eval $TRAIN_CMD
+echo "Done Snow Sim FOV"
+# if [ $FOV == "true" ]
+# then
+#     TRAIN_CMD+=" --fov"
 
-    echo "Precomputing snow sim on FOV"
-    echo "$TRAIN_CMD"
-    eval $TRAIN_CMD
-    echo "Done Snow Sim FOV"
-else
+#     echo "Precomputing snow sim on FOV"
+#     echo "$TRAIN_CMD"
+#     eval $TRAIN_CMD
+#     echo "Done Snow Sim FOV"
+# else
 
-    echo "Precomputing snow sim 360"
-    echo "$TRAIN_CMD"
-    eval $TRAIN_CMD
-    echo "Done Snow Sim 360"
-fi
+#     echo "Precomputing snow sim 360"
+#     echo "$TRAIN_CMD"
+#     eval $TRAIN_CMD
+#     echo "Done Snow Sim 360"
+# fi
 
 
 

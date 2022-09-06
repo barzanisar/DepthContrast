@@ -18,10 +18,10 @@ ROOT_PATH = (Path(__file__) / '../../../../..').resolve() #DepthContrast
 DATA_PATH = ROOT_PATH /'data' / 'dense'
 SPLIT_FOLDER =  DATA_PATH/ 'ImageSets' / 'train_clear_precompute'
 LIDAR_FOLDER = DATA_PATH / 'lidar_hdl64_strongest'
-SAVE_DIR_ROOT = ROOT_PATH / 'output' / 'snowfall_simulation' #for compute canada DATA_PATH / 'snowfall_simulation_FOV' #
+SAVE_DIR_ROOT = ROOT_PATH / 'output' / 'snowfall_simulation_FOV' #for compute canada DATA_PATH / 'snowfall_simulation_FOV' #
 
-SNOWFALL_RATES = [0.5, 0.5, 1.0, 2.0, 2.5, 1.5]  #[0.5, 1.0, 2.0, 2.5, 1.5]       # mm/h
-TERMINAL_VELOCITIES = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6] #[2.0, 1.6, 2.0, 1.6, 0.6]  # m/s
+SNOWFALL_RATES = [1.5, 1.0]  #[0.5, 1.0, 2.0, 2.5, 1.5]       # mm/h
+TERMINAL_VELOCITIES = [0.4, 0.2] #[2.0, 1.6, 2.0, 1.6, 0.6]  # m/s
 
 
 def split(a, n):
@@ -100,7 +100,7 @@ if __name__ == '__main__':
 
             points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
             calibration = get_calib()
-            print(f'Processing sample: {sample_idx}')
+            #print(f'Processing sample: {sample_idx}')
 
             for combo in combos:
 
@@ -145,7 +145,7 @@ if __name__ == '__main__':
                     total_skipped +=1
                     continue
                 
-                print(f'Time taken for {sample_idx}: {time_taken}, pc shape: {pc.shape[0]}, aug pc shape: {aug_pc.shape[0]}')
+                #print(f'Time taken for {sample_idx}: {time_taken}, pc shape: {pc.shape[0]}, aug pc shape: {aug_pc.shape[0]}')
                 if aug_pc.shape[0] < 3000:
                     print(f'LESS than 3000 pts! sample_idx: {sample_idx}, rr_ratio:{combo}, aug_pc:{aug_pc.shape}')
 
