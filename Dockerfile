@@ -63,6 +63,8 @@ COPY requirements.txt requirements.txt
 RUN python -m pip install --upgrade pip
 RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
 RUN apt-get update && apt-get install libgl1
+RUN pip install -U urllib3 requests
+
 
 # ==================================================================
 # config & cleanup
