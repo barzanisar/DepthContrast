@@ -1,6 +1,7 @@
 wb_extra_tags: ['pointnet', 'train_all_FOV3000_60', 'vdc', 'linear_probe']
 resume: true
 linear_probe: true # True for linear probe
+linear_probe_base_model_fn: 'checkpoint-ep340.pth.tar'
 num_workers: 8
 
 log2tb: true
@@ -23,7 +24,7 @@ dataset:
   INFO_PATHS: 
     train: ['dense_infos_train_all_FOV3000_60.pkl']
     val: ['dense_infos_val_all_FOV3000_15.pkl']
-  BATCHSIZE_PER_REPLICA: 10
+  BATCHSIZE_PER_REPLICA: 16
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
   SENSOR_TYPE: 'hdl64'
@@ -50,7 +51,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: False
-  num_epochs: 201
+  num_epochs: 101
   lr:
     name: "cosine"
     base_lr: 0.1 #0.1 for linear_probe
