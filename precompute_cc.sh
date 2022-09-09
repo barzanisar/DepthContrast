@@ -1,14 +1,17 @@
-sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split0_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_0.txt --snowfall_rate_index 0
-sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split1_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_1.txt --snowfall_rate_index 0
-sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split2_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_2.txt --snowfall_rate_index 0
-sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split3_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_3.txt --snowfall_rate_index 0
-sbatch --time=4:00:00 --array=1-1%1 --job-name=precompute_test_split4_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_4.txt --snowfall_rate_index 0
+sbatch --time=5:00:00 --array=1-1%1 --job-name=precompute_test_split-martin_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_martin.txt --snowfall_rate_index 0
+sbatch --time=5:00:00 --array=1-1%1 --job-name=precompute_test_split-martin_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_martin.txt --snowfall_rate_index 1
 
-sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split0_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_0.txt --snowfall_rate_index 1
-sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split1_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_1.txt --snowfall_rate_index 1
-sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split2_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_2.txt --snowfall_rate_index 1
-sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split3_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_3.txt --snowfall_rate_index 1
-sbatch --time=4:00:00 --array=1-1%1 --job-name=precompute_test_split4_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_4.txt --snowfall_rate_index 1
+# sbatch --time=1:00:00 --array=1-1%1 --job-name=precompute_test_split0_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_0.txt --snowfall_rate_index 0
+# sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split1_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_1.txt --snowfall_rate_index 0
+# sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split2_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_2.txt --snowfall_rate_index 0
+# sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split3_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_3.txt --snowfall_rate_index 0
+# sbatch --time=4:00:00 --array=1-1%1 --job-name=precompute_test_split4_index0 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_4.txt --snowfall_rate_index 0
+
+# sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split0_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_0.txt --snowfall_rate_index 1
+# sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split1_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_1.txt --snowfall_rate_index 1
+# sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split2_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_2.txt --snowfall_rate_index 1
+# sbatch --time=3:00:00 --array=1-1%1 --job-name=precompute_test_split3_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_3.txt --snowfall_rate_index 1
+# sbatch --time=4:00:00 --array=1-1%1 --job-name=precompute_test_split4_index1 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_FOV3000_60_4.txt --snowfall_rate_index 1
 
 # sbatch --time=24:00:00 --array=1-2%1 --job-name=precompute_test_split0_index2 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_60_0.txt --snowfall_rate_index 2
 # sbatch --time=24:00:00 --array=1-2%1 --job-name=precompute_test_split0_index2 --mail-user=barzanisar93@gmail.com scripts/compute_canada_lidar_snow_sim.sh --split train_clear_60_1.txt --snowfall_rate_index 2

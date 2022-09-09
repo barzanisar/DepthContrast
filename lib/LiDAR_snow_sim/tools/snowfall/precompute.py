@@ -58,7 +58,7 @@ parser = argparse.ArgumentParser(description='Lidar snowfall sim')
 
 parser.add_argument('--split', type=str, default='None', help='specify the config for training')
 parser.add_argument('--snowfall_rate_index', default=-1, type=int, help='Index for snowfall_rate and terminal velocity')
-parser.add_argument('--fov', action='store_true', default=False)
+parser.add_argument('--fov', action='store_true', default=True)
 
 
 if __name__ == '__main__':
