@@ -20,9 +20,8 @@ SPLIT_FOLDER =  DATA_PATH/ 'ImageSets' / 'train_clear_precompute'
 LIDAR_FOLDER = DATA_PATH / 'lidar_hdl64_strongest'
 SAVE_DIR_ROOT = ROOT_PATH / 'output' / 'snowfall_simulation_FOV' #for compute canada DATA_PATH / 'snowfall_simulation_FOV' #
 
-SNOWFALL_RATES = [1.5, 1.0]  #[0.5, 1.0, 2.0, 2.5, 1.5]       # mm/h
-TERMINAL_VELOCITIES = [0.4, 0.2] #[2.0, 1.6, 2.0, 1.6, 0.6]  # m/s
-
+SNOWFALL_RATES = [0.5, 0.5, 1.0, 2.0, 2.5, 1.5, 1.5, 1.0]  #[0.5, 1.0, 2.0, 2.5, 1.5]       # mm/h
+TERMINAL_VELOCITIES = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6, 0.4, 0.2] #[2.0, 1.6, 2.0, 1.6, 0.6]  # m/s
 
 def split(a, n):
     k, m = divmod(len(a), n)
@@ -119,23 +118,27 @@ if __name__ == '__main__':
                 #V.draw_scenes(points=pc, color_feature=3)
                 #print(f'sample_idx: {sample_idx}, rr_ratio:{combo}')
                 #print("pc: ", pc.shape)
-                if args.fov:
-                    pts_rectified = calibration.lidar_to_rect(pc[:, 0:3])
-                    fov_flag = get_fov_flag(pts_rectified, (1024, 1920), calibration) #(1024, 1920)
-                    pc = pc[fov_flag]
-                    if pc.shape[0] < 3000:
-                        print(f'Skipping {sample_idx} has less than 3000 points in FOV')
-                        continue
-                else:
-                    pc = crop_pc(pc)
+                # if args.fov:
+                #     pts_rectified = calibration.lidar_to_rect(pc[:, 0:3])
+                #     fov_flag = get_fov_flag(pts_rectified, (1024, 1920), calibration) #(1024, 1920)
+                #     pc = pc[fov_flag]
+                #     # if pc.shape[0] < 3000:
+                #     #     print(f'Skipping {sample_idx} has less than 3000 points in FOV')
+                #     #     continue
+                # else:
+                #     pc = crop_pc(pc)
                 #V.draw_scenes(points=pc, color_feature=3)
                 #print("FOV_pc: ", pc.shape)
+
+                pts_rectified = calibration.lidar_to_rect(pc[:, 0:3])
+                fov_flag = get_fov_flag(pts_rectified, (1024, 1920), calibration) #(1024, 1920)
+                pc = pc[fov_flag]
 
                 snowflake_file_prefix = f'{mode}_{rainfall_rate}_{occupancy_ratio}'
 
                 start = time.time()
                 stats, aug_pc = augment(pc=pc, particle_file_prefix=snowflake_file_prefix,
-                                        beam_divergence=float(np.degrees(3e-3)), root_path=DATA_PATH, only_camera_fov=args.fov)
+                                        beam_divergence=float(np.degrees(3e-3)), root_path=DATA_PATH)
                 time_taken = time.time() - start
                 
                 #print("aug_pc: ", aug_pc.shape)
