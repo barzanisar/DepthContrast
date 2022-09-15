@@ -51,7 +51,8 @@ class NCELossMoco(nn.Module):
         ], f"Supported types are cross_entropy."
 
         self.loss_type = config["NCE_LOSS"]["LOSS_TYPE"]
-        self.other_queue = True if config["model_type"] == "DC_VDC" else False
+        self.negative_examples = config["negative_examples"]
+        self.other_queue = True if config["model_type"] == "DC_VDC" or 's1_q1' in self.negative_examples or 's2_q1' in self.negative_examples else False
         self.model_type = config["model_type"]
 
         self.npid0_w = float(config["within_format_weight0"])
@@ -137,7 +138,7 @@ class NCELossMoco(nn.Module):
         if self.normalize_embedding:
             normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query dc embedding or vdc
             normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key dc embedding or vdc
-            if self.other_queue:
+            if self.model_type == 'DC_VDC':
                 normalized_output3 = nn.functional.normalize(output_2, dim=1, p=2) #query vdc embedding
                 normalized_output4 = nn.functional.normalize(output_3, dim=1, p=2) #key vdc embedding
 
@@ -156,61 +157,105 @@ class NCELossMoco(nn.Module):
                     matched_idx_0.append(idx_0)
                     matched_idx_1.append(idx_1)
             # TODO: choose high similarity voxels
-            if self.other_queue:
+            if self.model_type == 'DC_VDC':
                 normalized_output3 = normalized_output3[matched_idx_0, :] #(matched num voxels, 128)
                 normalized_output4 = normalized_output4[matched_idx_1, :] #(matched num voxels, 128)
             else:
                 normalized_output1 = normalized_output1[matched_idx_0, :] #(matched num voxels, 128)
                 normalized_output2 = normalized_output2[matched_idx_1, :] #(matched num voxels, 128)
 
-
+        curr_loss = 0
         # positive logits: Nx1 = batch size of positive examples (or matched num voxels)x 1
-        l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1) #(v_i_1).transpose() * v_i_2 => dim (n = matched num voxels)
+        l_pos_s12 = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1) #(v_i_1).transpose() * v_i_2 => dim (n = matched num voxels)
         
         # negative logits: NxK
-        l_neg = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()])
+        l_neg_s1q2 = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()])
         
         # logits: Nx(1+K)
-        logits = torch.cat([l_pos, l_neg], dim=1)
+        logits_s12_s1q2 = torch.cat([l_pos_s12, l_neg_s1q2], dim=1)
         
         # apply temperature
-        logits /= self.T
+        logits_s12_s1q2 /= self.T
 
-        if self.other_queue:
+        labels_s12_s1q2 = torch.zeros(
+            logits_s12_s1q2.shape[0], device=logits_s12_s1q2.device, dtype=torch.int64
+        ) # because zero'th class is the true class
+
+        loss_s12_s1q2 = self.xe_criterion(torch.squeeze(logits_s12_s1q2), labels_s12_s1q2) #loss between pointnet query and key embedding
+        curr_loss += loss_s12_s1q2 * self.npid0_w
+
+        if 's2_q2' in self.negative_examples:
+            # negative logits: NxK
+            l_neg_s2q2 = torch.einsum('nc,ck->nk', [normalized_output2, self.queue.clone().detach()])
+            
+            # logits: Nx(1+K)
+            logits_s12_s2q2 = torch.cat([l_pos_s12, l_neg_s2q2], dim=1)
+            
+            # apply temperature
+            logits_s12_s2q2 /= self.T
+
+            labels_s12_s2q2 = torch.zeros(
+                logits_s12_s2q2.shape[0], device=logits_s12_s2q2.device, dtype=torch.int64
+            ) # because zero'th class is the true class
+
+            loss_s12_s2q2 = self.xe_criterion(torch.squeeze(logits_s12_s2q2), labels_s12_s2q2) #loss between pointnet query and key embedding
+            curr_loss += loss_s12_s2q2 * self.npid0_w
+        
+        if 's1_q1' in self.negative_examples:
+            # negative logits: NxK
+            l_neg_s1q1 = torch.einsum('nc,ck->nk', [normalized_output1, self.queue_other.clone().detach()])
+            
+            # logits: Nx(1+K)
+            logits_s12_s1q1 = torch.cat([l_pos_s12, l_neg_s1q1], dim=1)
+            
+            # apply temperature
+            logits_s12_s1q1 /= self.T
+
+            labels_s12_s1q1 = torch.zeros(
+                logits_s12_s1q1.shape[0], device=logits_s12_s1q1.device, dtype=torch.int64
+            ) # because zero'th class is the true class
+
+            loss_s12_s1q1 = self.xe_criterion(torch.squeeze(logits_s12_s1q1), labels_s12_s1q1) #loss between pointnet query and key embedding
+            curr_loss += loss_s12_s1q1 * self.npid0_w
+        
+        if 's2_q1' in self.negative_examples:
+            # negative logits: NxK
+            l_neg_s2q1 = torch.einsum('nc,ck->nk', [normalized_output2, self.queue_other.clone().detach()])
+            
+            # logits: Nx(1+K)
+            logits_s12_s2q1 = torch.cat([l_pos_s12, l_neg_s2q1], dim=1)
+            
+            # apply temperature
+            logits_s12_s2q1 /= self.T
+
+            labels_s12_s2q1 = torch.zeros(
+                logits_s12_s2q1.shape[0], device=logits_s12_s2q1.device, dtype=torch.int64
+            ) # because zero'th class is the true class       
+
+            loss_s12_s2q1 = self.xe_criterion(torch.squeeze(logits_s12_s2q1), labels_s12_s2q1) #loss between pointnet query and key embedding
+            curr_loss += loss_s12_s2q1 * self.npid0_w
+
+        loss_npid_other = torch.tensor(0)
+        if self.model_type == 'DC_VDC':
             l_pos_other = torch.einsum('nc,nc->n', [normalized_output3, normalized_output4]).unsqueeze(-1)
             l_neg_other = torch.einsum('nc,ck->nk', [normalized_output3, self.queue_other.clone().detach()])
             logits_other = torch.cat([l_pos_other, l_neg_other], dim=1)
             logits_other /= (self.T)
-            
-        if self.other_queue:
-            self._dequeue_and_enqueue(normalized_output2, okeys=normalized_output4)
-        else:
-            self._dequeue_and_enqueue(normalized_output2)
-
-        
-        labels = torch.zeros(
-            logits.shape[0], device=logits.device, dtype=torch.int64
-        ) # because zero'th class is the true class
-
-        if self.other_queue:
             labels_other = torch.zeros(
                 logits_other.shape[0], device=logits_other.device, dtype=torch.int64
             ) # because zero'th class is the true class
-            
-        loss_npid = self.xe_criterion(torch.squeeze(logits), labels) #loss between pointnet query and key embedding
-
-        loss_npid_other = torch.tensor(0)
-        
-        curr_loss = 0
-        curr_loss += loss_npid * self.npid0_w
-        if self.other_queue:
             loss_npid_other = self.xe_criterion(torch.squeeze(logits_other), labels_other) #loss between unet query and key embedding
             curr_loss += loss_npid_other * self.npid1_w
 
-                        
-        loss = curr_loss
+            self._dequeue_and_enqueue(normalized_output2, okeys=normalized_output4)
 
-        return loss, [loss_npid, loss_npid_other]
+        elif 's1_q1' or 's2_q1' in self.negative_examples:
+            self._dequeue_and_enqueue(normalized_output2, okeys=normalized_output1)
+        else:
+            self._dequeue_and_enqueue(normalized_output2)
+            
+
+        return curr_loss, [loss_s12_s1q2, loss_npid_other]
 
     def __repr__(self):
         repr_dict = {
