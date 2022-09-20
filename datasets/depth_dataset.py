@@ -343,7 +343,10 @@ class DenseKittiDataset(DepthContrastDataset):
                 infos = pickle.load(f)
                 dense_kitti_infos.extend(infos)
 
-        self.infos.extend(dense_kitti_infos[:])
+        # shuffle infos
+        perm_idx = np.random.permutation(len(dense_kitti_infos))
+        self.infos.extend(np.array(dense_kitti_infos)[perm_idx].tolist())
+        #self.infos.extend(dense_kitti_infos[:])
 
         # To work on a subset of dense_infos for debugging, 
         # comment the line above and uncomment below
@@ -494,7 +497,9 @@ class DenseKittiDataset(DepthContrastDataset):
         points_moco = np.copy(points) #points_weather
         
         weather = 'clear'
-        if 'annos' in info:
+        if 'weather' in info:
+            weather = info['weather']
+        else:
             weather = info['annos']['weather']
         
         pc_cropped = False
