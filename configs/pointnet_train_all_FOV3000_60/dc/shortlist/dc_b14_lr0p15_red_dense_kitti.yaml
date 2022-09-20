@@ -3,8 +3,8 @@ resume: true
 linear_probe: false # True for linear probe
 num_workers: 8
 
-log2tb: false
-log2wb: false
+log2tb: true
+log2wb: true
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 100 # print progress after processing every <freq> iters or batches
@@ -12,7 +12,7 @@ ckpt_save_interval: 10
 save_ckpt_after_epochs: 300
 
 WANDB:
-  ENABLED: False
+  ENABLED: True
   PROJECT: DepthContrast_dense
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None

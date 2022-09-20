@@ -492,8 +492,11 @@ class DenseKittiDataset(DepthContrastDataset):
             points = self.get_dense_lidar(sample_idx)
         
         points_moco = np.copy(points) #points_weather
-
-        weather = info['annos'].get('weather', 'clear')
+        
+        weather = 'clear'
+        if 'annos' in info:
+            weather = info['annos']['weather']
+        
         pc_cropped = False
         mor = np.inf
         data_dict = {}
@@ -580,7 +583,7 @@ class DenseKittiDataset(DepthContrastDataset):
             
             # Snowfall Augmentation
             snowfall_augmentation_applied = False
-            apply_snow = info['annos']['weather'] == 'clear' and 'SNOW' in self.cfg and dataset == 'dense'
+            apply_snow = weather == 'clear' and 'SNOW' in self.cfg and dataset == 'dense'
             if apply_snow:
                 parameters = self.cfg['SNOW'].split('_')
 
@@ -625,7 +628,7 @@ class DenseKittiDataset(DepthContrastDataset):
                         pass
             
             wet_surface_applied = False
-            apply_wet_surface = info['annos']['weather'] == 'clear' and 'WET_SURFACE' in self.cfg and dataset == 'dense'
+            apply_wet_surface = weather == 'clear' and 'WET_SURFACE' in self.cfg and dataset == 'dense'
             if apply_wet_surface:
                 if not pc_cropped:
                     points_moco = self.crop_pc(points_moco, calib, img_shape)
@@ -679,7 +682,7 @@ class DenseKittiDataset(DepthContrastDataset):
                         pass
             
             #Fog augmentation
-            apply_fog = info['annos']['weather'] == 'clear' and not snowfall_augmentation_applied and 'FOG_AUGMENTATION' in self.cfg
+            apply_fog = weather == 'clear' and not snowfall_augmentation_applied and 'FOG_AUGMENTATION' in self.cfg
             if apply_fog:
                 augmentation_method = self.cfg['FOG_AUGMENTATION'].split('_')[0]
                 chance = self.cfg['FOG_AUGMENTATION'].split('_')[-1]
@@ -906,7 +909,9 @@ class DenseDataset(DepthContrastDataset):
         points = self.get_lidar(sample_idx)
         points_moco = np.copy(points) #points_weather
 
-        weather = info['annos']['weather']
+        weather = 'clear'
+        if 'annos' in info:
+            weather = info['annos']['weather']
         pc_cropped = False
         mor = np.inf
         data_dict = {}
@@ -993,7 +998,7 @@ class DenseDataset(DepthContrastDataset):
             
             # Snowfall Augmentation
             snowfall_augmentation_applied = False
-            apply_snow = info['annos']['weather'] == 'clear' and 'SNOW' in self.cfg
+            apply_snow = weather == 'clear' and 'SNOW' in self.cfg
             if apply_snow:
                 parameters = self.cfg['SNOW'].split('_')
 
@@ -1038,7 +1043,7 @@ class DenseDataset(DepthContrastDataset):
                         pass
             
             wet_surface_applied = False
-            apply_wet_surface = info['annos']['weather'] == 'clear' and 'WET_SURFACE' in self.cfg
+            apply_wet_surface = weather == 'clear' and 'WET_SURFACE' in self.cfg
             if apply_wet_surface:
                 if not pc_cropped:
                     points_moco = self.crop_pc(points_moco)
@@ -1092,7 +1097,7 @@ class DenseDataset(DepthContrastDataset):
                         pass
             
             #Fog augmentation
-            apply_fog = info['annos']['weather'] == 'clear' and not snowfall_augmentation_applied and 'FOG_AUGMENTATION' in self.cfg
+            apply_fog = weather == 'clear' and not snowfall_augmentation_applied and 'FOG_AUGMENTATION' in self.cfg
             if apply_fog:
                 augmentation_method = self.cfg['FOG_AUGMENTATION'].split('_')[0]
                 chance = self.cfg['FOG_AUGMENTATION'].split('_')[-1]
