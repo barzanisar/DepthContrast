@@ -9,11 +9,12 @@ import logging
 
 import torch
 from datasets.collators import get_collator
-from datasets.depth_dataset import DenseDataset
+from datasets.depth_dataset import DenseDataset, DenseKittiDataset
 from torch.utils.data import DataLoader
 
 
-__all__ = {"DenseDataset": DenseDataset}
+__all__ = {"DenseDataset": DenseDataset, 
+           "DenseKittiDataset": DenseKittiDataset}
 
 
 def build_dataset(cfg, linear_probe, mode, logger=None):

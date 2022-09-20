@@ -21,9 +21,10 @@ TCP_PORT=18888
 LAUNCHER='pytorch'
 
 # Additional parameters
-DATASET=dense
-DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense
-INFOS_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense/DepthContrast_FOV3000_Infos_dense
+DENSE_DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense
+KITTI_DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Kitti
+DENSE_INFOS_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense/DepthContrast_FOV3000_Infos_dense
+KITTI_INFOS_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense/DepthContrast_FOV3000_Infos_kitti
 SING_IMG=/home/$USER/projects/rrg-swasland/singularity/depth_contrast_snow_sim.sif
 DIST=true
 TEST_ONLY=false
@@ -42,7 +43,7 @@ main.py parameters
 [--cfg CFG_FILE]
 
 additional parameters
-[--data_dir DATA_DIR]
+[--data_dir DENSE_DATA_DIR]
 [--infos_dir INFOS_DIR]
 [--sing_img SING_IMG]
 [--dist]
@@ -52,8 +53,8 @@ main.py parameters:
 --cfg             CFG_FILE           Config file                         [default=$CFG_FILE]
 
 additional parameters:
---data_dir             DATA_DIR           Zipped data directory               [default=$DATA_DIR]
---infos_dir            INFOS_DIR          Infos directory                     [default=$INFOS_DIR]
+--data_dir             DENSE_DATA_DIR           Zipped data directory               [default=$DENSE_DATA_DIR]
+--infos_dir            INFOS_DIR          Infos directory                     [default=$DENSE_INFOS_DIR]
 --sing_img             SING_IMG           Singularity image file              [default=$SING_IMG]
 --dist                 DIST               Distributed training flag           [default=$DIST]
 --test_only            TEST_ONLY          Test only flag                      [default=$TEST_ONLY]
@@ -89,7 +90,7 @@ while :; do
     # Additional parameters
     -d|--data_dir)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
-            DATA_DIR=$2
+            DENSE_DATA_DIR=$2
             shift
         else
             die 'ERROR: "--data_dir" requires a non-empty option argument.'
@@ -97,7 +98,7 @@ while :; do
         ;;
     -i|--infos_dir)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
-            INFOS_DIR=$2
+            DENSE_INFOS_DIR=$2
             shift
         else
             die 'ERROR: "--infos_dir" requires a non-empty option argument.'
@@ -143,8 +144,10 @@ main.py parameters:
 CFG=$CFG_FILE
 
 Additional parameters
-DATA_DIR=$DATA_DIR
-INFOS_DIR=$INFOS_DIR
+DENSE_DATA_DIR=$DENSE_DATA_DIR
+KITTI_DATA_DIR=$KITTI_DATA_DIR
+DENSE_INFOS_DIR=$DENSE_INFOS_DIR
+KITTI_INFOS_DIR=$KITTI_INFOS_DIR
 SING_IMG=$SING_IMG
 DIST=$DIST
 TEST_ONLY=$TEST_ONLY
@@ -156,22 +159,42 @@ echo "Job Array ID / Job ID: $SLURM_ARRAY_JOB_ID / $SLURM_JOB_ID"
 echo "This is job $SLURM_ARRAY_TASK_ID out of $SLURM_ARRAY_TASK_COUNT jobs."
 echo ""
 
-# Extract Dataset
-echo "Extracting data"
-TMP_DATA_DIR=$SLURM_TMPDIR/data
-for file in $DATA_DIR/*.zip; do
-    echo "Unzipping $file to $TMP_DATA_DIR"
-    unzip -qq $file -d $TMP_DATA_DIR
+# Extract Dense Dataset
+echo "Extracting Dense data"
+TMP_DATA_DIR_DENSE=$SLURM_TMPDIR/dense_data
+for file in $DENSE_DATA_DIR/*.zip; do
+    echo "Unzipping $file to $TMP_DATA_DIR_DENSE"
+    unzip -qq $file -d $TMP_DATA_DIR_DENSE
 done
-echo "Done extracting data"
+echo "Done extracting Dense data"
 
-# Extract dataset infos
-echo "Extracting dataset infos"
-for file in $INFOS_DIR/*.zip; do
-   echo "Unzipping $file to $TMP_DATA_DIR"
-   unzip -qq $file -d $TMP_DATA_DIR
+# Extract Dense dataset infos
+echo "Extracting dataset Dense infos"
+for file in $DENSE_INFOS_DIR/*.zip; do
+   echo "Unzipping $file to $TMP_DATA_DIR_DENSE"
+   unzip -qq $file -d $TMP_DATA_DIR_DENSE
 done
-echo "Done extracting dataset infos"
+echo "Done extracting dataset Dense infos"
+
+# Extract Kitti Dataset
+echo "Extracting Kitti data"
+TMP_DATA_DIR_KITTI=$SLURM_TMPDIR/kitti_data
+
+echo "Unzipping $KITTI_DATA_DIR/data_object_calib.zip to $TMP_DATA_DIR_KITTI"
+unzip -qq $KITTI_DATA_DIR/data_object_calib.zip -d $TMP_DATA_DIR_KITTI
+
+echo "Unzipping $KITTI_DATA_DIR/data_object_velodyne.zip to $TMP_DATA_DIR_KITTI"
+unzip -qq $KITTI_DATA_DIR/data_object_velodyne.zip -d $TMP_DATA_DIR_KITTI
+
+echo "Done extracting Kitti data"
+
+# Extract Kitti dataset infos
+echo "Extracting dataset Kitti infos"
+for file in $KITTI_INFOS_DIR/*.zip; do
+   echo "Unzipping $file to $TMP_DATA_DIR_KITTI"
+   unzip -qq $file -d $TMP_DATA_DIR_KITTI
+done
+echo "Done extracting dataset Kitti infos"
 
 # Load Singularity
 module load StdEnv/2020 
@@ -210,8 +233,9 @@ singularity exec
 --bind $PROJ_DIR/models:/DepthContrast/models
 --bind $PROJ_DIR/scripts:/DepthContrast/scripts
 --bind $PROJ_DIR/utils:/DepthContrast/utils
---bind $TMP_DATA_DIR:/DepthContrast/data/$DATASET
---bind $PROJ_DIR/data/$DATASET/ImageSets:/DepthContrast/data/$DATASET/ImageSets
+--bind $TMP_DATA_DIR_DENSE:/DepthContrast/data/dense
+--bind $TMP_DATA_DIR_KITTI:/DepthContrast/data/kitti
+--bind $PROJ_DIR/data/dense/ImageSets:/DepthContrast/data/dense/ImageSets
 --bind $PROJ_DIR/lib:/DepthContrast/lib
 $DEPTH_CONTRAST_BINDS
 $SING_IMG
