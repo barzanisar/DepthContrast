@@ -135,7 +135,7 @@ def main_worker(gpu, ngpus, args, cfg):
     model.trunk[0].head = MLP(cfg["model"]["linear_probe_dim"], use_dropout=len(cfg["model"]["linear_probe_dim"])>2)
 
     # model To cuda
-    model, args = main_utils.distribute_model_to_cuda(model, args)
+    model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params=True)
 
     # Define criterion 
     train_criterion =  main_utils.build_criterion(cfg['loss'], logger=logger) 
