@@ -1,8 +1,8 @@
 # FOV3000
 
 # Dense-Kitti
-sbatch --time=24:00:00 --array=1-2%1 --job-name=dc_b14_lr0p15_red_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 18959 --cfg_file configs/pointnet_train_all_FOV3000_60/dc/shortlist/dc_b14_lr0p15_red_dense_kitti.yaml
-sbatch --time=24:00:00 --array=1-2%1 --job-name=dc_1in2_cube_up_b14_lr0p15_red_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 18660 --cfg_file configs/pointnet_train_all_FOV3000_60/dc/shortlist/dc_1in2_cube_up_b14_lr0p15_red_dense_kitti.yaml
+sbatch --time=00:30:00 --array=1-1%1 --job-name=dc_b14_lr0p15_red_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 18949 --cfg_file configs/pointnet_train_all_FOV3000_60/dc/shortlist/dc_b14_lr0p15_red_dense_kitti.yaml
+sbatch --time=00:30:00 --array=1-1%1 --job-name=dc_1in2_cube_up_b14_lr0p15_red_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 18640 --cfg_file configs/pointnet_train_all_FOV3000_60/dc/shortlist/dc_1in2_cube_up_b14_lr0p15_red_dense_kitti.yaml
 
 
 # DC-best:

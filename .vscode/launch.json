@@ -44,7 +44,7 @@
             },
             "args": [
                 "--cfg",
-                "configs/pointnet_train_all_FOV3000_60/dc/shortlist/dc_snow1in2_wet_fog1in2_cube_upsample_FOV3000.yaml"
+                "configs/pointnet_train_all_FOV3000_60/dc/shortlist/dc_1in2_cube_up_b14_lr0p15_red_dense_kitti.yaml"
             ]
         },
         {
@@ -161,7 +161,7 @@
             "module": "lib.LiDAR_snow_sim.tools.snowfall.precompute",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
-            "args": ["--split", "train_clear_FOV3000_60.txt", "--snowfall_rate_index", "-1", "--fov"]
+            "args": ["--split", "train_clear_martin.txt", "--snowfall_rate_index", "-1", "--fov"]
         },
         {
             "name": "precompute-360",
