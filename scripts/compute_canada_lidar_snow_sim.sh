@@ -16,7 +16,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # main.py script parameters
 SNOWFALL_RATE_INDEX=-1
 SPLIT='None'
-FOV=true
+CLUSTER=true
 
 
 # Additional parameters
@@ -103,8 +103,8 @@ while :; do
             die 'ERROR: "--sing_img" requires a non-empty option argument.'
         fi
         ;;
-    -f|--fov)       # Takes an option argument; ensure it has been specified.
-        FOV="true"
+    -c|--cluster)       # Takes an option argument; ensure it has been specified.
+        CLUSTER="true"
         ;;
     -?*)
         printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
@@ -118,7 +118,7 @@ done
 
 echo "Running with the following arguments:
 main.py parameters:
-FOV=$FOV
+CLUSTER=$CLUSTER
 SNOWFALL_RATE_INDEX=$SNOWFALL_RATE_INDEX
 SPLIT=$SPLIT
 "
@@ -131,10 +131,9 @@ echo ""
 # Extract Dataset
 echo "Extracting data"
 TMP_DATA_DIR=$SLURM_TMPDIR/data
-for file in $DATA_DIR/*.zip; do
-    echo "Unzipping $file to $TMP_DATA_DIR"
-    unzip -qq $file -d $TMP_DATA_DIR
-done
+file=$DATA_DIR/lidar_hdl64_strongest.zip
+echo "Unzipping $file to $TMP_DATA_DIR"
+unzip -qq $file -d $TMP_DATA_DIR
 echo "Done extracting data"
 
 # Extract dataset infos
@@ -190,7 +189,7 @@ $SING_IMG
 "
 
 TRAIN_CMD=$BASE_CMD
-TRAIN_CMD+="python -m lib.LiDAR_snow_sim.tools.snowfall.precompute --split $SPLIT --snowfall_rate_index $SNOWFALL_RATE_INDEX --fov"
+TRAIN_CMD+="python -m lib.LiDAR_snow_sim.tools.snowfall.precompute --split $SPLIT --snowfall_rate_index $SNOWFALL_RATE_INDEX --cluster"
 echo "Precomputing snow sim on FOV"
 echo "$TRAIN_CMD"
 eval $TRAIN_CMD

@@ -89,6 +89,7 @@ if __name__ == '__main__':
 
     sample_id_list = sorted(['_'.join(x.strip().split(',')) for x in open(SPLIT).readlines()])
     total_skipped = 0
+    cluster_file_saved_num = 0
 
     if args.cluster:
         #Save orig pc with cluster ids
@@ -125,7 +126,10 @@ if __name__ == '__main__':
                 points = clusterize_pcd(points, 1000, dist_thresh=0.15, eps=1.0)
                 save_path = save_dir_orig_pc / f'{sample_idx}.bin'
                 points.astype(np.float32).tofile(save_path)
+                cluster_file_saved_num += 1
                 #points = [x, y, z, i, channel, cluster_id], cluster_id of -1 means not a cluster
+                if cluster_file_saved_num % 10 == 0:
+                    print(f'cluster_file_saved_num: {cluster_file_saved_num}')
                 #visualize_pcd_clusters(points)
 
             #print(f'Processing sample: {sample_idx}')
