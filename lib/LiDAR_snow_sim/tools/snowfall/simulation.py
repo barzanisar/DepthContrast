@@ -426,7 +426,7 @@ def get_occlusions(beam_angles: np.ndarray, ranges_orig: np.ndarray, root_path: 
 
 def augment(pc: np.ndarray, particle_file_prefix: str, beam_divergence: float, shuffle: bool = True,
             show_progressbar: bool=False, only_camera_fov: bool=True, noise_floor: float=0.7,
-            root_path: str=None) -> Tuple:
+            root_path: str=None, has_cluster_ids=False) -> Tuple:
     """
     :param pc:                      N-by-5 array containing original pointcloud (x, y, z, intensity, channel).
     :param particle_file_prefix:    Path to file where sampled particles are stored (x, y, r).
@@ -517,6 +517,9 @@ def augment(pc: np.ndarray, particle_file_prefix: str, beam_divergence: float, s
         aug_pc[:, 3] = np.round(aug_pc[:, 3])
 
         scattered = aug_pc[:, 4] == 2
+        # Set snow cluster ids to -1
+        if has_cluster_ids:
+            aug_pc[scattered, 5] = -1
         above_threshold = aug_pc[:, 3] > relative_output_intensity[:]
         scattered_or_above_threshold = np.logical_or(scattered, above_threshold)
 

@@ -11,6 +11,7 @@ from lib.LiDAR_snow_sim.tools.snowfall.simulation import augment
 from third_party.OpenPCDet.pcdet.utils import calibration_kitti
 from lib.LiDAR_snow_sim.tools.snowfall.sampling import compute_occupancy, snowfall_rate_to_rainfall_rate
 #from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
+from utils.pcd_preprocess import *
 import time
 import numpy as np
 
@@ -19,9 +20,9 @@ DATA_PATH = ROOT_PATH /'data' / 'dense'
 SPLIT_FOLDER =  DATA_PATH/ 'ImageSets' / 'train_clear_precompute'
 LIDAR_FOLDER = DATA_PATH / 'lidar_hdl64_strongest'
 SAVE_DIR_ROOT = ROOT_PATH / 'output' / 'snowfall_simulation_FOV' #for compute canada DATA_PATH / 'snowfall_simulation_FOV' #
-
-SNOWFALL_RATES = [0.5, 0.5, 1.0, 2.0, 2.5, 1.5, 1.5, 1.0]  #[0.5, 1.0, 2.0, 2.5, 1.5]       # mm/h
-TERMINAL_VELOCITIES = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6, 0.4, 0.2] #[2.0, 1.6, 2.0, 1.6, 0.6]  # m/s
+NUM_POINT_FEATURES = 5 #[x,y,z,i,channel]
+SNOWFALL_RATES = [0.5, 0.5, 1.0, 2.0, 2.5, 1.5, 1.5, 1.0]  # mm/h
+TERMINAL_VELOCITIES = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6, 0.4, 0.2] # m/s
 
 def split(a, n):
     k, m = divmod(len(a), n)
@@ -57,7 +58,7 @@ parser = argparse.ArgumentParser(description='Lidar snowfall sim')
 
 parser.add_argument('--split', type=str, default='None', help='specify the config for training')
 parser.add_argument('--snowfall_rate_index', default=-1, type=int, help='Index for snowfall_rate and terminal velocity')
-parser.add_argument('--fov', action='store_true', default=True)
+parser.add_argument('--cluster', action='store_true', default=True, help='Sets clustering true')
 
 
 if __name__ == '__main__':
@@ -89,6 +90,11 @@ if __name__ == '__main__':
     sample_id_list = sorted(['_'.join(x.strip().split(',')) for x in open(SPLIT).readlines()])
     total_skipped = 0
 
+    if args.cluster:
+        #Save orig pc with cluster ids
+        save_dir_orig_pc = SAVE_DIR_ROOT / LIDAR_FOLDER.name
+        save_dir_orig_pc.mkdir(parents=True, exist_ok=True)
+        
     for mode in ['gunn']: #'sekhon'
 
         p_bar = tqdm(sample_id_list, desc=mode)
@@ -97,8 +103,31 @@ if __name__ == '__main__':
 
             lidar_file = LIDAR_FOLDER / f'{sample_idx}.bin'
 
-            points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
+            CLUSTERED_LIDAR_FILE_EXISTS = False
+            if args.cluster:
+                clustered_lidar_file = save_dir_orig_pc / f'{sample_idx}.bin'
+                if clustered_lidar_file.is_file():
+                    CLUSTERED_LIDAR_FILE_EXISTS = True
+                    lidar_file = clustered_lidar_file
+                    NUM_POINT_FEATURES += 1 # add 1 for cluster id
+
+            points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, NUM_POINT_FEATURES)
             calibration = get_calib()
+
+            #Get FOV points
+            pts_rectified = calibration.lidar_to_rect(points[:, 0:3])
+            fov_flag = get_fov_flag(pts_rectified, (1024, 1920), calibration) #(1024, 1920)
+            points = points[fov_flag]
+
+            if args.cluster and not CLUSTERED_LIDAR_FILE_EXISTS:
+                #Cluster Points
+                #points = [x y z i channel]
+                points = clusterize_pcd(points, 1000, dist_thresh=0.15, eps=1.0)
+                save_path = save_dir_orig_pc / f'{sample_idx}.bin'
+                points.astype(np.float32).tofile(save_path)
+                #points = [x, y, z, i, channel, cluster_id], cluster_id of -1 means not a cluster
+                #visualize_pcd_clusters(points)
+
             #print(f'Processing sample: {sample_idx}')
 
             for combo in combos:
@@ -115,32 +144,14 @@ if __name__ == '__main__':
 
                 pc = copy.deepcopy(points)
 
-                #V.draw_scenes(points=pc, color_feature=3)
-                #print(f'sample_idx: {sample_idx}, rr_ratio:{combo}')
-                #print("pc: ", pc.shape)
-                # if args.fov:
-                #     pts_rectified = calibration.lidar_to_rect(pc[:, 0:3])
-                #     fov_flag = get_fov_flag(pts_rectified, (1024, 1920), calibration) #(1024, 1920)
-                #     pc = pc[fov_flag]
-                #     # if pc.shape[0] < 3000:
-                #     #     print(f'Skipping {sample_idx} has less than 3000 points in FOV')
-                #     #     continue
-                # else:
-                #     pc = crop_pc(pc)
-                #V.draw_scenes(points=pc, color_feature=3)
-                #print("FOV_pc: ", pc.shape)
-
-                pts_rectified = calibration.lidar_to_rect(pc[:, 0:3])
-                fov_flag = get_fov_flag(pts_rectified, (1024, 1920), calibration) #(1024, 1920)
-                pc = pc[fov_flag]
-
                 snowflake_file_prefix = f'{mode}_{rainfall_rate}_{occupancy_ratio}'
 
                 start = time.time()
                 stats, aug_pc = augment(pc=pc, particle_file_prefix=snowflake_file_prefix,
-                                        beam_divergence=float(np.degrees(3e-3)), root_path=DATA_PATH)
+                                        beam_divergence=float(np.degrees(3e-3)), root_path=DATA_PATH, has_cluster_ids=args.cluster)
                 time_taken = time.time() - start
                 
+                #visualize_pcd_clusters(aug_pc)
                 #print("aug_pc: ", aug_pc.shape)
                 #V.draw_scenes(points=aug_pc, color_feature=3)
                 if stats == None:

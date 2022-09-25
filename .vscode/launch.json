@@ -161,7 +161,7 @@
             "module": "lib.LiDAR_snow_sim.tools.snowfall.precompute",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
-            "args": ["--split", "train_clear_martin.txt", "--snowfall_rate_index", "-1", "--fov"]
+            "args": ["--split", "train_clear_martin.txt", "--snowfall_rate_index", "-1", "--cluster"]
         },
         {
             "name": "precompute-360",
