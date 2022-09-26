@@ -111,6 +111,8 @@ if __name__ == '__main__':
                     CLUSTERED_LIDAR_FILE_EXISTS = True
                     lidar_file = clustered_lidar_file
                     NUM_POINT_FEATURES = 6 # add 1 for cluster id
+                else:
+                    NUM_POINT_FEATURES = 5
 
             points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, NUM_POINT_FEATURES)
             calibration = get_calib()
@@ -155,9 +157,9 @@ if __name__ == '__main__':
                                         beam_divergence=float(np.degrees(3e-3)), root_path=DATA_PATH, has_cluster_ids=args.cluster)
                 time_taken = time.time() - start
                 
-                #visualize_pcd_clusters(aug_pc)
-                #print("aug_pc: ", aug_pc.shape)
-                #V.draw_scenes(points=aug_pc, color_feature=3)
+                ##visualize_pcd_clusters(aug_pc)
+                ##print("aug_pc: ", aug_pc.shape)
+                ##V.draw_scenes(points=aug_pc, color_feature=3)
                 if stats == None:
                     print(f'ERROR processing sample: {sample_idx}')
                     total_skipped +=1
