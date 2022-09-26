@@ -110,7 +110,7 @@ if __name__ == '__main__':
                 if clustered_lidar_file.is_file():
                     CLUSTERED_LIDAR_FILE_EXISTS = True
                     lidar_file = clustered_lidar_file
-                    NUM_POINT_FEATURES += 1 # add 1 for cluster id
+                    NUM_POINT_FEATURES = 6 # add 1 for cluster id
 
             points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, NUM_POINT_FEATURES)
             calibration = get_calib()
