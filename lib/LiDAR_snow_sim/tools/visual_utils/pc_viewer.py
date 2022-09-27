@@ -15,6 +15,8 @@ from pcdet.utils import box_utils, calibration_kitti
 
 ROOT_PATH = (Path(__file__) / '../../../../..').resolve() #DepthContrast
 DENSE_ROOT = ROOT_PATH / 'data' / 'dense'
+KITTI_ROOT = ROOT_PATH / 'data' / 'kitti'
+SEMANTIC_KITTI_ROOT = ROOT_PATH / 'data' / 'semantic_kitti'
 alpha = 0.45
 sensor_type = 'hdl64'
 signal_type = 'strongest'
@@ -93,7 +95,7 @@ def get_fov_flag(pts_rect, img_shape, calib):
 
     return pts_valid_flag
 
-def crop_pc(pc, calib, img_shape):
+def crop_pc(pc, calib=None, img_shape=None):
     point_cloud_range = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32)
     upper_idx = np.sum((pc[:, 0:3] <= point_cloud_range[3:6]).astype(np.int32), 1) == 3
     lower_idx = np.sum((pc[:, 0:3] >= point_cloud_range[0:3]).astype(np.int32), 1) == 3
@@ -102,9 +104,10 @@ def crop_pc(pc, calib, img_shape):
     pc = pc[new_pointidx, :]
 
     # Extract FOV points
-    pts_rect = calib.lidar_to_rect(pc[:, 0:3])
-    fov_flag = get_fov_flag(pts_rect, img_shape, calib)
-    pc = pc[fov_flag]
+    if calib is not None:
+        pts_rect = calib.lidar_to_rect(pc[:, 0:3])
+        fov_flag = get_fov_flag(pts_rect, img_shape, calib)
+        pc = pc[fov_flag]
 
     return pc
 
@@ -232,6 +235,68 @@ def cluster_all():
             V.draw_scenes(points=pc[:,:4], color_feature=3)
             visualize_pcd_clusters(pc)
 
+def cluster_semantic_kitti():
+    train_seq = [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10'] 
+
+    for seq in train_seq:
+        print(f'Processing Seq: {seq}')
+        point_seq_path = os.path.join(SEMANTIC_KITTI_ROOT, 'dataset', 'sequences', seq, 'velodyne')
+        point_seq_bin = os.listdir(point_seq_path)
+        point_seq_bin.sort()
+        save_dir = SEMANTIC_KITTI_ROOT / 'dataset_clustered' / 'sequences' / seq / 'velodyne'
+        save_dir.mkdir(parents=True, exist_ok=True)
+        for sample_idx in tqdm(point_seq_bin):
+            points_path = f'{point_seq_path}/{sample_idx}'
+            save_path = save_dir / sample_idx
+
+            if save_path.exists():
+                continue
+
+            pc = np.fromfile(str(points_path), dtype=np.float32).reshape(-1, 4)
+
+            pc, num_clusters_found = clusterize_pcd(pc, 100, dist_thresh=0.25, eps=0.25)
+            #visualize_pcd_clusters(pc)
+
+            if num_clusters_found > 1:
+                cluster_id = pc[:,-1]
+                cluster_id.astype(np.int16).tofile(save_path)
+            else:
+                print(f'{points_path} has no clusters!')
+                V.draw_scenes(points=pc[:,:4], color_feature=3)
+                visualize_pcd_clusters(pc)
+
+def cluster_kitti():
+    info_path =  KITTI_ROOT / 'kitti_infos_all.pkl'
+    save_dir = KITTI_ROOT / 'training_clustered' / 'velodyne'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    kitti_infos = []
+
+    with open(info_path, 'rb') as i:
+        infos = pickle.load(i)
+        kitti_infos.extend(infos)
+    
+    for info in tqdm(kitti_infos):
+        sample_idx = info['point_cloud']['lidar_idx']
+        save_path = save_dir / f'{sample_idx}.bin'
+
+        if save_path.exists():
+            continue
+
+        lidar_file = KITTI_ROOT / info['velodyne_parent_dir'] / 'velodyne' / ('%s.bin' % sample_idx)
+        pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
+
+        pc, num_clusters_found = clusterize_pcd(pc, 100, dist_thresh=0.15, eps=1.0)
+        #print(f'{sample_idx}: num clusters: {num_clusters_found}')
+        #visualize_pcd_clusters(pc)
+
+        if num_clusters_found > 1:
+            cluster_id = pc[:,-1]
+            cluster_id.astype(np.int16).tofile(save_path)
+        else:
+            print(f'{sample_idx} from has no clusters!')
+            V.draw_scenes(points=pc[:,:4], color_feature=3)
+            visualize_pcd_clusters(pc)
+
 def cluster_adverse():
     info_path =  DENSE_ROOT / 'dense_infos_train_all_FOV3000_60.pkl'
     save_dir = DENSE_ROOT / 'lidar_hdl64_strongest_FOV_clustered_train_all_60'
@@ -286,5 +351,5 @@ def cluster_adverse():
         # visualize_pcd_clusters(pc)
 
 if __name__ == '__main__':
-    check_in()
+    cluster_semantic_kitti()
    
