@@ -1,13 +1,13 @@
 wb_extra_tags: ['pointnet', 'train_all_FOV3000_60', 'dc']
 resume: true
 linear_probe: false # True for linear probe
-num_workers: 8
+num_workers: 0
 
 log2tb: false
 log2wb: false
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
-print_freq: 100 # print progress after processing every <freq> iters or batches
+print_freq: 10 # print progress after processing every <freq> iters or batches
 ckpt_save_interval: 10
 save_ckpt_after_epochs: 90
 
@@ -20,8 +20,11 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [DenseKittiDataset]
+  SEMANTIC_KITTI:
+    train: [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10' ]
+    val: ['08']
   INFO_PATHS: 
-    train: ['dense_infos_train_all_FOV3000_60.pkl'] #'kitti_infos_all.pkl', 
+    train: ['kitti_infos_all.pkl', 'dense_infos_train_all_FOV3000_60.pkl'] # 
     val: ['dense_infos_val_clear_FOV3000_15.pkl']
   BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: objects #sample_index, objects, class_names

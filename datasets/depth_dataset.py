@@ -284,6 +284,8 @@ class DenseKittiDataset(DepthContrastDataset):
     def __init__(self, cfg, linear_probe=False, mode='train', logger=None):
         super().__init__(cfg, linear_probe=linear_probe, mode=mode, logger=logger)
 
+        self.cluster = True
+        
         # Dense
         self.root_dense_path = self.root_path / 'data' / 'dense'
 
@@ -298,6 +300,12 @@ class DenseKittiDataset(DepthContrastDataset):
         self.infos = []
         self.include_dense_kitti_data()
 
+        # Semantic Kitti
+        if "SEMANTIC_KITTI" in self.cfg:
+            self.root_semkitti_path = self.root_path / 'data' / 'semantic_kitti'
+            self.include_sem_kitti_infos()
+
+
         #SnowFall augmentation
         self.snowfall_rates = [0.5, 0.5, 1.0, 2.0, 2.5, 1.5]      # mm/h
         self.terminal_velocities = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6] # m/s
@@ -306,8 +314,44 @@ class DenseKittiDataset(DepthContrastDataset):
 
         for i in range(len(self.snowfall_rates)):
 
-            self.rainfall_rates.append(snowfall_rate_to_rainfall_rate(self.snowfall_rates[i],
-                                                                      self.terminal_velocities[i]))
+            self.rainfall_rates.append(snowfall_rate_to_rainfall_rate(self.snowfall_rates[i],  self.terminal_velocities[i]))
+    
+    def include_sem_kitti_infos(self):
+        sem_kitti_points_datapath = []
+        sem_kitti_labels_datapath = []
+        sem_kitti_infos = []
+        if self.logger is not None:
+            self.logger.add_line('Loading Semantic Kitti dataset')
+
+        for seq in self.cfg["SEMANTIC_KITTI"][self.mode]:
+            point_seq_path = os.path.join(self.root_semkitti_path, 'dataset', 'sequences', seq, 'velodyne')
+            point_seq_bin = os.listdir(point_seq_path)
+            point_seq_bin.sort()
+            sem_kitti_points_datapath += [ os.path.join(point_seq_path, point_file) for point_file in point_seq_bin ]
+
+            try:
+                label_seq_path = os.path.join(self.root_semkitti_path, 'dataset', 'sequences', seq, 'labels')
+                point_seq_label = os.listdir(label_seq_path)
+                point_seq_label.sort()
+                sem_kitti_labels_datapath += [ os.path.join(label_seq_path, label_file) for label_file in point_seq_label ]
+            except:
+                pass
+        
+        for point_path, label_path in zip(sem_kitti_points_datapath, sem_kitti_labels_datapath):
+            info = {'point_cloud': {'lidar_idx': point_path}, 'dataset': 'semantic_kitti'}
+            #TODO add annos for linear probe
+            sem_kitti_infos.append(info)
+        
+        self.infos.extend(sem_kitti_infos)
+        
+        
+        # shuffle infos
+        perm_idx = np.random.permutation(len(self.infos))
+        self.infos = np.array(self.infos)[perm_idx].tolist()
+        if self.logger is not None:
+            self.logger.add_line('Total Semantic Kitti samples loaded: %d' % (len(sem_kitti_infos)))
+            self.logger.add_line('Total samples loaded: %d' % (len(self.infos)))
+
     def include_dense_kitti_data(self):
         if self.logger is not None:
             self.logger.add_line('Loading DENSE and Kitti dataset')
@@ -317,9 +361,9 @@ class DenseKittiDataset(DepthContrastDataset):
         for info_path in self.cfg["INFO_PATHS"][self.mode]:
             if self.logger is not None:
                 self.logger.add_line(f'Loading info path {info_path}')
-            if 'dense' in info_path:
+            if 'dense_infos' in info_path:
                 info_path = self.root_dense_path / info_path
-            elif 'kitti' in info_path:
+            elif 'kitti_infos' in info_path:
                 info_path = self.root_kitti_path / info_path
             else:
                 raise ValueError('Only Kitti and Dense infos are supported!')
@@ -375,10 +419,17 @@ class DenseKittiDataset(DepthContrastDataset):
         pc[:,3] = np.round(pc[:,3] * 255)
         return pc
 
+    def get_sem_kitti_lidar(self, idx):
+        lidar_file = Path(idx)
+        assert lidar_file.exists()
+        pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
+        pc[:,3] = np.round(pc[:,3] * 255)
+        return pc
+
     def __len__(self):
         return len(self.infos)
 
-    def crop_pc(self, pc, calib, img_shape):
+    def crop_pc(self, pc, calib=None, img_shape=None):
         upper_idx = np.sum((pc[:, 0:3] <= self.point_cloud_range[3:6]).astype(np.int32), 1) == 3
         lower_idx = np.sum((pc[:, 0:3] >= self.point_cloud_range[0:3]).astype(np.int32), 1) == 3
 
@@ -386,7 +437,7 @@ class DenseKittiDataset(DepthContrastDataset):
         pc = pc[new_pointidx, :]
 
         # Extract FOV points
-        if self.cfg['FOV_POINTS_ONLY']:
+        if self.cfg['FOV_POINTS_ONLY'] and calib is not None:
             pts_rect = calib.lidar_to_rect(pc[:, 0:3])
             fov_flag = get_fov_flag(pts_rect, img_shape, calib)
             pc = pc[fov_flag]
@@ -398,37 +449,47 @@ class DenseKittiDataset(DepthContrastDataset):
         info = copy.deepcopy(self.infos[index])
 
         sample_idx = info['point_cloud']['lidar_idx']
-        img_shape = info['image']['image_shape']
         dataset = info.get('dataset', 'dense')
+        calib = None
+        img_shape = None
 
         clustered = False
         if dataset == 'kitti':
             calib = self.get_kitti_calib(info['velodyne_parent_dir'], sample_idx)
+            img_shape = info['image']['image_shape']
             points = self.get_kitti_lidar(info['velodyne_parent_dir'], sample_idx) #xyzi or xyzi,cluster_id
+            clustered = points.shape[1] > 4
+        elif dataset == 'semantic_kitti':
+            points = self.get_sem_kitti_lidar(sample_idx)
             clustered = points.shape[1] > 4
         else:
             calib = self.dense_calib
+            img_shape = info['image']['image_shape']
             points = self.get_dense_lidar(sample_idx)
             clustered = points.shape[1] > 5
 
-        if not self.linear_probe:
-            assert clustered, 'PC is unclustered! This is segContrast'
+        # if not self.linear_probe:
+        #     assert clustered, 'PC is unclustered! This is segContrast'
         
         # Crop and extract FOV points
         points = self.crop_pc(points, calib, img_shape)
 
-        # if not clustered:
-        #     #V.draw_scenes(points=points, color_feature='intensity')
-        #     points = clusterize_pcd(points, 1000, dist_thresh=0.15, eps=1.0)
-        #     visualize_pcd_clusters(points)
-        
+        if not clustered:
+            #V.draw_scenes(points=points, color_feature='intensity')
+            n_clusters = 1000
+            dist_thresh = 0.15
+            eps = 1.0
+            if dataset == 'semantic_kitti':
+                n_clusters = 50
+                dist_thresh = 0.25
+                eps = 0.25
+            points, _ = clusterize_pcd(points, n_clusters, dist_thresh, eps)
+            #visualize_pcd_clusters(points)
 
         points_moco = np.copy(points) #points_weather
         
         weather = 'clear'
-        if 'weather' in info:
-            weather = info['weather'] #kitti
-        else:
+        if dataset == 'dense':
             weather = info['annos']['weather'] #dense
         
         data_dict = {}
@@ -482,9 +543,13 @@ class DenseKittiDataset(DepthContrastDataset):
         #V.draw_scenes(points=points, color_feature='intensity')
         #V.draw_scenes(points=points_moco, color_feature='intensity')
         # if fog_applied or snowfall_augmentation_applied:
+        # if dataset == 'semantic_kitti' and fog_applied:
         #     visualize_pcd_clusters(points)
         #     visualize_pcd_clusters(points_moco)
         # Prepare points and Transform 
         data_dict = self.prepare_data(data_dict, index)
+        # if dataset == 'semantic_kitti' and fog_applied:
+        #     visualize_pcd_clusters(np.asarray(data_dict["data"][0]))
+        #     visualize_pcd_clusters(np.asarray(data_dict["data_moco"][0]))
 
         return data_dict

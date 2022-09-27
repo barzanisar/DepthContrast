@@ -21,7 +21,8 @@ COLLATORS_MAP = {
     "default": default_collate,
     "point_moco_collator": point_moco_collator,
     "point_vox_moco_collator": point_vox_moco_collator,
-    "vox_moco_collator": vox_moco_collator
+    "vox_moco_collator": vox_moco_collator,
+    "point_moco_collator_seg": point_moco_collator_seg
 }
 
 
