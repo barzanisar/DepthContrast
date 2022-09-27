@@ -46,13 +46,15 @@ def clusters_from_pcd(pcd, n_clusters, eps=0.25):
     # clusterize pcd points
     labels = np.array(pcd.cluster_dbscan(eps=eps, min_points=10))
     lbls, counts = np.unique(labels, return_counts=True)
-    cluster_info = np.array(list(zip(lbls[1:], counts[1:])))
-    cluster_info = cluster_info[cluster_info[:,1].argsort()]
+    num_clusters_found = lbls.shape[0]
+    if num_clusters_found > 1:
+        cluster_info = np.array(list(zip(lbls[1:], counts[1:])))
+        cluster_info = cluster_info[cluster_info[:,1].argsort()]
 
-    clusters_labels = cluster_info[::-1][:n_clusters, 0]
-    labels[np.in1d(labels, clusters_labels, invert=True)] = -1
+        clusters_labels = cluster_info[::-1][:n_clusters, 0]
+        labels[np.in1d(labels, clusters_labels, invert=True)] = -1
 
-    return labels
+    return labels, num_clusters_found
 
 def clusterize_pcd(points, n_clusters, dist_thresh=0.25, eps=0.5):
     pcd = o3d.geometry.PointCloud()
@@ -60,9 +62,18 @@ def clusterize_pcd(points, n_clusters, dist_thresh=0.25, eps=0.5):
 
     # segment plane (ground)
     _, inliers = pcd.segment_plane(distance_threshold=dist_thresh, ransac_n=3, num_iterations=200)
+
+    # # vis plane
+    # inlier_cloud = pcd.select_by_index(inliers)
+    # inlier_cloud.paint_uniform_color([1.0, 0, 0])
+    # outlier_cloud = pcd.select_by_index(inliers, invert=True)
+    # o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
+
     pcd_ = pcd.select_by_index(inliers, invert=True)
 
-    labels_ = np.expand_dims(clusters_from_pcd(pcd_, n_clusters, eps), axis=-1)
+    l, num_clusters_found = clusters_from_pcd(pcd_, n_clusters, eps)
+
+    labels_ = np.expand_dims(l, axis=-1)
 
     # that is a blessing of array handling
     # pcd are an ordered list of points
@@ -76,7 +87,7 @@ def clusterize_pcd(points, n_clusters, dist_thresh=0.25, eps=0.5):
 
     labels[mask] = labels_
 
-    return np.concatenate((points, labels), axis=-1)
+    return np.concatenate((points, labels), axis=-1), num_clusters_found
 
 def visualize_pcd_clusters(point_set, visualize_sep_clusters = False):
     pcd = o3d.geometry.PointCloud()

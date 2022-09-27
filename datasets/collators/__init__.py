@@ -7,6 +7,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from datasets.collators.point_moco_collator import point_moco_collator
+from datasets.collators.point_moco_collator_seg import point_moco_collator_seg
 try:
     from datasets.collators.vox_moco_collator import vox_moco_collator
     from datasets.collators.point_vox_moco_collator import point_vox_moco_collator

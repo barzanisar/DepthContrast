@@ -138,9 +138,9 @@ def ground_water_augmentation(pointcloud, water_height=0.001, pavement_depth=0.0
     # Calculate which points to keep according to estimated adaptive noise threshold
     keep_points = new_intensities > adaptive_noise_threshold * np.cos(calculated_indicent_angle)
     keep_points_idx = np.where(keep_points)
-    pointcloud_planes = pointcloud_planes[:, :5]
+    pointcloud_planes = pointcloud_planes[:, :-1]
 
-    augmented_pointcloud = np.zeros((pointcloud.shape[0] - ground_idx[0].shape[0] + keep_points_idx[0].shape[0], 5))
+    augmented_pointcloud = np.zeros((pointcloud.shape[0] - ground_idx[0].shape[0] + keep_points_idx[0].shape[0], pointcloud.shape[1]))
     augmented_pointcloud[:pointcloud.shape[0] - ground_idx[0].shape[0], :] = pointcloud[np.logical_not(ground), :]
     augmented_pointcloud[pointcloud.shape[0] - ground_idx[0].shape[0]:, :] = pointcloud_planes[keep_points_idx]
     augmented_pointcloud[pointcloud.shape[0] - ground_idx[0].shape[0]:, 3] = new_intensities[keep_points_idx]

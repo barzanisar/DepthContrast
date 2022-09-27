@@ -352,7 +352,7 @@ def build_optimizer(params, cfg, logger=None):
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=cfg['lr']['milestones'], gamma=cfg['lr']['gamma'])
     else:
         ### By default we use a cosine param scheduler
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['num_epochs'], eta_min=cfg['lr']['final_lr'])
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['num_epochs'], eta_min=cfg['lr']['base_lr']/1000)
     return optimizer, scheduler
 
 def get_labels(batch_gt_boxes_lidar, coords, label_type = 'class_names'):

@@ -16,19 +16,14 @@ import copy
 import sys
 import time
 from datasets.transforms.augment3d import get_transform3d
+from datasets.transforms.weather_transforms import *
 
-import scipy.stats as stats
-import open3d as o3d
-from pcdet.utils import box_utils, calibration_kitti, common_utils, object3d_kitti
-from lib.LiDAR_snow_sim.tools.wet_ground.augmentation import ground_water_augmentation
+from pcdet.utils import calibration_kitti
 from lib.LiDAR_snow_sim.tools.snowfall.sampling import snowfall_rate_to_rainfall_rate
-
-from lib.LiDAR_fog_sim.fog_simulation import *
-from lib.LiDAR_fog_sim.SeeingThroughFog.tools.DatasetFoggification.beta_modification import BetaRadomization
-from lib.LiDAR_fog_sim.SeeingThroughFog.tools.DatasetFoggification.lidar_foggification import haze_point_cloud
+from utils.pcd_preprocess import *
 
 
-#from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
+from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 
 try:
     ### Default uses minkowski engine
@@ -150,20 +145,15 @@ class DepthContrastDataset(Dataset):
                 data_dict['gt_boxes_lidar'] = gt_boxes
                 data_dict.pop('gt_names', None)
 
-        #Crop given point cloud range
         points = data_dict['data']
-        #points = self.crop_pc(points)
-        
         if not self.linear_probe:
-            #Crop given point cloud range
             points_moco = data_dict['data_moco']
-            #points_moco = self.crop_pc(points_moco)
 
 
         cfg = self.cfg
         # TODO: this doesn't yet handle the case where the length of datasets
         # could be different.
-        if cfg["DATA_TYPE"] == "point_vox":
+        if False: #cfg["DATA_TYPE"] == "point_vox":
             # Across format
             item = {"data": [], "data_aug_matrix": [], 
             "vox": [], "vox_aug_matrix": []}
@@ -191,7 +181,7 @@ class DepthContrastDataset(Dataset):
                 item["data_moco"].append(points_moco)
 
         # Apply the transformation here
-        if (cfg["DATA_TYPE"] == "point_vox"):
+        if False: #(cfg["DATA_TYPE"] == "point_vox"):
             # Points
             tempitem = {"data": item["data"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"])
@@ -227,7 +217,7 @@ class DepthContrastDataset(Dataset):
             # Points -> transform -> voxelize if Vox
             tempitem = {"data": item["data"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=cfg["VOX"])
-            if cfg["VOX"]:
+            if False: #cfg["VOX"]:
                 coords = tempdata["data"][0][:, :3]
                 feats = tempdata["data"][0][:, 3:6] # *255.0
                 labels = np.zeros(coords.shape[0]).astype(np.int32)
@@ -240,7 +230,7 @@ class DepthContrastDataset(Dataset):
                 # Points MoCo-> transform -> voxelize if Vox
                 tempitem = {"data": item["data_moco"]}
                 tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"], vox=cfg["VOX"])
-                if cfg["VOX"]:
+                if False: #cfg["VOX"]:
                     coords = tempdata["data"][0][:, :3]
                     feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
                     labels = np.zeros(coords.shape[0]).astype(np.int32)
@@ -299,7 +289,7 @@ class DenseKittiDataset(DepthContrastDataset):
 
         self.sensor_type = self.cfg["SENSOR_TYPE"]
         self.signal_type = self.cfg["SIGNAL_TYPE"]
-        self.dense_lidar_folder = f'lidar_{self.sensor_type}_{self.signal_type}'
+        self.dense_lidar_folder = f'lidar_{self.sensor_type}_{self.signal_type}_FOV_clustered_train_all_60'
         self.dense_calib = self.get_dense_calib(self.sensor_type)
 
         # Kitti
@@ -367,7 +357,11 @@ class DenseKittiDataset(DepthContrastDataset):
     def get_dense_lidar(self, idx):
         lidar_file = self.root_dense_path / self.dense_lidar_folder / ('%s.bin' % idx)
         assert lidar_file.exists(), f'{lidar_file} not found'
-        return np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
+        # try:
+        #     pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
+        # except:
+        pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 6)
+        return pc
     
     def get_kitti_calib(self, velo_parent_dir, idx):
         calib_file = self.root_kitti_path / velo_parent_dir / 'calib' / ('%s.txt' % idx)
@@ -383,87 +377,6 @@ class DenseKittiDataset(DepthContrastDataset):
 
     def __len__(self):
         return len(self.infos)
-
-    def foggify(self, points, sample_idx, alpha, augmentation_method, on_the_fly=False):
-
-        # if augmentation_method == 'DENSE' and alpha != '0.000' and not on_the_fly:          # load from disk
-
-        #     curriculum_folder = f'{self.lidar_folder}_{augmentation_method}_beta_{alpha}'
-
-        #     lidar_file = self.root_data_path / 'fog_simulation' / curriculum_folder / ('%s.bin' % sample_idx)
-        #     assert lidar_file.exists(), f'could not find {lidar_file}'
-        #     points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
-
-        if augmentation_method == 'DENSE' and alpha != '0.000' and on_the_fly:
-
-            B = BetaRadomization(beta=float(alpha), seed=0)
-            B.propagate_in_time(10)
-
-            arguments = Namespace(sensor_type='Velodyne HDL-64E S3D', fraction_random=0.05)
-            n_features = points.shape[1]
-            points = haze_point_cloud(points, B, arguments)
-            points = points[:, :n_features]
-
-        if augmentation_method == 'CVL' and alpha != '0.000':
-
-            p = ParameterSet(alpha=float(alpha), gamma=0.000001)
-
-            gain = self.cfg.get('FOG_GAIN', False)
-            fog_noise_variant = self.cfg.get('FOG_NOISE_VARIANT', 'v1')
-            soft = self.cfg.get('FOG_SOFT', True)
-            hard = self.cfg.get('FOG_HARD', True)
-
-            points, _, _ = simulate_fog(p, pc=points, noise=10, gain=gain, noise_variant=fog_noise_variant,
-                                        soft=soft, hard=hard)
-
-        return points
-
-    def o3d_dynamic_radius_outlier_filter(self, pc: np.ndarray, alpha: float = 0.45, beta: float = 3.0,
-                                    k_min: int = 3, sr_min: float = 0.04) -> np.ndarray:
-        """
-        :param pc:      pointcloud
-        :param alpha:   horizontal angular resolution of the lidar
-        :param beta:    multiplication factor
-        :param k_min:   minimum number of neighbors
-        :param sr_min:  minumum search radius
-
-        :return:        mask [False = snow, True = no snow]
-        """
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(pc[:, :3])
-        num_points = len(pcd.points)
-
-        # initialize mask with False
-        mask = np.zeros(num_points, dtype=bool)
-
-        k = k_min + 1
-
-        kd_tree = o3d.geometry.KDTreeFlann(pcd)
-
-        for i in range(num_points):
-
-            x = pc[i,0]
-            y = pc[i,1]
-
-            r = np.linalg.norm([x, y], axis=0)
-
-            sr = alpha * beta * np.pi / 180 * r
-
-            if sr < sr_min:
-                sr = sr_min
-
-            [_, _, sqdist] = kd_tree.search_knn_vector_3d(pcd.points[i], k)
-
-            neighbors = -1      # start at -1 since it will always be its own neighbour
-
-            for val in sqdist:
-                if np.sqrt(val) < sr:
-                    neighbors += 1
-
-            if neighbors >= k_min:
-                mask[i] = True  # no snow -> keep
-
-        return mask
 
     def crop_pc(self, pc, calib, img_shape):
         upper_idx = np.sum((pc[:, 0:3] <= self.point_cloud_range[3:6]).astype(np.int32), 1) == 3
@@ -483,242 +396,73 @@ class DenseKittiDataset(DepthContrastDataset):
     def __getitem__(self, index):
         
         info = copy.deepcopy(self.infos[index])
-        sample_idx = info['point_cloud']['lidar_idx'] #'2018-02-16_17-35-08_00130' 
+
+        sample_idx = info['point_cloud']['lidar_idx']
         img_shape = info['image']['image_shape']
         dataset = info.get('dataset', 'dense')
 
+        clustered = False
         if dataset == 'kitti':
             calib = self.get_kitti_calib(info['velodyne_parent_dir'], sample_idx)
-            points = self.get_kitti_lidar(info['velodyne_parent_dir'], sample_idx)
+            points = self.get_kitti_lidar(info['velodyne_parent_dir'], sample_idx) #xyzi or xyzi,cluster_id
+            clustered = points.shape[1] > 4
         else:
             calib = self.dense_calib
             points = self.get_dense_lidar(sample_idx)
+            clustered = points.shape[1] > 5
+
+        if not self.linear_probe:
+            assert clustered, 'PC is unclustered! This is segContrast'
         
+        # Crop and extract FOV points
+        points = self.crop_pc(points, calib, img_shape)
+
+        # if not clustered:
+        #     #V.draw_scenes(points=points, color_feature='intensity')
+        #     points = clusterize_pcd(points, 1000, dist_thresh=0.15, eps=1.0)
+        #     visualize_pcd_clusters(points)
+        
+
         points_moco = np.copy(points) #points_weather
         
         weather = 'clear'
         if 'weather' in info:
-            weather = info['weather']
+            weather = info['weather'] #kitti
         else:
-            weather = info['annos']['weather']
+            weather = info['annos']['weather'] #dense
         
-        pc_cropped = False
-        mor = np.inf
         data_dict = {}
 
         if not self.linear_probe and self.cfg['APPLY_WEATHER_AUG']:
             apply_dror =  weather != 'clear' and 'DROR' in self.cfg
             dror_applied = False
             if apply_dror:
+                points_moco, dror_applied = dror(self.cfg, points_moco, sample_idx, self.logger, self.root_dense_path)
 
-                try:
-                    alpha = self.cfg['DROR']
-
-                    dror_path = self.root_dense_path / 'DROR' / f'alpha_{alpha}' / \
-                                'all' / self.sensor_type / self.signal_type / 'full' / f'{sample_idx}.pkl'
-                    
-                    if dror_path.exists():
-                        with open(str(dror_path), 'rb') as f:
-                            snow_indices = pickle.load(f)
-                    else:
-                        #Crop points here to save time on dror
-                        self.logger.add_line(f'DROR path does not exist! {weather}, {sample_idx}')
-                        points_moco = self.crop_pc(points_moco, calib, img_shape)
-                        pc_cropped = True
-                        
-                        keep_mask = self.o3d_dynamic_radius_outlier_filter(points_moco, alpha=alpha)
-                        snow_indices = (keep_mask == 0).nonzero()[0]#.astype(np.int16)
-
-                    range_snow_indices = np.linalg.norm(points_moco[snow_indices][:,:3], axis=1)
-                    snow_indices = snow_indices[range_snow_indices < 30]
-                    keep_indices = np.ones(len(points_moco), dtype=bool)
-                    keep_indices[snow_indices] = False
-
-                    points_moco = points_moco[keep_indices]
-                    dror_applied = True
-                except:
-                    self.logger.add_line(f'DROR not applied! {weather}, {sample_idx}')
-                    pass
-
-            
             apply_upsampling = dror_applied and 'UPSAMPLE' in self.cfg
-
+            upsample_applied = False
             if apply_upsampling:
-                            # crop pc and Extract FOV points
-                if not pc_cropped:
-                    points_moco = self.crop_pc(points_moco, calib, img_shape)
-                    pc_cropped = True
+                points_moco, upsample_applied = nn_upsample(self.cfg, points_moco)
 
-                pcd = o3d.geometry.PointCloud()
-                pcd.points = o3d.utility.Vector3dVector(points_moco[:, :3])
-
-                method = self.cfg['UPSAMPLE']
-
-                choices = [0]
-
-                if '1in2' in method:
-                    choices = [0, 1]                            # pointcloud gets augmented with 50% chance
-                
-                elif '1in1' in method:
-                    choices = [1]
-
-                elif '1in4' in method:
-                    choices = [0, 0, 0, 1]                      # pointcloud gets augmented with 25% chance
-
-                elif '1in10' in method:
-                    choices = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]    # pointcloud gets augmented with 10% chance
-                
-                if np.random.choice(choices): 
-                    iters = 1
-                    neighbours = 10
-
-                    for iter in range(iters):
-                        #start_time = time.time()
-                        pcd_tree = o3d.geometry.KDTreeFlann(pcd)
-
-                        num_pts = len(pcd.points)
-                        new_pc = np.zeros(points_moco.shape)
-                        for i in range(num_pts):
-                            [_, idx, _] = pcd_tree.search_knn_vector_3d(pcd.points[i], neighbours)
-                            new_pc[i, :] = np.mean(points_moco[idx], axis=0)
-                        #print(f'Iter: {iter}, Time: {time.time()-start_time} ')
-
-                        points_moco = np.concatenate((points_moco, new_pc))
-
-            
             # Snowfall Augmentation
             snowfall_augmentation_applied = False
             apply_snow = weather == 'clear' and 'SNOW' in self.cfg and dataset == 'dense'
             if apply_snow:
-                parameters = self.cfg['SNOW'].split('_')
-
-                sampling = parameters[0]        # e.g. uniform
-                mode = parameters[1]            # gunn or sekhon
-                chance = parameters[2]          # e.g. 8in9
-
-                choices = [0]
-
-                if chance == '8in9':
-                    choices = [1, 1, 1, 1, 1, 1, 1, 1, 0]
-                elif chance == '4in5':
-                    choices = [1, 1, 1, 1, 0]
-                elif chance == '1in2':
-                    choices = [1, 0]
-                elif chance == '1in1':
-                    choices = [1]
-                elif chance == '1in4':
-                    choices = [1, 0, 0, 0]
-                elif chance == '1in10': #recommended by lidar snow sim paper
-                    choices = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-                if np.random.choice(choices): 
-
-                    rainfall_rate = 0
-
-                    if sampling == 'uniform':
-                        rainfall_rate = int(np.random.choice(self.rainfall_rates))
-
-                    if self.cfg['FOV_POINTS_ONLY']:
-                        snow_sim_dir = 'snowfall_simulation_FOV'
-                    else:
-                        snow_sim_dir = 'snowfall_simulation'
-                    lidar_file = self.root_dense_path / snow_sim_dir / mode / \
-                                f'{self.dense_lidar_folder}_rainrate_{rainfall_rate}' / f'{sample_idx}.bin'
-
-                    try:
-                        points_moco = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
-                        snowfall_augmentation_applied = True
-                    except FileNotFoundError:
-                        self.logger.add_line(f'\n{lidar_file} not found')
-                        pass
+                points_moco, snowfall_augmentation_applied = snow_sim(self.cfg, self.logger, self.rainfall_rates, sample_idx, self.root_dense_path, self.dense_lidar_folder, points_moco)
             
+            # Wet Surface Augmentation
             wet_surface_applied = False
             apply_wet_surface = weather == 'clear' and 'WET_SURFACE' in self.cfg and dataset == 'dense'
             if apply_wet_surface:
-                if not pc_cropped:
-                    points_moco = self.crop_pc(points_moco, calib, img_shape)
-                    pc_cropped = True
-
-                method = self.cfg['WET_SURFACE']
-
-                choices = [0]
-
-                if '1in2' in method:
-                    choices = [0, 1]                            # pointcloud gets augmented with 50% chance
-                
-                elif '1in1' in method:
-                    choices = [1]
-
-                elif '1in4' in method:
-                    choices = [0, 0, 0, 1]                      # pointcloud gets augmented with 25% chance
-
-                elif '1in10' in method:
-                    choices = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]    # pointcloud gets augmented with 10% chance
-
-                apply_coupled = self.cfg.get('COUPLED', False) and snowfall_augmentation_applied
-
-                if np.random.choice(choices) or apply_coupled: 
-
-                    if 'norm' in method:
-
-                        lower, upper = 0.05, 0.5
-                        mu, sigma = 0.2, 0.1
-                        X = stats.truncnorm((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
-
-                        water_height = X.rvs(1)
-
-                    else:
-
-                        elements = np.linspace(0.001, 0.012, 12) #np.linspace(0.1, 1.2, 12)
-                        probabilities = 5 * np.ones_like(elements)  # each element initially 5% chance
-
-                        probabilities[0] = 15   # 0.1
-                        probabilities[1] = 25   # 0.2
-                        probabilities[2] = 15   # 0.3
-
-                        probabilities = probabilities / 100
-
-                        water_height = np.random.choice(elements, 1, p=probabilities)
-
-                    try:
-                        points_moco = ground_water_augmentation(points_moco, water_height=water_height, debug=False)
-                        wet_surface_applied = True
-                    except (TypeError, ValueError):
-                        pass
+                points_moco, wet_surface_applied = wet_surface_sim(self.cfg, snowfall_augmentation_applied, points_moco, self.logger)
             
             #Fog augmentation
+            fog_applied = False
             apply_fog = weather == 'clear' and not snowfall_augmentation_applied and 'FOG_AUGMENTATION' in self.cfg
             if apply_fog:
-                augmentation_method = self.cfg['FOG_AUGMENTATION'].split('_')[0]
-                chance = self.cfg['FOG_AUGMENTATION'].split('_')[-1]
-                choices = [0]
+                points_moco, fog_applied = fog_sim(self.cfg, points_moco) 
 
-                if chance == '8in9':
-                    choices = [1, 1, 1, 1, 1, 1, 1, 1, 0]
-                elif chance == '4in5':
-                    choices = [1, 1, 1, 1, 0]
-                elif chance == '1in2':
-                    choices = [1, 0]
-                elif chance == '1in1':
-                    choices = [1]
-                elif chance == '1in4':
-                    choices = [1, 0, 0, 0]
-                elif chance == '1in10': #recommended by lidar snow sim paper
-                    choices = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-                if np.random.choice(choices):
-                    if not pc_cropped:
-                        points_moco = self.crop_pc(points_moco, calib, img_shape)
-                        pc_cropped = True
-                    alphas = ['0.005', '0.010', '0.020', '0.030', '0.060']
-                    curriculum_stage = int(np.random.randint(low=0, high=len(alphas)))
-                    alpha = alphas[curriculum_stage]
-
-                    if alpha != '0.000': 
-                        mor = np.log(20) / float(alpha)
-
-                    points_moco = self.foggify(points_moco, sample_idx, alpha, augmentation_method)
-
+        #print(f'dataset: {dataset}, weather: {weather}, dror: {dror_applied}, up: {upsample_applied}, snow: {snowfall_augmentation_applied}, wet: {wet_surface_applied}, fog: {fog_applied}')
         
         # Add gt_boxes for linear probing
         if self.linear_probe:
@@ -727,438 +471,19 @@ class DenseKittiDataset(DepthContrastDataset):
             assert data_dict['gt_names'].shape[0] == data_dict['gt_boxes_lidar'].shape[0]
 
         # # TODO: mask boxes outside point cloud range
-        # if not pc_cropped:
-        #     points_moco = self.crop_pc(points_moco)
-        #     pc_cropped = True
 
-        points = self.crop_pc(points, calib, img_shape)
         
-       
-        data_dict['data'] = points[:,:4] #x,y,z,i #drop channel or label
+        data_dict['data'] = np.hstack((points[:,:4], points[:,-1].reshape((-1,1)))) #x,y,z,i #drop channel or label, add cluster id
 
         if not self.linear_probe:
             points_moco = self.crop_pc(points_moco, calib, img_shape)
-            data_dict['data_moco'] = points_moco[:,:4] #x,y,z,i #drop channel or label 
+            data_dict['data_moco'] = np.hstack((points_moco[:,:4], points_moco[:, -1].reshape((-1,1)))) #x,y,z,i #drop channel or label , add cluster id
 
         #V.draw_scenes(points=points, color_feature='intensity')
         #V.draw_scenes(points=points_moco, color_feature='intensity')
-        # Prepare points and Transform 
-        data_dict = self.prepare_data(data_dict, index)
-
-        return data_dict
-class DenseDataset(DepthContrastDataset):
-
-    def __init__(self, cfg, linear_probe=False, mode='train', logger=None):
-        super().__init__(cfg, linear_probe=linear_probe, mode=mode, logger=logger)
-        self.root_data_path = self.root_path / 'data' / 'dense'  # DepthContrast/data/waymo
-        
-        self.sensor_type = self.cfg["SENSOR_TYPE"]
-        self.signal_type = self.cfg["SIGNAL_TYPE"]
-        self.lidar_folder = f'lidar_{self.sensor_type}_{self.signal_type}'
-        self.calib = self.get_calib(self.sensor_type)
-
-        self.dense_infos = []
-        self.include_dense_data()
-
-        #SnowFall augmentation
-        self.snowfall_rates = [0.5, 0.5, 1.0, 2.0, 2.5, 1.5]      # mm/h
-        self.terminal_velocities = [2.0, 1.2, 1.6, 2.0, 1.6, 0.6] # m/s
-
-        self.rainfall_rates = []
-
-        for i in range(len(self.snowfall_rates)):
-            self.rainfall_rates.append(snowfall_rate_to_rainfall_rate(self.snowfall_rates[i],
-                                                                      self.terminal_velocities[i]))
-
-    def include_dense_data(self):
-        if self.logger is not None:
-            self.logger.add_line('Loading DENSE dataset')
-        dense_infos = []
-
-        num_skipped_infos = 0
-        for info_path in self.cfg["INFO_PATHS"][self.mode]:
-            info_path = self.root_data_path / info_path
-            if not info_path.exists():
-                num_skipped_infos += 1
-                continue
-            with open(info_path, 'rb') as f:
-                infos = pickle.load(f)
-                dense_infos.extend(infos)
-
-        self.dense_infos.extend(dense_infos[:])
-
-        # To work on a subset of dense_infos for debugging, 
-        # comment the line above and uncomment below
-        # perm = np.random.permutation(len(dense_infos))
-        # idx = perm[:int(len(dense_infos)/10)]
-        # self.dense_infos.extend(np.array(dense_infos)[idx].tolist())
-
-        if self.logger is not None:
-            self.logger.add_line('Total skipped info %s' % num_skipped_infos)
-            self.logger.add_line('Total samples for DENSE dataset: %d' %
-                             (len(dense_infos)))
-    
-    def get_calib(self, sensor: str = 'hdl64'):
-        calib_file = self.root_data_path / f'calib_{sensor}.txt'
-        assert calib_file.exists(), f'{calib_file} not found'
-        return calibration_kitti.Calibration(calib_file)
-
-    def get_lidar(self, idx):
-        lidar_file = self.root_data_path / self.lidar_folder / ('%s.bin' % idx)
-        assert lidar_file.exists(), f'{lidar_file} not found'
-        return np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
-
-    def __len__(self):
-        return len(self.dense_infos)
-
-    def foggify(self, points, sample_idx, alpha, augmentation_method, on_the_fly=False):
-
-        if augmentation_method == 'DENSE' and alpha != '0.000' and not on_the_fly:          # load from disk
-
-            curriculum_folder = f'{self.lidar_folder}_{augmentation_method}_beta_{alpha}'
-
-            lidar_file = self.root_data_path / 'fog_simulation' / curriculum_folder / ('%s.bin' % sample_idx)
-            assert lidar_file.exists(), f'could not find {lidar_file}'
-            points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
-
-        if augmentation_method == 'DENSE' and alpha != '0.000' and on_the_fly:
-
-            B = BetaRadomization(beta=float(alpha), seed=0)
-            B.propagate_in_time(10)
-
-            arguments = Namespace(sensor_type='Velodyne HDL-64E S3D', fraction_random=0.05)
-            n_features = points.shape[1]
-            points = haze_point_cloud(points, B, arguments)
-            points = points[:, :n_features]
-
-        if augmentation_method == 'CVL' and alpha != '0.000':
-
-            p = ParameterSet(alpha=float(alpha), gamma=0.000001)
-
-            gain = self.cfg.get('FOG_GAIN', False)
-            fog_noise_variant = self.cfg.get('FOG_NOISE_VARIANT', 'v1')
-            soft = self.cfg.get('FOG_SOFT', True)
-            hard = self.cfg.get('FOG_HARD', True)
-
-            points, _, _ = simulate_fog(p, pc=points, noise=10, gain=gain, noise_variant=fog_noise_variant,
-                                        soft=soft, hard=hard)
-
-        return points
-
-    def o3d_dynamic_radius_outlier_filter(self, pc: np.ndarray, alpha: float = 0.45, beta: float = 3.0,
-                                    k_min: int = 3, sr_min: float = 0.04) -> np.ndarray:
-        """
-        :param pc:      pointcloud
-        :param alpha:   horizontal angular resolution of the lidar
-        :param beta:    multiplication factor
-        :param k_min:   minimum number of neighbors
-        :param sr_min:  minumum search radius
-
-        :return:        mask [False = snow, True = no snow]
-        """
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(pc[:, :3])
-        num_points = len(pcd.points)
-
-        # initialize mask with False
-        mask = np.zeros(num_points, dtype=bool)
-
-        k = k_min + 1
-
-        kd_tree = o3d.geometry.KDTreeFlann(pcd)
-
-        for i in range(num_points):
-
-            x = pc[i,0]
-            y = pc[i,1]
-
-            r = np.linalg.norm([x, y], axis=0)
-
-            sr = alpha * beta * np.pi / 180 * r
-
-            if sr < sr_min:
-                sr = sr_min
-
-            [_, _, sqdist] = kd_tree.search_knn_vector_3d(pcd.points[i], k)
-
-            neighbors = -1      # start at -1 since it will always be its own neighbour
-
-            for val in sqdist:
-                if np.sqrt(val) < sr:
-                    neighbors += 1
-
-            if neighbors >= k_min:
-                mask[i] = True  # no snow -> keep
-
-        return mask
-
-    def crop_pc(self, pc):
-        upper_idx = np.sum((pc[:, 0:3] <= self.point_cloud_range[3:6]).astype(np.int32), 1) == 3
-        lower_idx = np.sum((pc[:, 0:3] >= self.point_cloud_range[0:3]).astype(np.int32), 1) == 3
-
-        new_pointidx = (upper_idx) & (lower_idx)
-        pc = pc[new_pointidx, :]
-
-        # Extract FOV points
-        if self.cfg['FOV_POINTS_ONLY']:
-            pts_rect = self.calib.lidar_to_rect(pc[:, 0:3])
-            fov_flag = get_fov_flag(pts_rect, (1024, 1920), self.calib)
-            pc = pc[fov_flag]
-
-        return pc
-
-    def __getitem__(self, index):
-        
-        info = copy.deepcopy(self.dense_infos[index])
-        sample_idx = info['point_cloud']['lidar_idx'] #'2018-02-16_17-35-08_00130' 
-        points = self.get_lidar(sample_idx)
-        points_moco = np.copy(points) #points_weather
-
-        weather = 'clear'
-        if 'annos' in info:
-            weather = info['annos']['weather']
-        pc_cropped = False
-        mor = np.inf
-        data_dict = {}
-
-        if not self.linear_probe and self.cfg['APPLY_WEATHER_AUG']:
-            apply_dror =  weather != 'clear' and 'DROR' in self.cfg
-            dror_applied = False
-            if apply_dror:
-
-                try:
-                    alpha = self.cfg['DROR']
-
-                    dror_path = self.root_data_path / 'DROR' / f'alpha_{alpha}' / \
-                                'all' / self.sensor_type / self.signal_type / 'full' / f'{sample_idx}.pkl'
-                    
-                    if dror_path.exists():
-                        with open(str(dror_path), 'rb') as f:
-                            snow_indices = pickle.load(f)
-                    else:
-                        #Crop points here to save time on dror
-                        self.logger.add_line(f'DROR path does not exist! {weather}, {sample_idx}')
-                        points_moco = self.crop_pc(points_moco)
-                        pc_cropped = True
-                        
-                        keep_mask = self.o3d_dynamic_radius_outlier_filter(points_moco, alpha=alpha)
-                        snow_indices = (keep_mask == 0).nonzero()[0]#.astype(np.int16)
-
-                    range_snow_indices = np.linalg.norm(points_moco[snow_indices][:,:3], axis=1)
-                    snow_indices = snow_indices[range_snow_indices < 30]
-                    keep_indices = np.ones(len(points_moco), dtype=bool)
-                    keep_indices[snow_indices] = False
-
-                    points_moco = points_moco[keep_indices]
-                    dror_applied = True
-                except:
-                    self.logger.add_line(f'DROR not applied! {weather}, {sample_idx}')
-                    pass
-
-            
-            apply_upsampling = dror_applied and 'UPSAMPLE' in self.cfg
-
-            if apply_upsampling:
-                            # crop pc and Extract FOV points
-                if not pc_cropped:
-                    points_moco = self.crop_pc(points_moco)
-                    pc_cropped = True
-
-                pcd = o3d.geometry.PointCloud()
-                pcd.points = o3d.utility.Vector3dVector(points_moco[:, :3])
-
-                method = self.cfg['UPSAMPLE']
-
-                choices = [0]
-
-                if '1in2' in method:
-                    choices = [0, 1]                            # pointcloud gets augmented with 50% chance
-                
-                elif '1in1' in method:
-                    choices = [1]
-
-                elif '1in4' in method:
-                    choices = [0, 0, 0, 1]                      # pointcloud gets augmented with 25% chance
-
-                elif '1in10' in method:
-                    choices = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]    # pointcloud gets augmented with 10% chance
-                
-                if np.random.choice(choices): 
-                    iters = 1
-                    neighbours = 10
-
-                    for iter in range(iters):
-                        start_time = time.time()
-                        pcd_tree = o3d.geometry.KDTreeFlann(pcd)
-
-                        num_pts = len(pcd.points)
-                        new_pc = np.zeros(points_moco.shape)
-                        for i in range(num_pts):
-                            [_, idx, _] = pcd_tree.search_knn_vector_3d(pcd.points[i], neighbours)
-                            new_pc[i, :] = np.mean(points_moco[idx], axis=0)
-                        #print(f'Iter: {iter}, Time: {time.time()-start_time} ')
-
-                        points_moco = np.concatenate((points_moco, new_pc))
-
-            
-            # Snowfall Augmentation
-            snowfall_augmentation_applied = False
-            apply_snow = weather == 'clear' and 'SNOW' in self.cfg
-            if apply_snow:
-                parameters = self.cfg['SNOW'].split('_')
-
-                sampling = parameters[0]        # e.g. uniform
-                mode = parameters[1]            # gunn or sekhon
-                chance = parameters[2]          # e.g. 8in9
-
-                choices = [0]
-
-                if chance == '8in9':
-                    choices = [1, 1, 1, 1, 1, 1, 1, 1, 0]
-                elif chance == '4in5':
-                    choices = [1, 1, 1, 1, 0]
-                elif chance == '1in2':
-                    choices = [1, 0]
-                elif chance == '1in1':
-                    choices = [1]
-                elif chance == '1in4':
-                    choices = [1, 0, 0, 0]
-                elif chance == '1in10': #recommended by lidar snow sim paper
-                    choices = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-                if np.random.choice(choices): 
-
-                    rainfall_rate = 0
-
-                    if sampling == 'uniform':
-                        rainfall_rate = int(np.random.choice(self.rainfall_rates))
-
-                    if self.cfg['FOV_POINTS_ONLY']:
-                        snow_sim_dir = 'snowfall_simulation_FOV'
-                    else:
-                        snow_sim_dir = 'snowfall_simulation'
-                    lidar_file = self.root_data_path / snow_sim_dir / mode / \
-                                f'{self.lidar_folder}_rainrate_{rainfall_rate}' / f'{sample_idx}.bin'
-
-                    try:
-                        points_moco = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
-                        snowfall_augmentation_applied = True
-                    except FileNotFoundError:
-                        self.logger.add_line(f'\n{lidar_file} not found')
-                        pass
-            
-            wet_surface_applied = False
-            apply_wet_surface = weather == 'clear' and 'WET_SURFACE' in self.cfg
-            if apply_wet_surface:
-                if not pc_cropped:
-                    points_moco = self.crop_pc(points_moco)
-                    pc_cropped = True
-
-                method = self.cfg['WET_SURFACE']
-
-                choices = [0]
-
-                if '1in2' in method:
-                    choices = [0, 1]                            # pointcloud gets augmented with 50% chance
-                
-                elif '1in1' in method:
-                    choices = [1]
-
-                elif '1in4' in method:
-                    choices = [0, 0, 0, 1]                      # pointcloud gets augmented with 25% chance
-
-                elif '1in10' in method:
-                    choices = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]    # pointcloud gets augmented with 10% chance
-
-                apply_coupled = self.cfg.get('COUPLED', False) and snowfall_augmentation_applied
-
-                if np.random.choice(choices) or apply_coupled: 
-
-                    if 'norm' in method:
-
-                        lower, upper = 0.05, 0.5
-                        mu, sigma = 0.2, 0.1
-                        X = stats.truncnorm((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
-
-                        water_height = X.rvs(1)
-
-                    else:
-
-                        elements = np.linspace(0.001, 0.012, 12) #np.linspace(0.1, 1.2, 12)
-                        probabilities = 5 * np.ones_like(elements)  # each element initially 5% chance
-
-                        probabilities[0] = 15   # 0.1
-                        probabilities[1] = 25   # 0.2
-                        probabilities[2] = 15   # 0.3
-
-                        probabilities = probabilities / 100
-
-                        water_height = np.random.choice(elements, 1, p=probabilities)
-
-                    try:
-                        points_moco = ground_water_augmentation(points_moco, water_height=water_height, debug=False)
-                        wet_surface_applied = True
-                    except (TypeError, ValueError):
-                        pass
-            
-            #Fog augmentation
-            apply_fog = weather == 'clear' and not snowfall_augmentation_applied and 'FOG_AUGMENTATION' in self.cfg
-            if apply_fog:
-                augmentation_method = self.cfg['FOG_AUGMENTATION'].split('_')[0]
-                chance = self.cfg['FOG_AUGMENTATION'].split('_')[-1]
-                choices = [0]
-
-                if chance == '8in9':
-                    choices = [1, 1, 1, 1, 1, 1, 1, 1, 0]
-                elif chance == '4in5':
-                    choices = [1, 1, 1, 1, 0]
-                elif chance == '1in2':
-                    choices = [1, 0]
-                elif chance == '1in1':
-                    choices = [1]
-                elif chance == '1in4':
-                    choices = [1, 0, 0, 0]
-                elif chance == '1in10': #recommended by lidar snow sim paper
-                    choices = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-                if np.random.choice(choices):
-                    if not pc_cropped:
-                        points_moco = self.crop_pc(points_moco)
-                        pc_cropped = True
-                    alphas = ['0.005', '0.010', '0.020', '0.030', '0.060']
-                    curriculum_stage = int(np.random.randint(low=0, high=len(alphas)))
-                    alpha = alphas[curriculum_stage]
-
-                    if alpha != '0.000': 
-                        mor = np.log(20) / float(alpha)
-
-                    
-
-                    points_moco = self.foggify(points_moco, sample_idx, alpha, augmentation_method)
-
-        
-        # Add gt_boxes for linear probing
-        if self.linear_probe:
-            data_dict['gt_names'] = info['annos']['name']
-            data_dict['gt_boxes_lidar'] = info['annos']['gt_boxes_lidar']
-            assert data_dict['gt_names'].shape[0] == data_dict['gt_boxes_lidar'].shape[0]
-
-        # # TODO: mask boxes outside point cloud range
-        # if not pc_cropped:
-        #     points_moco = self.crop_pc(points_moco)
-        #     pc_cropped = True
-
-        points = self.crop_pc(points)
-        
-       
-        data_dict['data'] = points[:,:4] #x,y,z,i #drop channel or label
-
-        if not self.linear_probe:
-            points_moco = self.crop_pc(points_moco)
-            data_dict['data_moco'] = points_moco[:,:4] #x,y,z,i #drop channel or label 
-
-        #V.draw_scenes(points=points, color_feature='intensity')
-        #V.draw_scenes(points=points_moco, color_feature='intensity')
+        # if fog_applied or snowfall_augmentation_applied:
+        #     visualize_pcd_clusters(points)
+        #     visualize_pcd_clusters(points_moco)
         # Prepare points and Transform 
         data_dict = self.prepare_data(data_dict, index)
 

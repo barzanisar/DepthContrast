@@ -128,6 +128,8 @@ class PointNet2MSG(nn.Module):
         if use_mlp:
             self.use_mlp = True
             self.head = MLP(mlp_dim) # projection head
+
+        self.dout=nn.Dropout(p=0.4)
             
     def break_up_pc(self, pc):
         #batch_idx = pc[:, 0]
@@ -135,7 +137,7 @@ class PointNet2MSG(nn.Module):
         features = (pc[:, :, 3:].contiguous() if pc.size(-1) > 3 else None)
         return xyz, features
 
-    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None):
+    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None, cluster_id=None):
         """
         Args:
             batch_dict:
@@ -221,6 +223,25 @@ class PointNet2MSG(nn.Module):
                 out_dict['vdc_feats'] = batch_voxel_feats
                 out_dict['vdc_voxel_bzyx'] = vox_coords
             
+            if 'seg_feats' in out_feat_keys:
+                batch_seg_feats = []
+                for pc_idx in range(batch_size):
+                    pc_feats = point_features[pc_idx] #(128 x 16384)
+                    cluster_labels_this_pc = cluster_id[pc_idx] # (16384,)
+                    for segment_lbl in np.unique(cluster_labels_this_pc):
+                        if segment_lbl == -1:
+                            continue
+
+                        seg_feats = pc_feats[:,cluster_labels_this_pc == segment_lbl] #(128, npoints in this seg)
+                        seg_feats = self.dout(seg_feats)
+                        seg_feats = seg_feats.unsqueeze(0) #1,128, npoints in this seg
+                        npoints = seg_feats.shape[-1]
+                        seg_max_feat = F.max_pool1d(seg_feats, npoints).squeeze(-1)
+                        batch_seg_feats.append(seg_max_feat)
+                
+                all_seg_feats = torch.vstack(batch_seg_feats) # num clusters x 128
+                out_dict['seg_feats'] = all_seg_feats
+
             if 'dc_feats' in out_feat_keys:
                 nump = point_features.shape[-1] # 16384
                 # get one feature vector of dim 128 for the entire point cloud

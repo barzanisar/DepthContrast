@@ -190,7 +190,7 @@ def P_R_fog_hard(p: ParameterSet, pc: np.ndarray) -> np.ndarray:
 
 
 def P_R_fog_soft(p: ParameterSet, pc: np.ndarray, original_intesity: np.ndarray, noise: int, gain: bool = False,
-                 noise_variant: str = 'v1') -> Tuple[np.ndarray, np.ndarray, Dict]:
+                 noise_variant: str = 'v1', last_col_cluster_id: bool = False) -> Tuple[np.ndarray, np.ndarray, Dict]:
 
     augmented_pc = np.zeros(pc.shape)
     fog_mask = np.zeros(len(pc), dtype=bool)
@@ -233,7 +233,7 @@ def P_R_fog_soft(p: ParameterSet, pc: np.ndarray, original_intesity: np.ndarray,
 
             # keep 5th feature if it exists
             if pc.shape[1] > 4:
-                augmented_pc[i, 4] = pc[i, 4]
+                augmented_pc[i, 4:] = pc[i, 4:]
 
             if noise > 0:
 
@@ -289,6 +289,9 @@ def P_R_fog_soft(p: ParameterSet, pc: np.ndarray, original_intesity: np.ndarray,
     if num_fog_responses > 0:
         fog_points = augmented_pc[fog_mask]
         simulated_fog_pc = fog_points
+        if last_col_cluster_id:
+            # set fog points cluster id to -1
+            augmented_pc[fog_mask, -1] = -1
 
     info_dict = {'min_fog_response': min_fog_response,
                  'max_fog_response': max_fog_response,
@@ -298,7 +301,7 @@ def P_R_fog_soft(p: ParameterSet, pc: np.ndarray, original_intesity: np.ndarray,
 
 
 def simulate_fog(p: ParameterSet, pc: np.ndarray, noise: int, gain: bool = False, noise_variant: str = 'v1',
-                 hard: bool = True, soft: bool = True) -> Tuple[np.ndarray, np.ndarray, Dict]:
+                 hard: bool = True, soft: bool = True, has_cluster_id: bool = False) -> Tuple[np.ndarray, np.ndarray, Dict]:
 
     augmented_pc = copy.deepcopy(pc)
     original_intensity = copy.deepcopy(pc[:, 3])
@@ -310,7 +313,7 @@ def simulate_fog(p: ParameterSet, pc: np.ndarray, noise: int, gain: bool = False
         augmented_pc = P_R_fog_hard(p, augmented_pc)
     if soft:
         augmented_pc, simulated_fog_pc, info_dict = P_R_fog_soft(p, augmented_pc, original_intensity, noise, gain,
-                                                                 noise_variant)
+                                                                 noise_variant, last_col_cluster_id=has_cluster_id)
 
     return augmented_pc, simulated_fog_pc, info_dict
 

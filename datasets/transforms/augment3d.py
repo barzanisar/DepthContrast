@@ -96,6 +96,7 @@ def get_transform3d(data, input_transforms_list, vox=False):
     # Compute augmentation transformation matrix
     aug_trans_matrix = np.eye(3, 3, dtype=np.float32)
     for point_cloud in ptdata:
+        #Randomly select 50000 points
         if len(point_cloud) > 50000:
             newidx = np.random.choice(len(point_cloud), 50000, replace=False)
             point_cloud = point_cloud[newidx,:]

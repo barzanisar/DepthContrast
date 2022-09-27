@@ -113,9 +113,9 @@ def main_worker(gpu, ngpus, args, cfg):
 
     # Define model
     model = main_utils.build_model(cfg['model'], logger)
-    if args.sync_bn:
+    if args.sync_bn and args.multiprocessing_distributed:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-    find_unused_params = cfg['linear_probe'] or cfg['loss']['args']['model_type'] == 'VDC' or cfg['loss']['args']['model_type'] == 'DC_VDC'
+    find_unused_params = cfg['linear_probe']
     logger.add_line(f'Find unused params: {find_unused_params}')
     model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params)
 

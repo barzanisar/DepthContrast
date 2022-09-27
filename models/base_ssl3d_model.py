@@ -67,13 +67,13 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             input_key = self.model_input[input_idx]
             feature_names = self.model_feature[input_idx]
             if "moco" in input_key:
-                outputs = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
+                outputs = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"], batch[input_key + "_cluster"])
             else:
-                outputs = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"])
+                outputs = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"], batch[input_key + "_cluster"])
             all_outputs.append(outputs)
         return all_outputs
     
-    def _single_input_forward(self, batch, feature_names, input_key, target, aug_matrix=None):
+    def _single_input_forward(self, batch, feature_names, input_key, target, aug_matrix=None, cluster_ids=None):
         if "vox" not in input_key:
             assert isinstance(batch, torch.Tensor)
 
@@ -106,7 +106,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                     aug_matrix, non_blocking=True
                 )
         
-        output = self.trunk[target](batch, feature_names, aug_matrix)
+        output = self.trunk[target](batch, feature_names, aug_matrix, cluster_ids)
         return output
 
     @torch.no_grad()
@@ -198,7 +198,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
         return x_gather[idx_this]
     
-    def _single_input_forward_MOCO(self, batch, feature_names, input_key, target, aug_matrix=None):
+    def _single_input_forward_MOCO(self, batch, feature_names, input_key, target, aug_matrix=None, cluster_ids=None):
         if "vox" not in input_key:
             assert isinstance(batch, torch.Tensor)
         if ('vox' in input_key) and ("Lidar" not in self.config):
@@ -238,7 +238,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                         aug_matrix, non_blocking=True
                     )
             
-            output = self.trunk[target](batch, feature_names, aug_matrix)
+            output = self.trunk[target](batch, feature_names, aug_matrix, cluster_ids)
             # idx_unshuffle assumes that output features.shape[0] is 8 i.e. equal to number of pcs in the batch
             # Not compatible with Voxelized DC!
             # if torch.distributed.is_initialized():
