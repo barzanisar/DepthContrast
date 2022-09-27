@@ -7,7 +7,7 @@ from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 from lib.LiDAR_fog_sim.fog_simulation import *
 from lib.LiDAR_snow_sim.tools.wet_ground.augmentation import ground_water_augmentation
 
-def foggify(cfg, points, alpha, augmentation_method, on_the_fly=False):
+def foggify(cfg, points, alpha, augmentation_method, last_col_cluster_id):
 
     if augmentation_method == 'CVL' and alpha != '0.000':
 
@@ -19,7 +19,7 @@ def foggify(cfg, points, alpha, augmentation_method, on_the_fly=False):
         hard = cfg.get('FOG_HARD', True)
 
         points, _, _ = simulate_fog(p, pc=points, noise=10, gain=gain, noise_variant=fog_noise_variant,
-                                    soft=soft, hard=hard, has_cluster_id=True)
+                                    soft=soft, hard=hard, last_col_cluster_id=last_col_cluster_id)
 
     return points
 
@@ -102,7 +102,7 @@ def dror(cfg, points_moco, sample_idx, logger, root_dense_path, sensor_type='hdl
 
     return points_moco, dror_applied
 
-def fog_sim(cfg, points_moco):
+def fog_sim(cfg, points_moco, last_col_cluster_id):
     fog_applied = False
     augmentation_method = cfg['FOG_AUGMENTATION'].split('_')[0]
     chance = cfg['FOG_AUGMENTATION'].split('_')[-1]
@@ -129,7 +129,7 @@ def fog_sim(cfg, points_moco):
         # if alpha != '0.000': 
         #     mor = np.log(20) / float(alpha)
 
-        points_moco = foggify(cfg, points_moco, alpha, augmentation_method)
+        points_moco = foggify(cfg, points_moco, alpha, augmentation_method, last_col_cluster_id)
         fog_applied=True
     
     return points_moco, fog_applied
@@ -176,7 +176,7 @@ def wet_surface_sim(cfg, snowfall_augmentation_applied, points_moco, logger):
     
     return points_moco, wet_surface_applied
 
-def snow_sim(cfg, logger, rainfall_rates, sample_idx, root_dense_path, dense_lidar_folder, points_moco):
+def snow_sim(cfg, logger, rainfall_rates, sample_idx, root_dense_path, points_moco, num_feat, last_col_cluster_id):
     snowfall_augmentation_applied=False
     parameters = cfg['SNOW'].split('_')
 
@@ -207,14 +207,14 @@ def snow_sim(cfg, logger, rainfall_rates, sample_idx, root_dense_path, dense_lid
             rainfall_rate = int(np.random.choice(rainfall_rates))
 
         if cfg['FOV_POINTS_ONLY']:
-            snow_sim_dir = 'snowfall_simulation_FOV_clustered'
+            snow_sim_dir = 'snowfall_simulation_FOV_clustered' if last_col_cluster_id else 'snowfall_simulation_FOV'
         else:
             snow_sim_dir = 'snowfall_simulation'
         lidar_file = root_dense_path / snow_sim_dir / mode / \
                     f'lidar_hdl64_strongest_rainrate_{rainfall_rate}' / f'{sample_idx}.bin'
 
         try:
-            points_moco = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 6)
+            points_moco = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, num_feat)
             snowfall_augmentation_applied = True
         except FileNotFoundError:
             logger.add_line(f'\n{lidar_file} not found')
@@ -223,7 +223,7 @@ def snow_sim(cfg, logger, rainfall_rates, sample_idx, root_dense_path, dense_lid
     return points_moco, snowfall_augmentation_applied
 
 
-def nn_upsample(cfg, points_moco):
+def nn_upsample(cfg, points_moco, last_col_cluster_id):
     upsampling_applied=False
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points_moco[:, :3])
@@ -258,8 +258,9 @@ def nn_upsample(cfg, points_moco):
             for i in range(num_pts):
                 [_, idx, _] = pcd_tree.search_knn_vector_3d(pcd.points[i], k_neighbours)
                 new_pc[i, :4] = np.mean(points_moco[idx][:,:4], axis=0)
-                neighbour_cluster_ids, counts = np.unique(points_moco[idx][:,-1], return_counts=True)
-                new_pc[i, -1] = neighbour_cluster_ids[counts.argmax()]
+                if last_col_cluster_id:
+                    neighbour_cluster_ids, counts = np.unique(points_moco[idx][:,-1], return_counts=True)
+                    new_pc[i, -1] = neighbour_cluster_ids[counts.argmax()]
             #print(f'Iter: {iter}, Time: {time.time()-start_time} ')
 
             points_moco = np.concatenate((points_moco, new_pc))

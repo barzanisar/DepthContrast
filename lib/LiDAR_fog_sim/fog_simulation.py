@@ -301,7 +301,7 @@ def P_R_fog_soft(p: ParameterSet, pc: np.ndarray, original_intesity: np.ndarray,
 
 
 def simulate_fog(p: ParameterSet, pc: np.ndarray, noise: int, gain: bool = False, noise_variant: str = 'v1',
-                 hard: bool = True, soft: bool = True, has_cluster_id: bool = False) -> Tuple[np.ndarray, np.ndarray, Dict]:
+                 hard: bool = True, soft: bool = True, last_col_cluster_id: bool = False) -> Tuple[np.ndarray, np.ndarray, Dict]:
 
     augmented_pc = copy.deepcopy(pc)
     original_intensity = copy.deepcopy(pc[:, 3])
@@ -313,7 +313,7 @@ def simulate_fog(p: ParameterSet, pc: np.ndarray, noise: int, gain: bool = False
         augmented_pc = P_R_fog_hard(p, augmented_pc)
     if soft:
         augmented_pc, simulated_fog_pc, info_dict = P_R_fog_soft(p, augmented_pc, original_intensity, noise, gain,
-                                                                 noise_variant, last_col_cluster_id=has_cluster_id)
+                                                                 noise_variant, last_col_cluster_id=last_col_cluster_id)
 
     return augmented_pc, simulated_fog_pc, info_dict
 

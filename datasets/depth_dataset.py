@@ -55,7 +55,7 @@ import torch
 WAYMO_POINT_RANGE = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
 # KITTI and DENSE range
 DENSE_POINT_RANGE = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32)
-np.random.seed(1024)
+#np.random.seed(1024)
 
 class Namespace:
     def __init__(self, **kwargs):
@@ -281,19 +281,23 @@ def get_fov_flag(pts_rect, img_shape, calib):
     return pts_valid_flag
 
 class DenseKittiDataset(DepthContrastDataset):
-    def __init__(self, cfg, linear_probe=False, mode='train', logger=None):
+    def __init__(self, cfg, cluster, linear_probe=False, mode='train', logger=None):
         super().__init__(cfg, linear_probe=linear_probe, mode=mode, logger=logger)
 
-        self.cluster = True
-        
+        self.cluster = cluster
+
+        self.num_dense_features = 5 # [x,y,z,i,channel]
+        if self.cluster:
+            self.num_dense_features = 6 # [x,y,z,i,cluster_id]
+
         # Dense
         self.root_dense_path = self.root_path / 'data' / 'dense'
 
         self.sensor_type = self.cfg["SENSOR_TYPE"]
         self.signal_type = self.cfg["SIGNAL_TYPE"]
-        self.dense_lidar_folder = f'lidar_{self.sensor_type}_{self.signal_type}_FOV_clustered_train_all_60'
+        self.dense_lidar_folder = f'lidar_{self.sensor_type}_{self.signal_type}_FOV_clustered_train_all_60' if self.cluster else f'lidar_{self.sensor_type}_{self.signal_type}'
         self.dense_calib = self.get_dense_calib(self.sensor_type)
-
+        
         # Kitti
         self.root_kitti_path = self.root_path / 'data' / 'kitti'
 
@@ -397,33 +401,41 @@ class DenseKittiDataset(DepthContrastDataset):
         calib_file = self.root_dense_path / f'calib_{sensor}.txt'
         assert calib_file.exists(), f'{calib_file} not found'
         return calibration_kitti.Calibration(calib_file)
-
-    def get_dense_lidar(self, idx):
-        lidar_file = self.root_dense_path / self.dense_lidar_folder / ('%s.bin' % idx)
-        assert lidar_file.exists(), f'{lidar_file} not found'
-        # try:
-        #     pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 5)
-        # except:
-        pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 6)
-        return pc
     
     def get_kitti_calib(self, velo_parent_dir, idx):
         calib_file = self.root_kitti_path / velo_parent_dir / 'calib' / ('%s.txt' % idx)
         assert calib_file.exists()
         return calibration_kitti.Calibration(calib_file)
 
+    def get_dense_lidar(self, idx):
+        lidar_file = self.root_dense_path / self.dense_lidar_folder / ('%s.bin' % idx)
+        assert lidar_file.exists(), f'{lidar_file} not found'
+        pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, self.num_dense_features)
+        return pc
+
     def get_kitti_lidar(self, velo_parent_dir, idx):
-        lidar_file = self.root_kitti_path / velo_parent_dir /'velodyne' / ('%s.bin' % idx)
-        assert lidar_file.exists()
+        lidar_file = self.root_kitti_path / velo_parent_dir / 'velodyne' / ('%s.bin' % idx)
+        assert lidar_file.exists(), f'{lidar_file} not found'
         pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
         pc[:,3] = np.round(pc[:,3] * 255)
+        if self.cluster:
+            cluster_id_file = str(lidar_file).replace(velo_parent_dir, f'{velo_parent_dir}_clustered')
+            assert cluster_id_file.exists(), f'{cluster_id_file} not found'
+            cluster_ids = np.fromfile(str(cluster_id_file), dtype=np.float32).reshape(-1, 1)
+            pc = np.hstack((pc, cluster_ids))
         return pc
 
     def get_sem_kitti_lidar(self, idx):
         lidar_file = Path(idx)
-        assert lidar_file.exists()
+        assert lidar_file.exists(), f'{lidar_file} not found'
         pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
         pc[:,3] = np.round(pc[:,3] * 255)
+
+        if self.cluster:
+            cluster_id_file = idx.replace('dataset', 'dataset_clustered')
+            assert cluster_id_file.exists(), f'{cluster_id_file} not found'
+            cluster_ids = np.fromfile(str(cluster_id_file), dtype=np.float32).reshape(-1, 1)
+            pc = np.hstack((pc, cluster_ids))
         return pc
 
     def __len__(self):
@@ -468,23 +480,23 @@ class DenseKittiDataset(DepthContrastDataset):
             points = self.get_dense_lidar(sample_idx)
             clustered = points.shape[1] > 5
 
-        # if not self.linear_probe:
-        #     assert clustered, 'PC is unclustered! This is segContrast'
+        if self.cluster:
+            assert clustered, 'PC is unclustered! This is segContrast'
         
         # Crop and extract FOV points
         points = self.crop_pc(points, calib, img_shape)
 
-        if not clustered:
-            #V.draw_scenes(points=points, color_feature='intensity')
-            n_clusters = 1000
-            dist_thresh = 0.15
-            eps = 1.0
-            if dataset == 'semantic_kitti':
-                n_clusters = 50
-                dist_thresh = 0.25
-                eps = 0.25
-            points, _ = clusterize_pcd(points, n_clusters, dist_thresh, eps)
-            #visualize_pcd_clusters(points)
+        # if not clustered:
+        #     #V.draw_scenes(points=points, color_feature='intensity')
+        #     n_clusters = 1000
+        #     dist_thresh = 0.15
+        #     eps = 1.0
+        #     if dataset == 'semantic_kitti':
+        #         n_clusters = 50
+        #         dist_thresh = 0.25
+        #         eps = 0.25
+        #     points, _ = clusterize_pcd(points, n_clusters, dist_thresh, eps)
+        #     #visualize_pcd_clusters(points)
 
         points_moco = np.copy(points) #points_weather
         
@@ -503,13 +515,13 @@ class DenseKittiDataset(DepthContrastDataset):
             apply_upsampling = dror_applied and 'UPSAMPLE' in self.cfg
             upsample_applied = False
             if apply_upsampling:
-                points_moco, upsample_applied = nn_upsample(self.cfg, points_moco)
+                points_moco, upsample_applied = nn_upsample(self.cfg, points_moco, self.cluster)
 
             # Snowfall Augmentation
             snowfall_augmentation_applied = False
             apply_snow = weather == 'clear' and 'SNOW' in self.cfg and dataset == 'dense'
             if apply_snow:
-                points_moco, snowfall_augmentation_applied = snow_sim(self.cfg, self.logger, self.rainfall_rates, sample_idx, self.root_dense_path, self.dense_lidar_folder, points_moco)
+                points_moco, snowfall_augmentation_applied = snow_sim(self.cfg, self.logger, self.rainfall_rates, sample_idx, self.root_dense_path, points_moco, self.num_dense_features, self.cluster)
             
             # Wet Surface Augmentation
             wet_surface_applied = False
@@ -521,7 +533,7 @@ class DenseKittiDataset(DepthContrastDataset):
             fog_applied = False
             apply_fog = weather == 'clear' and not snowfall_augmentation_applied and 'FOG_AUGMENTATION' in self.cfg
             if apply_fog:
-                points_moco, fog_applied = fog_sim(self.cfg, points_moco) 
+                points_moco, fog_applied = fog_sim(self.cfg, points_moco, self.cluster) 
 
         #print(f'dataset: {dataset}, weather: {weather}, dror: {dror_applied}, up: {upsample_applied}, snow: {snowfall_augmentation_applied}, wet: {wet_surface_applied}, fog: {fog_applied}')
         
@@ -534,11 +546,11 @@ class DenseKittiDataset(DepthContrastDataset):
         # # TODO: mask boxes outside point cloud range
 
         
-        data_dict['data'] = np.hstack((points[:,:4], points[:,-1].reshape((-1,1)))) #x,y,z,i #drop channel or label, add cluster id
+        data_dict['data'] = np.hstack((points[:,:4], points[:,-1].reshape((-1,1)))) if self.cluster else points[:,:4] #x,y,z,i #drop channel or label, add cluster id
 
         if not self.linear_probe:
             points_moco = self.crop_pc(points_moco, calib, img_shape)
-            data_dict['data_moco'] = np.hstack((points_moco[:,:4], points_moco[:, -1].reshape((-1,1)))) #x,y,z,i #drop channel or label , add cluster id
+            data_dict['data_moco'] = np.hstack((points_moco[:,:4], points_moco[:, -1].reshape((-1,1)))) if self.cluster else points_moco[:,:4] #x,y,z,i #drop channel or label , add cluster id
 
         #V.draw_scenes(points=points, color_feature='intensity')
         #V.draw_scenes(points=points_moco, color_feature='intensity')

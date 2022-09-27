@@ -65,9 +65,10 @@ def point_to_voxel_func(device = torch.device("cpu:0")):
     return voxel_generator
 
 class PointNet2MSG(nn.Module):
-    def __init__(self, use_mlp=False, mlp_dim=None, linear_probe = False):
+    def __init__(self, use_mlp=False, mlp_dim=None, cluster=True, linear_probe = False):
         super().__init__()
         self.linear_probe = linear_probe
+        self.cluster = cluster
         input_channels = 4
         
         self.SA_modules = nn.ModuleList()
@@ -137,7 +138,7 @@ class PointNet2MSG(nn.Module):
         features = (pc[:, :, 3:].contiguous() if pc.size(-1) > 3 else None)
         return xyz, features
 
-    def forward(self, pointcloud: torch.cuda.FloatTensor, out_feat_keys=None, aug_matrix=None, cluster_id=None):
+    def forward(self, pointcloud: torch.cuda.FloatTensor, aug_matrix=None, cluster_id=None):
         """
         Args:
             batch_dict:
@@ -170,12 +171,8 @@ class PointNet2MSG(nn.Module):
             )  # (B, C, N)
             assert l_features[i - 1].is_contiguous()
 
-        point_features = l_features[0] #(B=8, 128, num points = 16384)
-        # out_dict = {'dc_feats': None, \
-        #     'vdc_feats': None, 'vdc_voxel_bzyx': None, \
-        #     'linear_probe_feats': None, 'linear_probe_xyz': None}      
+        point_features = l_features[0] #(B=8, 128, num points = 16384)    
         out_dict = {}
-
 
         if self.linear_probe:
             xyz = xyz @ aug_matrix.inverse()
@@ -186,7 +183,7 @@ class PointNet2MSG(nn.Module):
             out_dict['linear_probe_feats'] = feat
             out_dict['linear_probe_xyz'] = xyz
         else:
-            if 'seg_feats' in out_feat_keys:
+            if self.cluster:
                 batch_seg_feats = []
                 for pc_idx in range(batch_size):
                     pc_feats = point_features[pc_idx] #(128 x 16384)
@@ -205,7 +202,7 @@ class PointNet2MSG(nn.Module):
                 all_seg_feats = torch.vstack(batch_seg_feats) # num clusters x 128
                 out_dict['seg_feats'] = all_seg_feats
 
-            if 'dc_feats' in out_feat_keys:
+            else:
                 nump = point_features.shape[-1] # 16384
                 # get one feature vector of dim 128 for the entire point cloud
                 feat = torch.squeeze(F.max_pool1d(point_features, nump)) # (8,128)

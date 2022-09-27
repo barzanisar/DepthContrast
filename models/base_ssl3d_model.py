@@ -45,7 +45,7 @@ def concat_all_gather(tensor):
     return output
 
 class BaseSSLMultiInputOutputModel(nn.Module):
-    def __init__(self, model_config, logger, linear_probe=False):
+    def __init__(self, model_config, cluster, logger, linear_probe=False):
         """
         Class to implement a self-supervised model.
         The model is split into `trunk' that computes features.
@@ -53,27 +53,26 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         self.config = model_config
         self.linear_probe = linear_probe
         self.logger = logger
+        self.cluster = cluster
         super().__init__()
         self.eval_mode = None  # this is just informational
         self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
         self.trunk = self._get_trunk()
         self.m = 0.999 ### Can be tuned momentum parameter for momentum update
         self.model_input = model_config["model_input"] #['points', 'points_moco']
-        self.model_feature = model_config["model_feature"] #['fp2', 'fp2']
         
     def multi_input_with_head_mapping_forward(self, batch):
         all_outputs = []
         for input_idx in range(len(self.model_input)): #['points', 'points_moco']
             input_key = self.model_input[input_idx]
-            feature_names = self.model_feature[input_idx]
             if "moco" in input_key:
-                outputs = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx, batch.get(input_key + "_aug_matrix", None), batch.get(input_key + "_cluster", None))
+                outputs = self._single_input_forward_MOCO(batch[input_key], input_key, input_idx, batch.get(input_key + "_aug_matrix", None), batch.get(input_key + "_cluster", None))
             else:
-                outputs = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx, batch.get(input_key + "_aug_matrix", None), batch.get(input_key + "_cluster", None))
+                outputs = self._single_input_forward(batch[input_key], input_key, input_idx, batch.get(input_key + "_aug_matrix", None), batch.get(input_key + "_cluster", None))
             all_outputs.append(outputs)
         return all_outputs
     
-    def _single_input_forward(self, batch, feature_names, input_key, target, aug_matrix=None, cluster_ids=None):
+    def _single_input_forward(self, batch, input_key, target, aug_matrix=None, cluster_ids=None):
         if "vox" not in input_key:
             assert isinstance(batch, torch.Tensor)
 
@@ -106,7 +105,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                     aug_matrix, non_blocking=True
                 )
         
-        output = self.trunk[target](batch, feature_names, aug_matrix, cluster_ids)
+        output = self.trunk[target](batch, aug_matrix, cluster_ids)
         return output
 
     @torch.no_grad()
@@ -198,7 +197,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
         return x_gather[idx_this]
     
-    def _single_input_forward_MOCO(self, batch, feature_names, input_key, target, aug_matrix=None, cluster_ids=None):
+    def _single_input_forward_MOCO(self, batch, input_key, target, aug_matrix=None, cluster_ids=None):
         if "vox" not in input_key:
             assert isinstance(batch, torch.Tensor)
         if ('vox' in input_key) and ("Lidar" not in self.config):
@@ -238,7 +237,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                         aug_matrix, non_blocking=True
                     )
             
-            output = self.trunk[target](batch, feature_names, aug_matrix, cluster_ids)
+            output = self.trunk[target](batch, aug_matrix, cluster_ids)
             # idx_unshuffle assumes that output features.shape[0] is 8 i.e. equal to number of pcs in the batch
             # Not compatible with Voxelized DC!
             # if torch.distributed.is_initialized():
@@ -262,8 +261,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         trunks = torch.nn.ModuleList()
         if 'arch_point' in self.config:
             assert self.config['arch_point'] in models.TRUNKS, 'Unknown model architecture'
-            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], linear_probe = self.linear_probe))
-            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], linear_probe = self.linear_probe))
+            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], cluster=self.cluster, linear_probe = self.linear_probe))
+            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], cluster=self.cluster, linear_probe = self.linear_probe))
         if 'arch_vox' in self.config:
             assert self.config['arch_vox'] in models.TRUNKS, 'Unknown model architecture'
             trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))

@@ -89,7 +89,7 @@ def get_transform3d(data, input_transforms_list, vox=False):
     counter = 0
     centers = []
     aug_trans_matrix_list=[]
-    np.random.seed(1024)
+    #np.random.seed(1024)
 
 
     DEBUG_REVERSE_TRANS = False

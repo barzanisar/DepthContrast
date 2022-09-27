@@ -6,4 +6,3 @@
 #
 from .nce_loss_moco import *
 from .focal_loss import *
-from .nce_loss_moco_seg import *

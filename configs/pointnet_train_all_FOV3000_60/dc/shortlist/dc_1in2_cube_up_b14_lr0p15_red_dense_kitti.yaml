@@ -1,13 +1,14 @@
 wb_extra_tags: ['pointnet', 'train_all_FOV3000_60', 'dc']
 resume: true
 linear_probe: false # True for linear probe
-num_workers: 0
+cluster: True
+num_workers: 8
 
 log2tb: false
 log2wb: false
 
 test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
-print_freq: 10 # print progress after processing every <freq> iters or batches
+print_freq: 100 # print progress after processing every <freq> iters or batches
 ckpt_save_interval: 10
 save_ckpt_after_epochs: 90
 
@@ -19,6 +20,8 @@ WANDB:
   dir: '/DepthContrast/output'
 
 dataset:
+  BATCHSIZE_PER_REPLICA: 14
+  APPLY_WEATHER_AUG: True # False for linear probe
   DATASET_NAMES: [DenseKittiDataset]
   SEMANTIC_KITTI:
     train: [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10' ]
@@ -26,14 +29,12 @@ dataset:
   INFO_PATHS: 
     train: ['kitti_infos_all.pkl', 'dense_infos_train_all_FOV3000_60.pkl'] # 
     val: ['dense_infos_val_clear_FOV3000_15.pkl']
-  BATCHSIZE_PER_REPLICA: 8
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
   SENSOR_TYPE: 'hdl64'
   SIGNAL_TYPE: 'strongest'
   Lidar: True
   VOX: False
-  APPLY_WEATHER_AUG: True # False for linear probe
   DROR: 0.45
   UPSAMPLE: '1in1'
   COUPLED: True
@@ -72,7 +73,6 @@ model:
   name: "dc_1in2_cube_up_b14_lr0p15_red_dense_kitti"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/dc"
   model_input: ["points", "points_moco"]
-  model_feature: [["seg_feats"], ["seg_feats"]]
   Lidar: True
   VOX: False
   arch_point: "pointnet_msg"
@@ -82,7 +82,6 @@ model:
     mlp_dim: [128, 128, 128]
 
 loss:
-  name: "NCELossMocoSeg"
   args:
     TEMPERATURE: 0.1
     NUM_NEGATIVES: 65536 #Waymo:65536, Dense_train_all_60+Kitti_trainvaltest: 21863, Dense_train_all_60: 7195 # has to be divisble by batch size or num voxels in each point cloud

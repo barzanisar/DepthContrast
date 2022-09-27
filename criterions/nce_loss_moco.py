@@ -43,12 +43,14 @@ class NCELossMoco(nn.Module):
     This class supports training using both NCE and CrossEntropy (InfoNCE).
     """
 
-    def __init__(self, config):
+    def __init__(self, config, cluster):
         super(NCELossMoco, self).__init__()
 
-        self.K = int(config["NCE_LOSS"]["NUM_NEGATIVES"])
-        self.dim = int(config["NCE_LOSS"]["EMBEDDING_DIM"])
-        self.T = float(config["NCE_LOSS"]["TEMPERATURE"])
+        self.cluster = cluster
+
+        self.K = int(config["NUM_NEGATIVES"])
+        self.dim = int(config["EMBEDDING_DIM"])
+        self.T = float(config["TEMPERATURE"])
 
         self.register_buffer("queue", torch.randn(self.dim, self.K)) # queue of dc (either pointnet or vox) based negative key embeddings
         self.queue = nn.functional.normalize(self.queue, dim=0)
@@ -63,8 +65,8 @@ class NCELossMoco(nn.Module):
         return cls(config)
 
     @torch.no_grad()
-    def _dequeue_and_enqueue(self, keys):
-# gather keys before updating queue
+    def _dequeue_and_enqueue_pcd(self, keys):
+    # gather keys before updating queue
         if torch.cuda.device_count() > 1:
             keys = concat_all_gather(keys)
 
@@ -85,11 +87,59 @@ class NCELossMoco(nn.Module):
         ptr = (ptr + batch_size) % self.K  # move pointer
 
         self.queue_ptr[0] = ptr
+    
+    @torch.no_grad()
+    def _dequeue_and_enqueue_cluster(self, keys):
+        # gather keys before updating queue
+        if torch.cuda.device_count() > 1:
+            # similar to shuffling, since for each gpu the number of segments may not be the same
+            # we create a aux variable keys_gather of size (1, MAX_SEG_BATCH, 128)
+            # add the current seg batch to [0,:CURR_SEG_BATCH, 128] gather them all in
+            # [NUM_GPUS,MAX_SEG_BATCH,128] and concatenate only the filled seg batches
+            seg_size = torch.from_numpy(np.array([keys.shape[0]])).cuda()
+            all_seg_size = concat_all_gather(seg_size)
+
+            keys_gather = torch.ones((1, all_seg_size.max(), keys.shape[-1])).cuda()
+            keys_gather[0, :keys.shape[0],:] = keys[:,:]
+
+            all_keys = concat_all_gather(keys_gather)
+            gather_keys = None
+
+            for k in range(len(all_seg_size)):
+                if gather_keys is None:
+                    gather_keys = all_keys[k][:all_seg_size[k],:]
+                else:
+                    gather_keys = torch.cat((gather_keys, all_keys[k][:all_seg_size[k],:]))
+
+
+            keys = gather_keys
+
+        batch_size = keys.shape[0]
+
+        ptr = int(self.queue_ptr)
+        #assert self.K % batch_size == 0  # for simplicity
+
+        # replace the keys at ptr (dequeue and enqueue)
+        if ptr + batch_size <= self.K:
+            self.queue[:, ptr:ptr + batch_size] = keys.T
+        else:
+            tail_size = self.K - ptr
+            head_size = batch_size - tail_size
+            self.queue[:, ptr:self.K] = keys.T[:, :tail_size]
+            self.queue[:, :head_size] = keys.T[:, tail_size:]
+
+        ptr = (ptr + batch_size) % self.K  # move pointer
+
+        self.queue_ptr[0] = ptr
                                                                         
     def forward(self, output_dict):
-
-        output_0 = output_dict[0]['dc_feats'] #query features (8, 128)
-        output_1 = output_dict[1]['dc_feats'] #key_features = moco features (8, 128)
+        
+        if self.cluster:
+            output_0 = output_dict[0]['seg_feats'] #query features (8, 128)
+            output_1 = output_dict[1]['seg_feats'] #key_features = moco features (8, 128)
+        else:
+            output_0 = output_dict[0]['dc_feats'] #query features (8, 128)
+            output_1 = output_dict[1]['dc_feats'] #key_features = moco features (8, 128)
         
         normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query dc embedding or vdc
         normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key dc embedding or vdc
@@ -111,11 +161,15 @@ class NCELossMoco(nn.Module):
         ) # because zero'th class is the true class
 
         loss_s12_s1q2 = self.xe_criterion(torch.squeeze(logits_s12_s1q2), labels_s12_s1q2) #loss between pointnet query and key embedding
-       
-        self._dequeue_and_enqueue(normalized_output2)
+
+        if self.cluster:
+            self._dequeue_and_enqueue_cluster(normalized_output2)
+        else:
+            self._dequeue_and_enqueue_pcd(normalized_output2)
+
             
 
-        return loss_s12_s1q2, [loss_s12_s1q2]
+        return loss_s12_s1q2
 
     def __repr__(self):
         repr_dict = {

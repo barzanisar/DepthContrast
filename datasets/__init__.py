@@ -16,9 +16,9 @@ from torch.utils.data import DataLoader
 __all__ = {"DenseKittiDataset": DenseKittiDataset}
 
 
-def build_dataset(cfg, linear_probe, mode, logger=None):
+def build_dataset(cfg, cluster, linear_probe, mode, logger=None):
     # TODO: Turn DATASET_NAMES in cfg from list to normal. Take first dataset for now
-    dataset = __all__[cfg["DATASET_NAMES"][0]](cfg, linear_probe, mode, logger)
+    dataset = __all__[cfg["DATASET_NAMES"][0]](cfg, cluster, linear_probe, mode, logger)
     return dataset
 
 def print_sampler_config(data_sampler):

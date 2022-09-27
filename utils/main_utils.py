@@ -245,9 +245,9 @@ def prep_environment(args, cfg):
     return logger, tb_writter, model_dir
 
 
-def build_model(cfg, logger=None, linear_probe=False):
+def build_model(cfg, cluster, logger=None, linear_probe=False):
     import models
-    return models.build_model(cfg, logger, linear_probe)
+    return models.build_model(cfg, cluster, logger, linear_probe)
 
 
 def distribute_model_to_cuda(models, args, find_unused_params=False):
@@ -285,30 +285,30 @@ def distribute_model_to_cuda(models, args, find_unused_params=False):
     return models, args
 
 
-def build_dataloaders_train_val(cfg, num_workers, distributed, logger, linear_probe=False):
-    train_loader = build_dataloader(cfg, num_workers, distributed, linear_probe=linear_probe, mode = 'train', logger=logger)
+def build_dataloaders_train_val(cfg, num_workers, cluster, distributed, logger, linear_probe=False):
+    train_loader = build_dataloader(cfg, num_workers, cluster, distributed, linear_probe=linear_probe, mode = 'train', logger=logger)
     logger.add_line("\n"+"="*30+"   Train data   "+"="*30)
     logger.add_line(str(train_loader.dataset))
 
-    val_loader = build_dataloader(cfg, num_workers, distributed, linear_probe=linear_probe, mode = 'val', logger=logger)
+    val_loader = build_dataloader(cfg, num_workers, False, distributed, linear_probe=linear_probe, mode = 'val', logger=logger)
     logger.add_line("\n"+"="*30+"   Val data   "+"="*30)
     logger.add_line(str(val_loader.dataset))
     return train_loader, val_loader
 
-def build_dataloaders(cfg, num_workers, distributed, logger, linear_probe=False):
-    train_loader = build_dataloader(cfg, num_workers, distributed, linear_probe=linear_probe, mode = 'train', logger=logger)
+def build_dataloaders(cfg, num_workers, cluster, distributed, logger, linear_probe=False):
+    train_loader = build_dataloader(cfg, num_workers, cluster, distributed, linear_probe=linear_probe, mode = 'train', logger=logger)
     logger.add_line("\n"+"="*30+"   Train data   "+"="*30)
     logger.add_line(str(train_loader.dataset))
     return train_loader
 
 
-def build_dataloader(config, num_workers, distributed, linear_probe=False, mode='train', logger=None):
+def build_dataloader(config, num_workers, cluster, distributed, linear_probe=False, mode='train', logger=None):
     import torch.utils.data as data
     import torch.utils.data.distributed
     import datasets
 
     datasets, data_and_label_keys = {}, {}
-    datasets = build_dataset(config, linear_probe, mode, logger)
+    datasets = build_dataset(config, cluster, linear_probe, mode, logger)
 
     loader = get_loader(
         dataset=datasets,
@@ -318,9 +318,13 @@ def build_dataloader(config, num_workers, distributed, linear_probe=False, mode=
     )
     return loader
 
-def build_criterion(cfg, logger=None):
+def build_criterion(cfg, cluster, linear_probe, logger=None):
     import criterions
-    criterion = criterions.__dict__[cfg['name']](cfg['args'])
+    if linear_probe:
+        criterion = criterions.__dict__['FocalLoss'](cfg['args'])
+    else:
+        criterion = criterions.__dict__['NCELossMoco'](cfg['args'], cluster)
+    
     if logger is not None:
         logger.add_line(str(criterion))
 

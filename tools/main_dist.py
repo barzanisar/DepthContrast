@@ -112,7 +112,7 @@ def main_worker(gpu, ngpus, args, cfg):
     # print(f"rank: {args.rank}")
 
     # Define model
-    model = main_utils.build_model(cfg['model'], logger)
+    model = main_utils.build_model(cfg['model'], cfg['cluster'], logger)
     if args.sync_bn and args.multiprocessing_distributed:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     find_unused_params = cfg['linear_probe']
@@ -120,10 +120,10 @@ def main_worker(gpu, ngpus, args, cfg):
     model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params)
 
     # Define dataloaders
-    train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], args.multiprocessing_distributed, logger)       
+    train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], cfg['cluster'], args.multiprocessing_distributed, logger)       
 
     # Define criterion    
-    train_criterion = main_utils.build_criterion(cfg['loss'], logger=logger)
+    train_criterion = main_utils.build_criterion(cfg['loss'], cfg['cluster'], cfg['linear_probe'],logger=logger)
     train_criterion = train_criterion.cuda()
             
     # Define optimizer
