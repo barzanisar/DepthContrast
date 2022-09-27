@@ -67,9 +67,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             input_key = self.model_input[input_idx]
             feature_names = self.model_feature[input_idx]
             if "moco" in input_key:
-                outputs = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"], batch[input_key + "_cluster"])
+                outputs = self._single_input_forward_MOCO(batch[input_key], feature_names, input_key, input_idx, batch.get(input_key + "_aug_matrix", None), batch.get(input_key + "_cluster", None))
             else:
-                outputs = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx, batch[input_key + "_aug_matrix"], batch[input_key + "_cluster"])
+                outputs = self._single_input_forward(batch[input_key], feature_names, input_key, input_idx, batch.get(input_key + "_aug_matrix", None), batch.get(input_key + "_cluster", None))
             all_outputs.append(outputs)
         return all_outputs
     

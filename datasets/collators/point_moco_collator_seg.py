@@ -14,9 +14,7 @@ def point_moco_collator_seg(batch):
     batch_size = len(batch)
 
     data_point = [x["data"][0] for x in batch]
-    data_point_aug_matrix = [x["data_aug_matrix"] for x in batch]
     data_moco = [x["data_moco"][0] for x in batch]
-    data_moco_aug_matrix = [x["data_moco_aug_matrix"] for x in batch]
     pi_cluster = []
     pj_cluster = []
 
@@ -33,17 +31,11 @@ def point_moco_collator_seg(batch):
 
 
     points = torch.stack([data_point[i][:,:4] for i in range(batch_size)]) #(8, 16384, 4)
-    points_aug_matrix = torch.stack([data_point_aug_matrix[i] for i in range(batch_size)])#(8, 3, 3)
-
-    
     points_moco = torch.stack([data_moco[i][:,:4] for i in range(batch_size)]) #(8, 16384, 4)      
-    points_moco_aug_matrix = torch.stack([data_moco_aug_matrix[i] for i in range(batch_size)]) #(8, 3, 3)
 
     output_batch = {
         "points": points,
         "points_moco": points_moco,
-        "points_aug_matrix": points_aug_matrix,
-        "points_moco_aug_matrix": points_moco_aug_matrix,
         "points_cluster": np.asarray(pi_cluster),
         "points_moco_cluster": np.asarray(pj_cluster)
     }

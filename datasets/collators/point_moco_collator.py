@@ -20,15 +20,11 @@ def point_moco_collator(batch):
 
     if not LINEAR_PROBE:
         data_moco = [x["data_moco"] for x in batch]
-        data_moco_aug_matrix = [x["data_moco_aug_matrix"] for x in batch]  
         points_moco = torch.stack([data_moco[i][0] for i in range(batch_size)]) #(8, 16384, 4)      
-        points_moco_aug_matrix = torch.stack([data_moco_aug_matrix[i] for i in range(batch_size)]) #(8, 3, 3)
 
         output_batch = {
             "points": points,
-            "points_moco": points_moco,
-            "points_aug_matrix": points_aug_matrix,
-            "points_moco_aug_matrix": points_moco_aug_matrix
+            "points_moco": points_moco
         }
     else:
         gt_boxes_lidar = [x["gt_boxes_lidar"] for x in batch]
