@@ -46,18 +46,6 @@ class NCELossMoco(nn.Module):
     def __init__(self, config):
         super(NCELossMoco, self).__init__()
 
-        assert config["NCE_LOSS"]["LOSS_TYPE"] in [
-            "cross_entropy",
-        ], f"Supported types are cross_entropy."
-
-        self.loss_type = config["NCE_LOSS"]["LOSS_TYPE"]
-        self.negative_examples = config["negative_examples"]
-        self.other_queue = True if config["model_type"] == "DC_VDC" or 's1_q1' in self.negative_examples or 's2_q1' in self.negative_examples else False
-        self.model_type = config["model_type"]
-
-        self.npid0_w = float(config["within_format_weight0"])
-        self.npid1_w = float(config["within_format_weight1"])
-
         self.K = int(config["NCE_LOSS"]["NUM_NEGATIVES"])
         self.dim = int(config["NCE_LOSS"]["EMBEDDING_DIM"])
         self.T = float(config["NCE_LOSS"]["TEMPERATURE"])
@@ -66,105 +54,46 @@ class NCELossMoco(nn.Module):
         self.queue = nn.functional.normalize(self.queue, dim=0)
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
         
-        if self.other_queue:
-            self.register_buffer("queue_other", torch.randn(self.dim, self.K))  #queue of vdc (either pointnet or vox) based negative key embeddings
-            self.queue_other = nn.functional.normalize(self.queue_other, dim=0)
-            self.register_buffer("queue_other_ptr", torch.zeros(1, dtype=torch.long))
-            
         # cross-entropy loss. Also called InfoNCE
         self.xe_criterion = nn.CrossEntropyLoss()
 
-        # other constants
-        self.normalize_embedding = config["NCE_LOSS"]["NORM_EMBEDDING"]
 
     @classmethod
     def from_config(cls, config):
         return cls(config)
 
     @torch.no_grad()
-    def _dequeue_and_enqueue(self, keys, okeys=None):
-        # gather keys before updating queue
-        keys = concat_all_gather(keys)
-        
+    def _dequeue_and_enqueue(self, keys):
+# gather keys before updating queue
+        if torch.cuda.device_count() > 1:
+            keys = concat_all_gather(keys)
+
         batch_size = keys.shape[0]
-        
+
         ptr = int(self.queue_ptr)
         #assert self.K % batch_size == 0  # for simplicity
-        if (ptr + batch_size) > self.queue.shape[1]:
-            batch_size = self.queue.shape[1] - ptr
 
         # replace the keys at ptr (dequeue and enqueue)
-        self.queue[:, ptr:ptr + batch_size] = torch.transpose(keys, 0, 1)[:, 0:batch_size] #we could also pick randomly batch size num voxels
-        ptr = (ptr + batch_size) % self.K  # move pointer
-        
-        self.queue_ptr[0] = ptr
+        if ptr + batch_size <= self.K:
+            self.queue[:, ptr:ptr + batch_size] = keys.T
+        else:
+            tail_size = self.K - ptr
+            head_size = batch_size - tail_size
+            self.queue[:, ptr:self.K] = keys.T[:, :tail_size]
+            self.queue[:, :head_size] = keys.T[:, tail_size:]
 
-        if self.other_queue:
-            # gather keys before updating queue
-            obatch_size = okeys.shape[0]
-            okeys = concat_all_gather(okeys)
-                
-            other_ptr = int(self.queue_other_ptr)
-            if (other_ptr + obatch_size) > self.queue_other.shape[1]:
-                obatch_size = self.queue_other.shape[1] - other_ptr
-            # replace the keys at ptr (dequeue and enqueue)
-            self.queue_other[:, other_ptr:other_ptr + obatch_size] = torch.transpose(okeys, 0, 1)[:, 0:obatch_size] #okeys.T
-            other_ptr = (other_ptr + obatch_size) % self.K  # move pointer
-        
-            self.queue_other_ptr[0] = other_ptr
+        ptr = (ptr + batch_size) % self.K  # move pointer
+
+        self.queue_ptr[0] = ptr
                                                                         
     def forward(self, output_dict):
-        # assert isinstance(
-        #     output, list
-        # ), "Model output should be a list of tensors. Got Type {}".format(type(output))
 
-        # if output_dict[0]['dc_feats'] is None or output_dict[0]['vdc_feats'] is None:
-        #     assert self.other_queue == False
-        # else:
-        #     assert self.other_queue == True 
-        #     assert self.npid1_w > 0.0
-        if self.model_type in ['DC', 'DC_VDC']:
-            output_0 = output_dict[0]['dc_feats'] #query features (8, 128)
-            output_1 = output_dict[1]['dc_feats'] #key_features = moco features (8, 128)
-            if self.model_type == 'DC_VDC':
-                output_2 = output_dict[0]['vdc_feats'] #query features (8 * num voxels, 128)
-                output_3 = output_dict[1]['vdc_feats'] #key_features = moco features (8 * num voxels, 128)
-        else:
-            # model type = VDC
-            output_0 = output_dict[0]['vdc_feats']
-            output_1 = output_dict[1]['vdc_feats']
-    
+        output_0 = output_dict[0]['dc_feats'] #query features (8, 128)
+        output_1 = output_dict[1]['dc_feats'] #key_features = moco features (8, 128)
         
-        if self.normalize_embedding:
-            normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query dc embedding or vdc
-            normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key dc embedding or vdc
-            if self.model_type == 'DC_VDC':
-                normalized_output3 = nn.functional.normalize(output_2, dim=1, p=2) #query vdc embedding
-                normalized_output4 = nn.functional.normalize(output_3, dim=1, p=2) #key vdc embedding
+        normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query dc embedding or vdc
+        normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key dc embedding or vdc
 
-        # Voxelized Depth Contrast
-        if self.model_type in ['VDC', 'DC_VDC']:
-            coords_0 = output_dict[0]['vdc_voxel_bzyx'] # vox_coords from query encoder = list of len total num voxels=1181, each element has a numpy array with a voxel coord = bzyx
-            coords_1 = output_dict[1]['vdc_voxel_bzyx'] # vox_coords from key encoder
-
-            # Find matching vox_coords in both in order to rearrange normalized output1 and output2 in the order of matching voxel features
-            map_coord0_idx0 = {str(coords_0[i, :]): i for i in range(coords_0.shape[0])} # {'bzyx': idx_0}
-            matched_idx_0 = []
-            matched_idx_1 = []
-            for idx_1 in range(coords_1.shape[0]):
-                if str(coords_1[idx_1, :]) in map_coord0_idx0:
-                    idx_0 = map_coord0_idx0[str(coords_1[idx_1, :])]
-                    matched_idx_0.append(idx_0)
-                    matched_idx_1.append(idx_1)
-            # TODO: choose high similarity voxels
-            if self.model_type == 'DC_VDC':
-                normalized_output3 = normalized_output3[matched_idx_0, :] #(matched num voxels, 128)
-                normalized_output4 = normalized_output4[matched_idx_1, :] #(matched num voxels, 128)
-            else:
-                normalized_output1 = normalized_output1[matched_idx_0, :] #(matched num voxels, 128)
-                normalized_output2 = normalized_output2[matched_idx_1, :] #(matched num voxels, 128)
-
-        curr_loss = 0
         # positive logits: Nx1 = batch size of positive examples (or matched num voxels)x 1
         l_pos_s12 = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1) #(v_i_1).transpose() * v_i_2 => dim (n = matched num voxels)
         
@@ -182,84 +111,14 @@ class NCELossMoco(nn.Module):
         ) # because zero'th class is the true class
 
         loss_s12_s1q2 = self.xe_criterion(torch.squeeze(logits_s12_s1q2), labels_s12_s1q2) #loss between pointnet query and key embedding
-        curr_loss += loss_s12_s1q2 * self.npid0_w
-
-        if 's2_q2' in self.negative_examples:
-            # negative logits: NxK
-            l_neg_s2q2 = torch.einsum('nc,ck->nk', [normalized_output2, self.queue.clone().detach()])
-            
-            # logits: Nx(1+K)
-            logits_s12_s2q2 = torch.cat([l_pos_s12, l_neg_s2q2], dim=1)
-            
-            # apply temperature
-            logits_s12_s2q2 /= self.T
-
-            labels_s12_s2q2 = torch.zeros(
-                logits_s12_s2q2.shape[0], device=logits_s12_s2q2.device, dtype=torch.int64
-            ) # because zero'th class is the true class
-
-            loss_s12_s2q2 = self.xe_criterion(torch.squeeze(logits_s12_s2q2), labels_s12_s2q2) #loss between pointnet query and key embedding
-            curr_loss += loss_s12_s2q2 * self.npid0_w
-        
-        if 's1_q1' in self.negative_examples:
-            # negative logits: NxK
-            l_neg_s1q1 = torch.einsum('nc,ck->nk', [normalized_output1, self.queue_other.clone().detach()])
-            
-            # logits: Nx(1+K)
-            logits_s12_s1q1 = torch.cat([l_pos_s12, l_neg_s1q1], dim=1)
-            
-            # apply temperature
-            logits_s12_s1q1 /= self.T
-
-            labels_s12_s1q1 = torch.zeros(
-                logits_s12_s1q1.shape[0], device=logits_s12_s1q1.device, dtype=torch.int64
-            ) # because zero'th class is the true class
-
-            loss_s12_s1q1 = self.xe_criterion(torch.squeeze(logits_s12_s1q1), labels_s12_s1q1) #loss between pointnet query and key embedding
-            curr_loss += loss_s12_s1q1 * self.npid0_w
-        
-        if 's2_q1' in self.negative_examples:
-            # negative logits: NxK
-            l_neg_s2q1 = torch.einsum('nc,ck->nk', [normalized_output2, self.queue_other.clone().detach()])
-            
-            # logits: Nx(1+K)
-            logits_s12_s2q1 = torch.cat([l_pos_s12, l_neg_s2q1], dim=1)
-            
-            # apply temperature
-            logits_s12_s2q1 /= self.T
-
-            labels_s12_s2q1 = torch.zeros(
-                logits_s12_s2q1.shape[0], device=logits_s12_s2q1.device, dtype=torch.int64
-            ) # because zero'th class is the true class       
-
-            loss_s12_s2q1 = self.xe_criterion(torch.squeeze(logits_s12_s2q1), labels_s12_s2q1) #loss between pointnet query and key embedding
-            curr_loss += loss_s12_s2q1 * self.npid0_w
-
-        loss_npid_other = torch.tensor(0)
-        if self.model_type == 'DC_VDC':
-            l_pos_other = torch.einsum('nc,nc->n', [normalized_output3, normalized_output4]).unsqueeze(-1)
-            l_neg_other = torch.einsum('nc,ck->nk', [normalized_output3, self.queue_other.clone().detach()])
-            logits_other = torch.cat([l_pos_other, l_neg_other], dim=1)
-            logits_other /= (self.T)
-            labels_other = torch.zeros(
-                logits_other.shape[0], device=logits_other.device, dtype=torch.int64
-            ) # because zero'th class is the true class
-            loss_npid_other = self.xe_criterion(torch.squeeze(logits_other), labels_other) #loss between unet query and key embedding
-            curr_loss += loss_npid_other * self.npid1_w
-
-            self._dequeue_and_enqueue(normalized_output2, okeys=normalized_output4)
-
-        elif 's1_q1' or 's2_q1' in self.negative_examples:
-            self._dequeue_and_enqueue(normalized_output2, okeys=normalized_output1)
-        else:
-            self._dequeue_and_enqueue(normalized_output2)
+       
+        self._dequeue_and_enqueue(normalized_output2)
             
 
-        return curr_loss, [loss_s12_s1q2, loss_npid_other]
+        return loss_s12_s1q2, [loss_s12_s1q2]
 
     def __repr__(self):
         repr_dict = {
-            "name": self._get_name(),
-            "loss_type": self.loss_type,
+            "name": self._get_name()
         }
         return pprint.pformat(repr_dict, indent=2)

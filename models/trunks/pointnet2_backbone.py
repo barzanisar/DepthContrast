@@ -186,43 +186,6 @@ class PointNet2MSG(nn.Module):
             out_dict['linear_probe_feats'] = feat
             out_dict['linear_probe_xyz'] = xyz
         else:
-            if 'vdc_feats' in out_feat_keys:
-                xyz = xyz @ aug_matrix.inverse()
-                #Voxelize pointcloud and avg/max pool point features in each voxel to get voxel wise features
-                xyz_point_features = torch.cat([xyz, point_features.permute(0, 2, 1).contiguous()], 2) # (8, 16384, 131=3+128)
-                batch_voxel_features_list = []
-                vox_coords = []
-                
-                voxel_generator = point_to_voxel_func(device=xyz_point_features.device)
-                for pc_idx in range(batch_size):
-                    _, coordinates, _, pc_voxel_id = voxel_generator(xyz_point_features[pc_idx]) # voxel_features = (num voxels, max points per voxel, 3+features_dim) #coords = z_grid_idx, y_idx, x_idx 
-                    vox_coords.append(np.pad(coordinates.cpu(), ((0, 0), (1, 0)), mode='constant', constant_values=pc_idx)) #[batch_idx, z_idx,y_idx,x_idx]
-                    # # # Mean VFE: find mean of point features in each voxel # try max as well
-                    # points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False)
-                    # normalizer = torch.clamp_min(voxel_num_points.view(-1, 1), min=1.0).type_as(voxel_features)
-                    # points_mean = points_mean / normalizer
-                    # voxel_features = points_mean.contiguous()
-                    # batch_voxel_features_list.append(voxel_features[:, 3:]) #only append features, not mean x,y,z, points
-                    num_voxels = coordinates.shape[0]
-                    new_voxel_features = []
-                    for i in range(num_voxels):
-                        point_indices_for_voxel_i = pc_voxel_id == i
-                        xyz_point_features_voxel_i = xyz_point_features[pc_idx][point_indices_for_voxel_i].unsqueeze(0)
-                        voxel_i_feature = F.max_pool1d(xyz_point_features_voxel_i.permute(0, 2, 1).contiguous(), xyz_point_features_voxel_i.shape[1]).squeeze(-1)
-                        new_voxel_features.append(voxel_i_feature)
-                    all_voxel_features = torch.stack([feat for feat in new_voxel_features]).squeeze(1)
-                    #Or max pool point features inside each voxel to get vfe
-                    batch_voxel_features_list.append(all_voxel_features[:, 3:])
-
-                batch_voxel_feats = torch.cat(batch_voxel_features_list, 0) #(total num voxels=1181, 128) = ( 8 * numvoxels in each pc, 128)
-                vox_coords = np.concatenate(vox_coords, axis=0) #(total num vox = 1181, 4)  = [batch_idx, z_idx,y_idx,x_idx]
-
-                # Projection head (tot num voxels, 128) -> (tot num voxels, 128)
-                if self.use_mlp:
-                    batch_voxel_feats = self.head(batch_voxel_feats)
-                out_dict['vdc_feats'] = batch_voxel_feats
-                out_dict['vdc_voxel_bzyx'] = vox_coords
-            
             if 'seg_feats' in out_feat_keys:
                 batch_seg_feats = []
                 for pc_idx in range(batch_size):
