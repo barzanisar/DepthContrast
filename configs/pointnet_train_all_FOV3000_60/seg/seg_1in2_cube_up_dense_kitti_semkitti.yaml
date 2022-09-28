@@ -1,33 +1,33 @@
-wb_extra_tags: ['pointnet', 'train_all_FOV3000_60', 'seg']
+wb_extra_tags: ['pointnet', 'dense_kitti_semkitti', 'seg_contrast', 'weather_aug']
 resume: true
 linear_probe: false # True for linear probe
-cluster: False
-num_workers: 0
+cluster: True
+num_workers: 8
 
-log2tb: false #TODO:
-log2wb: false #TODO:
+log2tb: true
+log2wb: true
 
-test_freq: 1 # save chkp after every <freq> epochs, resume will load the last saved chkp
-print_freq: 10 #TODO: print progress after processing every <freq> iters or batches
-ckpt_save_interval: 10
-save_ckpt_after_epochs: 90
+test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
+print_freq: 100 #print progress after processing every <freq> iters or batches
+ckpt_save_interval: 20
+save_ckpt_after_epochs: 180
 
 WANDB:
-  ENABLED: False #TODO:
+  ENABLED: True 
   PROJECT: DepthContrast_dense
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
   dir: '/DepthContrast/output'
 
 dataset:
-  BATCHSIZE_PER_REPLICA: 8 #TODO: Change to 14
+  BATCHSIZE_PER_REPLICA: 14 #Change to 14
   APPLY_WEATHER_AUG: True # False for linear probe
   DATASET_NAMES: [DenseKittiDataset]
   SEMANTIC_KITTI:
     train: [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10' ]
     val: ['08']
   INFO_PATHS: 
-    train: ['dense_infos_train_all_FOV3000_60.pkl'] #  'kitti_infos_all.pkl', 
+    train: ['kitti_infos_all.pkl', 'dense_infos_train_all_FOV3000_60.pkl'] #   
     val: ['dense_infos_val_clear_FOV3000_15.pkl']
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
@@ -56,7 +56,7 @@ dataset:
     - name: RandomRotateLidar
     - name: RandomScaleLidar
     - name: ToTensorLidar
-  COLLATE_FUNCTION: "point_moco_collator"
+  COLLATE_FUNCTION: "point_moco_collator_seg"
   DROP_LAST: True
 
 optimizer:
@@ -64,10 +64,10 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 201
+  num_epochs: 301
   lr:
     name: "cosine"
-    base_lr: 0.12 #0.1 for linear_probe
+    base_lr: 0.15 #0.1 for linear_probe
 
 model:
   name: "seg_1in2_cube_up_dense_kitti_semkitti"
@@ -84,7 +84,7 @@ model:
 loss:
   args:
     TEMPERATURE: 0.1
-    NUM_NEGATIVES: 65536 #Waymo:65536, Dense_train_all_60+Kitti_trainvaltest: 21863, Dense_train_all_60: 7195 # has to be divisble by batch size or num voxels in each point cloud
+    NUM_NEGATIVES: 65536 #Waymo:65536, Dense_train_all_60+Kitti_trainvaltest: 21995, Dense_train_all_60: 7195 # has to be divisble by batch size or num voxels in each point cloud
     EMBEDDING_DIM: 128
 # Linear Probe
 # loss:
