@@ -298,9 +298,9 @@ def cluster_kitti():
     for info in tqdm(kitti_infos):
         sample_idx = info['point_cloud']['lidar_idx']
         if info['velodyne_parent_dir'] == 'testing':
-            save_path = train_save_dir / f'{sample_idx}.bin'
-        elif info['velodyne_parent_dir'] == 'training':
             save_path = test_save_dir / f'{sample_idx}.bin'
+        elif info['velodyne_parent_dir'] == 'training':
+            save_path = train_save_dir / f'{sample_idx}.bin'
         else:
             raise ValueError('Only training and testing dirs allowed')
 
