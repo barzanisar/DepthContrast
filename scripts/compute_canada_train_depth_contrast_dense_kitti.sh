@@ -15,6 +15,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # Default Command line args
 # main.py script parameters
 CFG_FILE=configs/point_within_lidar_vdc_linear_probe.yaml
+CLUSTER="false"
 DIST="true"
 LINEAR_PROBE="false"
 TCP_PORT=18888
@@ -23,11 +24,10 @@ LAUNCHER='pytorch'
 # Additional parameters
 DENSE_DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense
 KITTI_DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Kitti
-DENSE_INFOS_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense/DepthContrast_FOV3000_Infos_dense
-KITTI_INFOS_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense/DepthContrast_FOV3000_Infos_kitti
+DENSE_INFOS_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense/FOV3000_Infos
+KITTI_INFOS_DIR=/home/$USER/projects/rrg-swasland/Datasets/Dense/DepthContrast_Infos_kitti
 SING_IMG=/home/$USER/projects/rrg-swasland/singularity/depth_contrast_snow_sim.sif
 DIST=true
-TEST_ONLY=false
 WANDB_API_KEY=$WANDB_API_KEY
 WANDB_MODE='offline' #'dryrun'
 
@@ -47,7 +47,6 @@ additional parameters
 [--infos_dir INFOS_DIR]
 [--sing_img SING_IMG]
 [--dist]
-[--test_only]
 
 main.py parameters:
 --cfg             CFG_FILE           Config file                         [default=$CFG_FILE]
@@ -57,7 +56,6 @@ additional parameters:
 --infos_dir            INFOS_DIR          Infos directory                     [default=$DENSE_INFOS_DIR]
 --sing_img             SING_IMG           Singularity image file              [default=$SING_IMG]
 --dist                 DIST               Distributed training flag           [default=$DIST]
---test_only            TEST_ONLY          Test only flag                      [default=$TEST_ONLY]
 "
 }
 
@@ -104,13 +102,8 @@ while :; do
             die 'ERROR: "--infos_dir" requires a non-empty option argument.'
         fi
         ;;
-    -s|--sing_img)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            SING_IMG=$2
-            shift
-        else
-            die 'ERROR: "--sing_img" requires a non-empty option argument.'
-        fi
+    -s|--cluster)       # Takes an option argument; ensure it has been specified.
+        CLUSTER="true"
         ;;
     -l|--launcher)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
@@ -125,9 +118,6 @@ while :; do
         ;;
     -p|--linear_probe)       # Takes an option argument; ensure it has been specified.
         LINEAR_PROBE="true"
-        ;;
-    -z|--test_only)       # Takes an option argument; ensure it has been specified.
-        TEST_ONLY="true"
         ;;
     -?*)
         printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
@@ -150,7 +140,6 @@ DENSE_INFOS_DIR=$DENSE_INFOS_DIR
 KITTI_INFOS_DIR=$KITTI_INFOS_DIR
 SING_IMG=$SING_IMG
 DIST=$DIST
-TEST_ONLY=$TEST_ONLY
 NUM_GPUS=$NUM_GPUS
 "
 
@@ -162,18 +151,30 @@ echo ""
 # Extract Dense Dataset
 echo "Extracting Dense data"
 TMP_DATA_DIR_DENSE=$SLURM_TMPDIR/dense_data
-for file in $DENSE_DATA_DIR/*.zip; do
-    echo "Unzipping $file to $TMP_DATA_DIR_DENSE"
-    unzip -qq $file -d $TMP_DATA_DIR_DENSE
-done
+
+echo "Unzipping $DENSE_DATA_DIR/DROR.zip to $TMP_DATA_DIR_DENSE"
+unzip -qq $DENSE_DATA_DIR/DROR.zip -d $TMP_DATA_DIR_DENSE
+
+if [ $CLUSTER == "true" ]
+then
+    echo "Unzipping $DENSE_DATA_DIR/lidar_hdl64_strongest_FOV_clustered_train_all_60.zip to $TMP_DATA_DIR_DENSE"
+    unzip -qq $DENSE_DATA_DIR/lidar_hdl64_strongest_FOV_clustered_train_all_60.zip -d $TMP_DATA_DIR_DENSE
+else
+    echo "Unzipping $DENSE_DATA_DIR/lidar_hdl64_strongest.zip to $TMP_DATA_DIR_DENSE"
+    unzip -qq $DENSE_DATA_DIR/lidar_hdl64_strongest.zip -d $TMP_DATA_DIR_DENSE
+fi
+
 echo "Done extracting Dense data"
 
 # Extract Dense dataset infos
 echo "Extracting dataset Dense infos"
-for file in $DENSE_INFOS_DIR/*.zip; do
-   echo "Unzipping $file to $TMP_DATA_DIR_DENSE"
-   unzip -qq $file -d $TMP_DATA_DIR_DENSE
-done
+
+echo "Unzipping $DENSE_INFOS_DIR/dc_dense_infos.zip to $TMP_DATA_DIR_DENSE"
+unzip -qq $DENSE_INFOS_DIR/dc_dense_infos.zip -d $TMP_DATA_DIR_DENSE
+
+echo "Unzipping $DENSE_INFOS_DIR/snowfall_simulation_FOV_clustered.zip to $TMP_DATA_DIR_DENSE"
+unzip -qq $DENSE_INFOS_DIR/snowfall_simulation_FOV_clustered.zip -d $TMP_DATA_DIR_DENSE
+
 echo "Done extracting dataset Dense infos"
 
 # Extract Kitti Dataset
@@ -186,6 +187,17 @@ unzip -qq $KITTI_DATA_DIR/data_object_calib.zip -d $TMP_DATA_DIR_KITTI
 echo "Unzipping $KITTI_DATA_DIR/data_object_velodyne.zip to $TMP_DATA_DIR_KITTI"
 unzip -qq $KITTI_DATA_DIR/data_object_velodyne.zip -d $TMP_DATA_DIR_KITTI
 
+if [ $CLUSTER == "true" ]
+then
+
+    echo "Unzipping $DENSE_DATA_DIR/kitti/training_clustered.zip to $TMP_DATA_DIR_KITTI"
+    unzip -qq $DENSE_DATA_DIR/kitti/training_clustered.zip -d $TMP_DATA_DIR_KITTI
+
+    echo "Unzipping $DENSE_DATA_DIR/kitti/testing_clustered.zip to $TMP_DATA_DIR_KITTI"
+    unzip -qq $DENSE_DATA_DIR/kitti/testing_clustered.zip -d $TMP_DATA_DIR_KITTI
+
+fi
+
 echo "Done extracting Kitti data"
 
 # Extract Kitti dataset infos
@@ -195,6 +207,23 @@ for file in $KITTI_INFOS_DIR/*.zip; do
    unzip -qq $file -d $TMP_DATA_DIR_KITTI
 done
 echo "Done extracting dataset Kitti infos"
+
+# Extract Semantic Kitti Dataset
+echo "Extracting Semantic Kitti data"
+TMP_DATA_DIR_SEM_KITTI=$SLURM_TMPDIR/semantic_kitti_data
+
+echo "Unzipping $DENSE_DATA_DIR/semantic_kitti/dataset.zip to $TMP_DATA_DIR_SEM_KITTI"
+unzip -qq $DENSE_DATA_DIR/semantic_kitti/dataset.zip -d $TMP_DATA_DIR_SEM_KITTI
+
+if [ $CLUSTER == "true" ]
+then
+
+   echo "Unzipping $DENSE_DATA_DIR/semantic_kitti/dataset_clustered.zip to $TMP_DATA_DIR_SEM_KITTI"
+    unzip -qq $DENSE_DATA_DIR/semantic_kitti/dataset_clustered.zip -d $TMP_DATA_DIR_SEM_KITTI
+
+fi
+
+echo "Done extracting Kitti data"
 
 # Load Singularity
 module load StdEnv/2020 
@@ -235,6 +264,7 @@ singularity exec
 --bind $PROJ_DIR/utils:/DepthContrast/utils
 --bind $TMP_DATA_DIR_DENSE:/DepthContrast/data/dense
 --bind $TMP_DATA_DIR_KITTI:/DepthContrast/data/kitti
+--bind $TMP_DATA_DIR_SEM_KITTI:/DepthContrast/data/semantic_kitti
 --bind $PROJ_DIR/data/dense/ImageSets:/DepthContrast/data/dense/ImageSets
 --bind $PROJ_DIR/lib:/DepthContrast/lib
 $DEPTH_CONTRAST_BINDS
