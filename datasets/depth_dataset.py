@@ -23,7 +23,7 @@ from lib.LiDAR_snow_sim.tools.snowfall.sampling import snowfall_rate_to_rainfall
 from utils.pcd_preprocess import *
 
 
-from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
+#from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 
 try:
     ### Default uses minkowski engine
@@ -419,9 +419,10 @@ class DenseKittiDataset(DepthContrastDataset):
         pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
         pc[:,3] = np.round(pc[:,3] * 255)
         if self.cluster:
-            cluster_id_file = str(lidar_file).replace(velo_parent_dir, f'{velo_parent_dir}_clustered')
+            cluster_id_file = Path(str(lidar_file).replace(velo_parent_dir, f'{velo_parent_dir}_clustered'))
             assert cluster_id_file.exists(), f'{cluster_id_file} not found'
-            cluster_ids = np.fromfile(str(cluster_id_file), dtype=np.float32).reshape(-1, 1)
+            cluster_ids = np.fromfile(str(cluster_id_file), dtype=np.int16).reshape(-1, 1)
+            cluster_ids = cluster_ids.astype(np.float32)
             pc = np.hstack((pc, cluster_ids))
         return pc
 
@@ -432,9 +433,10 @@ class DenseKittiDataset(DepthContrastDataset):
         pc[:,3] = np.round(pc[:,3] * 255)
 
         if self.cluster:
-            cluster_id_file = idx.replace('dataset', 'dataset_clustered')
+            cluster_id_file = Path(idx.replace('dataset', 'dataset_clustered'))
             assert cluster_id_file.exists(), f'{cluster_id_file} not found'
-            cluster_ids = np.fromfile(str(cluster_id_file), dtype=np.float32).reshape(-1, 1)
+            cluster_ids = np.fromfile(str(cluster_id_file), dtype=np.int16).reshape(-1, 1)
+            cluster_ids = cluster_ids.astype(np.float32)
             pc = np.hstack((pc, cluster_ids))
         return pc
 
@@ -521,7 +523,7 @@ class DenseKittiDataset(DepthContrastDataset):
             snowfall_augmentation_applied = False
             apply_snow = weather == 'clear' and 'SNOW' in self.cfg and dataset == 'dense'
             if apply_snow:
-                points_moco, snowfall_augmentation_applied = snow_sim(self.cfg, self.logger, self.rainfall_rates, sample_idx, self.root_dense_path, points_moco, self.num_dense_features, self.cluster)
+                points_moco, snowfall_augmentation_applied = snow_sim(self.cfg, self.logger, self.rainfall_rates, sample_idx, self.root_dense_path, points_moco, self.cluster)
             
             # Wet Surface Augmentation
             wet_surface_applied = False

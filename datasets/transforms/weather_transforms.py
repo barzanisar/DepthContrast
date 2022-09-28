@@ -176,7 +176,7 @@ def wet_surface_sim(cfg, snowfall_augmentation_applied, points_moco, logger):
     
     return points_moco, wet_surface_applied
 
-def snow_sim(cfg, logger, rainfall_rates, sample_idx, root_dense_path, points_moco, num_feat, last_col_cluster_id):
+def snow_sim(cfg, logger, rainfall_rates, sample_idx, root_dense_path, points_moco, cluster):
     snowfall_augmentation_applied=False
     parameters = cfg['SNOW'].split('_')
 
@@ -207,14 +207,16 @@ def snow_sim(cfg, logger, rainfall_rates, sample_idx, root_dense_path, points_mo
             rainfall_rate = int(np.random.choice(rainfall_rates))
 
         if cfg['FOV_POINTS_ONLY']:
-            snow_sim_dir = 'snowfall_simulation_FOV_clustered' if last_col_cluster_id else 'snowfall_simulation_FOV'
+            snow_sim_dir = 'snowfall_simulation_FOV_clustered'
         else:
             snow_sim_dir = 'snowfall_simulation'
         lidar_file = root_dense_path / snow_sim_dir / mode / \
                     f'lidar_hdl64_strongest_rainrate_{rainfall_rate}' / f'{sample_idx}.bin'
 
         try:
-            points_moco = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, num_feat)
+            points_moco = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 6)
+            if not cluster:
+                points_moco = points_moco[:, :-1] # for depth contrast skip last col which has cluster ids
             snowfall_augmentation_applied = True
         except FileNotFoundError:
             logger.add_line(f'\n{lidar_file} not found')

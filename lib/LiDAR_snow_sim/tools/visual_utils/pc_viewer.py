@@ -1,3 +1,4 @@
+from logging import raiseExceptions
 from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 import numpy as np
 import matplotlib as mpl
@@ -235,6 +236,20 @@ def cluster_all():
             V.draw_scenes(points=pc[:,:4], color_feature=3)
             visualize_pcd_clusters(pc)
 
+def test():
+    sample = '/home/barza/DepthContrast/data/semantic_kitti/dataset/sequences/07/velodyne/000695.bin'
+    cluster_id_file = '/home/barza/DepthContrast/data/semantic_kitti/dataset_clustered/sequences/07/velodyne/000695.bin'
+    pc = np.fromfile(str(sample), dtype=np.float32).reshape(-1, 4)
+
+    pc, num_clusters_found = clusterize_pcd(pc, 100, dist_thresh=0.25, eps=0.25)
+    #visualize_pcd_clusters(pc)
+    cluster_id = pc[:,-1]
+    cluster_id = cluster_id.astype(np.int16)
+    cluster_id = cluster_id.astype(np.float32)
+    cluster_ids = np.fromfile(str(cluster_id_file), dtype=np.int16).reshape(-1, 1)
+    cluster_ids = cluster_ids.astype(np.float32)
+    b=1
+
 def cluster_semantic_kitti():
     train_seq = [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10'] 
 
@@ -259,6 +274,7 @@ def cluster_semantic_kitti():
 
             if num_clusters_found > 1:
                 cluster_id = pc[:,-1]
+                assert cluster_id.max() < np.iinfo(np.int16).max
                 cluster_id.astype(np.int16).tofile(save_path)
             else:
                 print(f'{points_path} has no clusters!')
@@ -267,8 +283,12 @@ def cluster_semantic_kitti():
 
 def cluster_kitti():
     info_path =  KITTI_ROOT / 'kitti_infos_all.pkl'
-    save_dir = KITTI_ROOT / 'training_clustered' / 'velodyne'
-    save_dir.mkdir(parents=True, exist_ok=True)
+    train_save_dir = KITTI_ROOT / 'training_clustered' / 'velodyne'
+    train_save_dir.mkdir(parents=True, exist_ok=True)
+
+    test_save_dir = KITTI_ROOT / 'testing_clustered' / 'velodyne'
+    test_save_dir.mkdir(parents=True, exist_ok=True)
+
     kitti_infos = []
 
     with open(info_path, 'rb') as i:
@@ -277,7 +297,12 @@ def cluster_kitti():
     
     for info in tqdm(kitti_infos):
         sample_idx = info['point_cloud']['lidar_idx']
-        save_path = save_dir / f'{sample_idx}.bin'
+        if info['velodyne_parent_dir'] == 'testing':
+            save_path = train_save_dir / f'{sample_idx}.bin'
+        elif info['velodyne_parent_dir'] == 'training':
+            save_path = test_save_dir / f'{sample_idx}.bin'
+        else:
+            raise ValueError('Only training and testing dirs allowed')
 
         if save_path.exists():
             continue
@@ -285,12 +310,13 @@ def cluster_kitti():
         lidar_file = KITTI_ROOT / info['velodyne_parent_dir'] / 'velodyne' / ('%s.bin' % sample_idx)
         pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
 
-        pc, num_clusters_found = clusterize_pcd(pc, 100, dist_thresh=0.15, eps=1.0)
+        pc, num_clusters_found = clusterize_pcd(pc, 100, dist_thresh=0.25, eps=0.5)
         #print(f'{sample_idx}: num clusters: {num_clusters_found}')
         #visualize_pcd_clusters(pc)
 
         if num_clusters_found > 1:
             cluster_id = pc[:,-1]
+            assert cluster_id.max() < np.iinfo(np.int16).max
             cluster_id.astype(np.int16).tofile(save_path)
         else:
             print(f'{sample_idx} from has no clusters!')
@@ -351,5 +377,5 @@ def cluster_adverse():
         # visualize_pcd_clusters(pc)
 
 if __name__ == '__main__':
-    cluster_semantic_kitti()
+    cluster_kitti()
    

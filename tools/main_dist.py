@@ -191,7 +191,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
         # compute loss
         
-        loss, loss_debug = criterion(output_dict)
+        loss = criterion(output_dict)
         loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
 
 
