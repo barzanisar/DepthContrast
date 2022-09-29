@@ -1,4 +1,4 @@
-wb_extra_tags: ['pointnet', 'dense_kitti_semkitti', 'seg_contrast', 'weather_aug', 'linear_probe']
+wb_extra_tags: ['pointnet', 'dense_kitti_semkitti', 'depth_contrast', 'weather_aug', 'linear_probe']
 resume: true
 linear_probe: True # True for linear probe
 cluster: False
@@ -67,8 +67,8 @@ optimizer:
     base_lr: 0.1 #0.1 for linear_probe
 
 model:
-  name: "seg_1in2_cube_up_dense_kitti_semkitti"
-  model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/seg"
+  name: "dc_1in2_cube_up_dense_kitti_semkitti"
+  model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/dc"
   model_input: ["points"]
   Lidar: True
   VOX: False
