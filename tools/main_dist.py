@@ -33,7 +33,7 @@ parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training i
 
 parser.add_argument('--cfg', type=str, default=None, help='specify the config for training')
 parser.add_argument('--quiet', action='store_true')
-parser.add_argument('--sync_bn', action='store_true', default=False, help='whether to use sync bn')
+parser.add_argument('--sync_bn', action='store_true', default=True, help='whether to use sync bn')
 
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training') #remove, ws is total no. of gpus, NOT nodes!
