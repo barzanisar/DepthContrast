@@ -219,7 +219,7 @@ def snow_sim(cfg, logger, rainfall_rates, sample_idx, root_dense_path, points_mo
                 points_moco = points_moco[:, :-1] # for depth contrast skip last col which has cluster ids
             snowfall_augmentation_applied = True
         except FileNotFoundError:
-            logger.add_line(f'\n{lidar_file} not found')
+            logger.add_line(f'\n Snow Sim Error!: {lidar_file} not found')
             pass
     
     return points_moco, snowfall_augmentation_applied

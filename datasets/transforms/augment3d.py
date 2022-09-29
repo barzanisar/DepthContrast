@@ -88,22 +88,22 @@ def get_transform3d(data, input_transforms_list, vox=False):
     outdata = []
     counter = 0
     centers = []
-    aug_trans_matrix_list=[]
+    #aug_trans_matrix_list=[]
     #np.random.seed(1024)
 
 
     DEBUG_REVERSE_TRANS = False
     # Compute augmentation transformation matrix
-    aug_trans_matrix = np.eye(3, 3, dtype=np.float32)
+    #aug_trans_matrix = np.eye(3, 3, dtype=np.float32)
     for point_cloud in ptdata:
         #Randomly select 50000 points
         if len(point_cloud) > 50000:
             newidx = np.random.choice(len(point_cloud), 50000, replace=False)
             point_cloud = point_cloud[newidx,:]
         
-        if DEBUG_REVERSE_TRANS:
-            #debug reverse transformation
-            old_points = np.copy(point_cloud[:,0:3])
+        # if DEBUG_REVERSE_TRANS:
+        #     #debug reverse transformation
+        #     old_points = np.copy(point_cloud[:,0:3])
         for transform_config in input_transforms_list:
             if transform_config['name'] == 'subcenter':
                 continue
@@ -114,22 +114,22 @@ def get_transform3d(data, input_transforms_list, vox=False):
                     # Flipping along the XZ plane
                     point_cloud[:,1] = -1 * point_cloud[:,1]
                     #compute aug matrix
-                    flip_trans_x = np.eye(3, 3, dtype=np.float32)
-                    flip_trans_x[1, 1] = -1
-                    aug_trans_matrix = aug_trans_matrix @ flip_trans_x
+                    #flip_trans_x = np.eye(3, 3, dtype=np.float32)
+                    #flip_trans_x[1, 1] = -1
+                    #aug_trans_matrix = aug_trans_matrix @ flip_trans_x
             if transform_config['name'] == 'RandomRotateLidar':
                 # Rotation along up-axis/Z-axis
                 rot_angle = (np.random.random()*np.pi/2) - np.pi/4 # -5 ~ +5 degree
                 rot_mat = rotz(rot_angle)
                 point_cloud[:,0:3] = np.dot(point_cloud[:,0:3], np.transpose(rot_mat))
                 #compute aug matrix
-                aug_trans_matrix = aug_trans_matrix @ np.transpose(rot_mat)
+                #aug_trans_matrix = aug_trans_matrix @ np.transpose(rot_mat)
 
             if transform_config['name'] == 'RandomScaleLidar':
                 noise_scale = np.random.uniform(0.95, 1.05)
                 point_cloud[:,0:3] = point_cloud[:,0:3] * noise_scale
                 #compute aug matrix
-                aug_trans_matrix = aug_trans_matrix * noise_scale
+                #aug_trans_matrix = aug_trans_matrix * noise_scale
 
                 
             if transform_config['name'] == 'randomcuboidLidar':
@@ -236,20 +236,20 @@ def get_transform3d(data, input_transforms_list, vox=False):
 
                 point_cloud = point_cloud[choice,:]
 
-                if DEBUG_REVERSE_TRANS:
-                    #debug reverse transformation
-                    old_points = old_points[choice,:]
-                    new_points = np.array(point_cloud[:,:3])
-                    inverse_trans_new_points = new_points @ np.linalg.inv(aug_trans_matrix)
-                    max_diff = np.abs(old_points - inverse_trans_new_points).max()
-                    #print('max diff is: {}'.format(max_diff))
-                    # print(f'Old max: {np.max(old_points, axis=0)}, min: {np.min(old_points, axis=0)}')
-                    # print(f'New max: {np.max(new_points, axis=0)}, min: {np.min(new_points, axis=0)}')
-                    # print(f'Inverse New max: {np.max(inverse_trans_new_points, axis=0)}, min: {np.min(inverse_trans_new_points, axis=0)}')
+                # if DEBUG_REVERSE_TRANS:
+                #     #debug reverse transformation
+                #     old_points = old_points[choice,:]
+                #     new_points = np.array(point_cloud[:,:3])
+                #     inverse_trans_new_points = new_points @ np.linalg.inv(aug_trans_matrix)
+                #     max_diff = np.abs(old_points - inverse_trans_new_points).max()
+                #     #print('max diff is: {}'.format(max_diff))
+                #     # print(f'Old max: {np.max(old_points, axis=0)}, min: {np.min(old_points, axis=0)}')
+                #     # print(f'New max: {np.max(new_points, axis=0)}, min: {np.min(new_points, axis=0)}')
+                #     # print(f'Inverse New max: {np.max(inverse_trans_new_points, axis=0)}, min: {np.min(inverse_trans_new_points, axis=0)}')
 
-                    assert max_diff < 0.001
+                #     assert max_diff < 0.001
               
-                aug_trans_matrix = torch.tensor(aug_trans_matrix).float()
+                #aug_trans_matrix = torch.tensor(aug_trans_matrix).float()
 
                 if (vox == False):
                     point_cloud = torch.tensor(point_cloud).float()
@@ -260,7 +260,7 @@ def get_transform3d(data, input_transforms_list, vox=False):
         outdata.append(point_cloud)
         # if DEBUG_REVERSE_TRANS:
         #     outdata.append(old_points)
-        aug_trans_matrix_list.append(aug_trans_matrix)
+        #aug_trans_matrix_list.append(aug_trans_matrix)
     data['data'] = outdata
-    data['aug_trans_matrix'] = aug_trans_matrix
+    #data['aug_trans_matrix'] = aug_trans_matrix
     return data

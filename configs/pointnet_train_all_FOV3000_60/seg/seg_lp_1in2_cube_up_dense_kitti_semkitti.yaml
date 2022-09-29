@@ -1,0 +1,92 @@
+wb_extra_tags: ['pointnet', 'dense_kitti_semkitti', 'seg_contrast', 'weather_aug']
+resume: true
+linear_probe: True # True for linear probe
+cluster: False
+num_workers: 8
+
+log2tb: true
+log2wb: false
+
+test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
+print_freq: 10 #print progress after processing every <freq> iters or batches
+ckpt_save_interval: 20
+save_ckpt_after_epochs: 180
+
+WANDB:
+  ENABLED: False 
+  PROJECT: DepthContrast_dense
+  ENTITY: trailab
+  SUMMARY_HIGHEST_METRIC: None
+  dir: '/DepthContrast/output'
+
+dataset:
+  BATCHSIZE_PER_REPLICA: 8 #Change to 14
+  APPLY_WEATHER_AUG: False # False for linear probe
+  DATASET_NAMES: [DenseKittiDataset]
+  SEMANTIC_KITTI:
+    train: [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10' ]
+    val: ['08']
+  INFO_PATHS: 
+    train: ['dense_infos_train_all_FOV3000_60.pkl']   
+    val: ['dense_infos_val_all_FOV3000_15.pkl']
+  LABEL_TYPE: objects #sample_index, objects, class_names
+  DATA_TYPE: points
+  SENSOR_TYPE: 'hdl64'
+  SIGNAL_TYPE: 'strongest'
+  Lidar: True
+  VOX: False
+  DROR: 0.45
+  UPSAMPLE: '1in1'
+  COUPLED: True
+  WET_SURFACE: '1in10' #'1in10'
+  SNOW: 'uniform_gunn_1in2' #'1in10'
+  FOG_AUGMENTATION: 'CVL_1in2'
+  FOG_NOISE_VARIANT: 'v2'
+  FOG_GAIN: True
+  FOV_POINTS_ONLY: True
+  POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
+    # - name: randomcuboidLidar
+    #   crop: 0.5
+    #   npoints: 10000
+    #   randcrop: 1.0
+    #   aspect: 0.75
+    # - name: randomdrop
+    #   crop: 0.2
+    # - name: RandomFlipLidar
+    # - name: RandomRotateLidar
+    # - name: RandomScaleLidar
+    - name: ToTensorLidar
+  COLLATE_FUNCTION: "point_moco_collator_linear_probe"
+  DROP_LAST: True
+
+optimizer:
+  name: "sgd"
+  weight_decay: 0.0001
+  momentum: 0.9
+  nesterov: True
+  num_epochs: 30
+  lr:
+    name: "cosine"
+    base_lr: 0.1 #0.1 for linear_probe
+
+model:
+  name: "seg_1in2_cube_up_dense_kitti_semkitti"
+  model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/seg"
+  model_input: ["points"]
+  Lidar: True
+  VOX: False
+  arch_point: "pointnet_msg"
+  linear_probe_dim: [128, 2]
+  args_point:
+    use_mlp: True
+    mlp_dim: [128, 128, 128]
+
+# Linear Probe
+loss:
+  name: "FocalLoss"
+  args:
+    num_classes: 1 #4 #1 #num_classes does not include background class i.e. [car, pedestrian]
+    alpha: None #[0.6, 0.1, 0.1, 0.1, 0.1] if None, then class weights are calc as 1/class_freq
+    gamma: 0
+    reduction: 'mean'
+    ignore_index: -100 # don't ignore any class if objects

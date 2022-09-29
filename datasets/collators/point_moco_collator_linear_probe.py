@@ -8,18 +8,17 @@
 
 import torch
 
-def point_moco_collator(batch):
+def point_moco_collator_linear_probe(batch):
     batch_size = len(batch)
 
     data_point = [x["data"][0] for x in batch]
     points = torch.stack([data_point[i][:,:4] for i in range(batch_size)]) #(8, 16384, 4)
-
-    data_moco = [x["data_moco"][0] for x in batch]
-    points_moco = torch.stack([data_moco[i][:,:4] for i in range(batch_size)]) #(8, 16384, 4)      
+    labels = []
+    labels = torch.stack([data_point[i][:,-1].long() for i in range(batch_size)]) #(8, 16384)
 
     output_batch = {
-        "points": points,
-        "points_moco": points_moco
-    }
-
+            "points": points,
+            "labels": labels
+        }
+       
     return output_batch

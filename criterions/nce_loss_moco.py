@@ -132,15 +132,11 @@ class NCELossMoco(nn.Module):
 
         self.queue_ptr[0] = ptr
                                                                         
-    def forward(self, output_dict):
+    def forward(self, output_feat):
         
-        if self.cluster:
-            output_0 = output_dict[0]['seg_feats'] #query features (8, 128)
-            output_1 = output_dict[1]['seg_feats'] #key_features = moco features (8, 128)
-        else:
-            output_0 = output_dict[0]['dc_feats'] #query features (8, 128)
-            output_1 = output_dict[1]['dc_feats'] #key_features = moco features (8, 128)
-        
+        output_0 = output_feat[0] #query features (8, 128)
+        output_1 = output_feat[1] #key_features = moco features (8, 128)
+
         normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query dc embedding or vdc
         normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key dc embedding or vdc
 

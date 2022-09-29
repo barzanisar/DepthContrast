@@ -115,9 +115,8 @@ def main_worker(gpu, ngpus, args, cfg):
     model = main_utils.build_model(cfg['model'], cfg['cluster'], logger)
     if args.sync_bn and args.multiprocessing_distributed:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-    find_unused_params = cfg['linear_probe']
-    logger.add_line(f'Find unused params: {find_unused_params}')
-    model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params)
+
+    model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params=cfg['cluster'])
 
     # Define dataloaders
     train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], cfg['cluster'], args.multiprocessing_distributed, logger)       
@@ -189,7 +188,9 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             with torch.no_grad():
                 output_dict = model(sample)
 
-        # compute loss
+        # # compute loss
+        # for name, param in model.named_parameters():
+        #     print(f'{name}, {param.requires_grad}')
         
         loss = criterion(output_dict)
         loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])

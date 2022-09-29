@@ -18,7 +18,7 @@ import time
 from datasets.transforms.augment3d import get_transform3d
 from datasets.transforms.weather_transforms import *
 
-from pcdet.utils import calibration_kitti
+from pcdet.utils import calibration_kitti, box_utils
 from lib.LiDAR_snow_sim.tools.snowfall.sampling import snowfall_rate_to_rainfall_rate
 from utils.pcd_preprocess import *
 
@@ -77,7 +77,7 @@ class DepthContrastDataset(Dataset):
             self.class_names = ['Vehicle', 'Pedestrian', 'Cyclist']
         elif "DenseDataset" or "DenseKittiDataset" in self.dataset_names:
             self.point_cloud_range = DENSE_POINT_RANGE
-            self.class_names = ['Car', 'Pedestrian', 'Cyclist'] #, 'LargeVehicle' is now grouped under PassengerCar
+            self.class_names = ['Car', 'Pedestrian', 'Cyclist', 'Van'] #, 'LargeVehicle' is now grouped under PassengerCar
 
         #### Add the voxelizer here
         if ("Lidar" in cfg) and cfg["VOX"]:
@@ -124,60 +124,55 @@ class DepthContrastDataset(Dataset):
     
     def prepare_data(self, data_dict, index):
         
-        if self.linear_probe and data_dict.get('gt_boxes_lidar', None) is not None:
-            if self.cfg['LABEL_TYPE']  == 'class_names':
-                # Select gt names and boxes that are in self.class_names
-                selected = [i for i, x in enumerate(data_dict['gt_names']) if x in self.class_names]
-                selected = np.array(selected, dtype=np.int64)
-                data_dict['gt_boxes_lidar'] = data_dict['gt_boxes_lidar'][selected]
-                data_dict['gt_names'] = data_dict['gt_names'][selected]
-
-                # Append gt_name index as the last column: background: 0, car:1, ped:2, cyc:3
-                gt_classes = np.array([self.class_names.index(n) + 1 for n in data_dict['gt_names']], dtype=np.int32)
-                gt_boxes = np.concatenate((data_dict['gt_boxes_lidar'], gt_classes.reshape(-1, 1).astype(np.float32)), axis=1)
-                data_dict['gt_boxes_lidar'] = gt_boxes
-                data_dict.pop('gt_names', None)
-            elif self.cfg['LABEL_TYPE']  == 'objects':
-                num_gt_boxes = data_dict['gt_boxes_lidar'].shape[0]
-
-                # Append 1 to indicate object class
-                gt_boxes = np.concatenate((data_dict['gt_boxes_lidar'], np.ones(num_gt_boxes).reshape(-1, 1).astype(np.float32)), axis=1)
-                data_dict['gt_boxes_lidar'] = gt_boxes
-                data_dict.pop('gt_names', None)
-
+        cfg = self.cfg
         points = data_dict['data']
         if not self.linear_probe:
             points_moco = data_dict['data_moco']
 
+        
+        if self.linear_probe and data_dict.get('gt_boxes_lidar', None) is not None:
+            if False: #self.cfg['LABEL_TYPE']  == 'class_names':
+                # Select gt names and boxes that are in self.class_names
+                selected = [i for i, x in enumerate(data_dict['gt_names']) if x != 'DontCare'] #in self.class_names
+                selected = np.array(selected, dtype=np.int64)
+                data_dict['gt_names'] = data_dict['gt_names'][selected]
 
-        cfg = self.cfg
+            gt_boxes_lidar = data_dict['gt_boxes_lidar']
+            num_objects = gt_boxes_lidar.shape[0]
+            corners_lidar = box_utils.boxes_to_corners_3d(gt_boxes_lidar[:,:7]) #nboxes, 8 corners, 3coords
+            labels = np.zeros(points.shape[0])
+            for k in range(num_objects):
+                flag = box_utils.in_hull(points[:, 0:3], corners_lidar[k])
+                labels[flag] = 1 if self.cfg['LABEL_TYPE']  == 'objects' else self.class_names.index(data_dict['gt_names'][k]) + 1
+            points = np.hstack((points, labels.reshape((-1,1))))
+
+            data_dict.pop('gt_names', None)
+            data_dict.pop('gt_boxes_lidar', None)
+
+        
         # TODO: this doesn't yet handle the case where the length of datasets
         # could be different.
         if False: #cfg["DATA_TYPE"] == "point_vox":
             # Across format
-            item = {"data": [], "data_aug_matrix": [], 
-            "vox": [], "vox_aug_matrix": []}
+            item = {"data": [], "vox": []}
 
             item["data"].append(points)
             item["vox"].append(np.copy(points))
             
             if not self.linear_probe:
                 item["data_moco"] = []
-                item["data_moco_aug_matrix"] = []
                 item["vox_moco"] = []
-                item["vox_moco_aug_matrix"] = []
                 item["data_moco"].append(points_moco)
                 item["vox_moco"].append(np.copy(points_moco))
 
             #item["data_valid"].append(1)
         else:
             # Within format: data is either points or later is voxelized
-            item = {"data": [], "data_aug_matrix": []}
+            item = {"data": []}
             item["data"].append(points)
 
             if not self.linear_probe:
                 item["data_moco"] = []
-                item["data_moco_aug_matrix"] = []
                 item["data_moco"].append(points_moco)
 
         # Apply the transformation here
@@ -186,14 +181,12 @@ class DepthContrastDataset(Dataset):
             tempitem = {"data": item["data"]}
             tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"])
             item["data"] = tempdata["data"]
-            item["data_aug_matrix"] = tempdata['aug_trans_matrix']
             
             if not self.linear_probe:
                 # Points MoCo
                 tempitem = {"data": item["data_moco"]}
                 tempdata = get_transform3d(tempitem, cfg["POINT_TRANSFORMS"])
                 item["data_moco"] = tempdata["data"]
-                item["data_moco_aug_matrix"] = tempdata['aug_trans_matrix']
 
             # Vox
             tempitem = {"data": item["vox"]}
@@ -202,7 +195,6 @@ class DepthContrastDataset(Dataset):
             feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
             labels = np.zeros(coords.shape[0]).astype(np.int32)
             item["vox"] = [self.toVox(coords, feats, labels)]
-            item["vox_aug_matrix"] = tempdata['aug_trans_matrix']
 
             if not self.linear_probe:
                 # Vox MoCo
@@ -212,7 +204,6 @@ class DepthContrastDataset(Dataset):
                 feats = tempdata["data"][0][:, 3:6] #* 255.0  # np.ones(coords.shape)*255.0
                 labels = np.zeros(coords.shape[0]).astype(np.int32)
                 item["vox_moco"] = [self.toVox(coords, feats, labels)]
-                item["vox_moco_aug_matrix"] = tempdata['aug_trans_matrix']
         else:
             # Points -> transform -> voxelize if Vox
             tempitem = {"data": item["data"]}
@@ -224,7 +215,6 @@ class DepthContrastDataset(Dataset):
                 item["data"] = [self.toVox(coords, feats, labels)]
             else:
                 item["data"] = tempdata["data"]
-            item["data_aug_matrix"] = tempdata['aug_trans_matrix']
             
             if not self.linear_probe:
                 # Points MoCo-> transform -> voxelize if Vox
@@ -237,10 +227,7 @@ class DepthContrastDataset(Dataset):
                     item["data_moco"] = [self.toVox(coords, feats, labels)]
                 else:
                     item["data_moco"] = tempdata["data"]
-                item["data_moco_aug_matrix"] = tempdata['aug_trans_matrix']
 
-        if self.linear_probe:
-            item['linear_probe'] = True    
         data_dict.update(item)
 
         return data_dict
@@ -543,10 +530,6 @@ class DenseKittiDataset(DepthContrastDataset):
         if self.linear_probe:
             data_dict['gt_names'] = info['annos']['name']
             data_dict['gt_boxes_lidar'] = info['annos']['gt_boxes_lidar']
-            assert data_dict['gt_names'].shape[0] == data_dict['gt_boxes_lidar'].shape[0]
-
-        # # TODO: mask boxes outside point cloud range
-
         
         data_dict['data'] = np.hstack((points[:,:4], points[:,-1].reshape((-1,1)))) if self.cluster else points[:,:4] #x,y,z,i #drop channel or label, add cluster id
 

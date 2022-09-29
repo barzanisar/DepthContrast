@@ -8,6 +8,7 @@
 
 from datasets.collators.point_moco_collator import point_moco_collator
 from datasets.collators.point_moco_collator_seg import point_moco_collator_seg
+from datasets.collators.point_moco_collator_linear_probe import point_moco_collator_linear_probe
 try:
     from datasets.collators.vox_moco_collator import vox_moco_collator
     from datasets.collators.point_vox_moco_collator import point_vox_moco_collator
@@ -22,7 +23,8 @@ COLLATORS_MAP = {
     "point_moco_collator": point_moco_collator,
     "point_vox_moco_collator": point_vox_moco_collator,
     "vox_moco_collator": vox_moco_collator,
-    "point_moco_collator_seg": point_moco_collator_seg
+    "point_moco_collator_seg": point_moco_collator_seg,
+    "point_moco_collator_linear_probe": point_moco_collator_linear_probe
 }
 
 

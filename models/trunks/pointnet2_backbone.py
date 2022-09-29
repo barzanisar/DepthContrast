@@ -20,49 +20,6 @@ ROOT_DIR = os.path.dirname(ROOT_DIR) #DepthContrast
 sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
 
 from ops.pointnet2.pointnet2_batch import pointnet2_modules
-try:
-    try:
-        try:
-            from spconv.utils import VoxelGeneratorV2 as VoxelGenerator
-            SPCONV_VER = 1
-        except:
-            from spconv.utils import VoxelGenerator
-            SPCONV_VER = 1
-    except:
-        #from spconv.utils import Point2VoxelCPU3d as VoxelGenerator
-        #from spconv.utils import Point2VoxelGPU3d as VoxelGenerator
-        from spconv.pytorch.utils import PointToVoxel as VoxelGenerator
-        SPCONV_VER = 2
-except:
-    pass
-
-def point_to_voxel_func(device = torch.device("cpu:0")):
-    VOXEL_SIZE = [5.0, 5.0, 6.0]
-    ### Waymo lidar range
-    #POINT_RANGE = np.array([  0. , -75. ,  -3. ,  75.0,  75. ,   3. ], dtype=np.float32)
-    POINT_RANGE = np.array([0, -40, -3, 70.4, 40, 1], dtype=np.float32) ### KITTI and DENSE
-    MAX_POINTS_PER_VOXEL = 2000
-    MAX_NUMBER_OF_VOXELS = 400
-    NUM_POINT_FEATURES= 3+128
-    if SPCONV_VER == 1:
-        voxel_generator = VoxelGenerator(
-            voxel_size=VOXEL_SIZE,
-            point_cloud_range=POINT_RANGE,
-            max_num_points=MAX_POINTS_PER_VOXEL,
-            max_voxels=MAX_NUMBER_OF_VOXELS,
-            device = device
-        )
-    else:
-        voxel_generator = VoxelGenerator(
-            vsize_xyz=VOXEL_SIZE,
-            coors_range_xyz=POINT_RANGE,
-            num_point_features=NUM_POINT_FEATURES,
-            max_num_points_per_voxel=MAX_POINTS_PER_VOXEL,
-            max_num_voxels=MAX_NUMBER_OF_VOXELS,
-            device = device
-        )
-
-    return voxel_generator
 
 class PointNet2MSG(nn.Module):
     def __init__(self, use_mlp=False, mlp_dim=None, cluster=True, linear_probe = False):
@@ -130,7 +87,7 @@ class PointNet2MSG(nn.Module):
             self.use_mlp = True
             self.head = MLP(mlp_dim) # projection head
 
-        self.dout=nn.Dropout(p=0.4)
+        self.dout=nn.Dropout(p=0.3)
             
     def break_up_pc(self, pc):
         #batch_idx = pc[:, 0]
@@ -138,7 +95,7 @@ class PointNet2MSG(nn.Module):
         features = (pc[:, :, 3:].contiguous() if pc.size(-1) > 3 else None)
         return xyz, features
 
-    def forward(self, pointcloud: torch.cuda.FloatTensor, aug_matrix=None, cluster_id=None):
+    def forward(self, pointcloud: torch.cuda.FloatTensor, cluster_id=None):
         """
         Args:
             batch_dict:
@@ -172,16 +129,13 @@ class PointNet2MSG(nn.Module):
             assert l_features[i - 1].is_contiguous()
 
         point_features = l_features[0] #(B=8, 128, num points = 16384)    
-        out_dict = {}
+        out_feats = None
 
         if self.linear_probe:
-            xyz = xyz @ aug_matrix.inverse()
-            feat = point_features.view(batch_size, -1, point_features.shape[-1]).permute(0, 2, 1).contiguous() #(8, 128, npoints=16384) -> (8, 16384, 128) 
-            #out_dict['point_features'] = feat
+            feat = point_features.permute(0, 2, 1).contiguous() #(8, 128, npoints=16384) -> (8, 16384, 128) 
             if self.use_mlp:
                 feat = self.head(feat)
-            out_dict['linear_probe_feats'] = feat
-            out_dict['linear_probe_xyz'] = xyz
+            out_feats = feat
         else:
             if self.cluster:
                 batch_seg_feats = []
@@ -200,7 +154,7 @@ class PointNet2MSG(nn.Module):
                         batch_seg_feats.append(seg_max_feat)
                 
                 all_seg_feats = torch.vstack(batch_seg_feats) # num clusters x 128
-                out_dict['seg_feats'] = all_seg_feats
+                out_feats = all_seg_feats
 
             else:
                 nump = point_features.shape[-1] # 16384
@@ -208,8 +162,8 @@ class PointNet2MSG(nn.Module):
                 feat = torch.squeeze(F.max_pool1d(point_features, nump)) # (8,128)
                 if self.use_mlp:
                     feat = self.head(feat) #linear probe out (8=batch, 16384=npoints, 5=nclasses), #Dc out (8, 128)
-                out_dict['dc_feats'] = feat
+                out_feats = feat
 
 
         # out_feats[0] = (1181, 128), vox_coords = (1181, 4=bzyx), point_coords = (8, 16384, 3=xyz)
-        return out_dict        
+        return out_feats        

@@ -18,7 +18,7 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "DC: vox-main",
+            "name": "DC: pretrain",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/tools/main_dist.py",
@@ -29,26 +29,11 @@
             },
             "args": [
                 "--cfg",
-                "configs/vox-vdc.yaml"
+                "configs/pointnet_train_all_FOV3000_60/dc/dc_1in2_cube_up_dense_kitti_semkitti.yaml"
             ]
         },
         {
-            "name": "DC: pointnet-main",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/tools/main_dist.py",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--cfg",
-                "configs/pointnet_train_all_FOV3000_60/dc/shortlist/dc_1in2_cube_up_b14_lr0p15_red_dense_kitti.yaml"
-            ]
-        },
-        {
-            "name": "VDC: pointnet-main-dist",
+            "name": "DC: pretrain-dist",
             "type": "python",
             "request": "launch",
             "module": "torch.distributed.launch",
@@ -61,11 +46,43 @@
                 "${workspaceFolder}/tools/main_dist.py", 
                 "--launcher", "pytorch", 
                 "--multiprocessing-distributed", 
-                "--cfg", "configs/pointnet_train_all_FOV3000_60/vdc/shortlist/vdc_FOV3000.yaml"
+                "--cfg", "configs/pointnet_train_all_FOV3000_60/dc/dc_1in2_cube_up_dense_kitti_semkitti.yaml"
             ]
         },
         {
-            "name": "DC: linear probe",
+            "name": "Seg: pretrain",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/main_dist.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_cube_up_dense_kitti_semkitti.yaml"
+            ]
+        },
+        {
+            "name": "Seg: pretrain-dist",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [ "--nproc_per_node=1", 
+                "${workspaceFolder}/tools/main_dist.py", 
+                "--launcher", "pytorch", 
+                "--multiprocessing-distributed", 
+                "--cfg", "configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_cube_up_dense_kitti_semkitti.yaml"
+            ]
+        },
+        {
+            "name": "Seg: linear probe",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/tools/linear_probe.py",
@@ -76,7 +93,7 @@
             },
             "args": [
                 "--cfg",
-                "configs/point_within_lidar_dc_linear_probe.yaml"
+                "configs/pointnet_train_all_FOV3000_60/seg/seg_lp_1in2_cube_up_dense_kitti_semkitti.yaml"
             ]
         },
         {

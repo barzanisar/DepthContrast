@@ -104,7 +104,9 @@ def main():
 def main_worker(gpu, ngpus, args, cfg):
     args.local_rank = gpu
     ngpus_per_node = ngpus
-    
+    cfg['cluster'] = False
+    cfg['linear_probe'] = True
+
     # Setup environment
     args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
     logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
@@ -113,7 +115,7 @@ def main_worker(gpu, ngpus, args, cfg):
     ckp_manager_linear = main_utils.CheckpointManager(model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
 
     # Define model
-    model = main_utils.build_model(cfg['model'], logger=logger, linear_probe=True)
+    model = main_utils.build_model(cfg['model'], cfg['cluster'], logger=logger, linear_probe=True)
 
     # Load model state dict i.e. load checkpoint
     if cfg.get('linear_probe_base_model_fn', None) is not None:
@@ -134,15 +136,15 @@ def main_worker(gpu, ngpus, args, cfg):
     # linear classifier
     model.trunk[0].head = MLP(cfg["model"]["linear_probe_dim"], use_dropout=len(cfg["model"]["linear_probe_dim"])>2)
 
-    # model To cuda
-    model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params=True)
+    # model To cuda #TODO remove unused params and set to False
+    model, args = main_utils.distribute_model_to_cuda(model, args)
 
     # Define criterion 
-    train_criterion =  main_utils.build_criterion(cfg['loss'], logger=logger) 
+    train_criterion =  main_utils.build_criterion(cfg['loss'], cfg['cluster'], linear_probe=True, logger=logger) 
     train_criterion = train_criterion.cuda()
     
     # Define dataloaders
-    train_loader, val_loader = main_utils.build_dataloaders_train_val(cfg['dataset'], cfg['num_workers'], args.multiprocessing_distributed, logger, True)       
+    train_loader, val_loader = main_utils.build_dataloaders_train_val(cfg['dataset'], cfg['num_workers'], cfg['cluster'], args.multiprocessing_distributed, logger, linear_probe=True)       
 
     if args.multiprocessing_distributed:     
         # Define optimizer
@@ -256,23 +258,9 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     accuracy_meter = metrics_utils.AverageMeter('Accuracy', ':.2f')
     obj_recall_meter = metrics_utils.AverageMeter('Obj Accuracy', ':.2f')
     obj_precision_meter = metrics_utils.AverageMeter('Obj Precision', ':.2f')
-
-
-    #Accuracy class wise
-    # bg_acc = metrics_utils.AverageMeter('Background Accuracy', ':.2f')
-    # car_acc = metrics_utils.AverageMeter('Car Accuracy', ':.2f')
-    # ped_acc = metrics_utils.AverageMeter('Pedestrian Accuracy', ':.2f')
-    # rv_acc = metrics_utils.AverageMeter('RidableVehicle Accuracy', ':.2f')
-    # lv_acc = metrics_utils.AverageMeter('LargeVehicle Accuracy', ':.2f')
     
-    #IoU class wise
-    mIoU_meter = metrics_utils.AverageMeter('mIoU', ':.3f')
-    # bg_Iou = metrics_utils.AverageMeter('Background Iou', ':.3f')
-    # car_Iou = metrics_utils.AverageMeter('Car Iou', ':.3f')
-    # ped_Iou = metrics_utils.AverageMeter('Pedestrian Iou', ':.3f')
-    # rv_Iou = metrics_utils.AverageMeter('RidableVehicle Iou', ':.3f')
-    # lv_Iou = metrics_utils.AverageMeter('LargeVehicle Iou', ':.3f')
-    
+    #IoU 
+    mIoU_meter = metrics_utils.AverageMeter('mIoU', ':.3f')    
 
     progress = utils.logger.ProgressMeter(len(loader), [loss_meter, accuracy_meter, obj_recall_meter, obj_precision_meter, mIoU_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
 
@@ -302,21 +290,21 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
 
         if phase == 'train':
-            output_dict = model(sample) #output=(batch_size, Npoints, num classes), coords=(8pcs, Npoints, 3)
+            output_feat = model(sample) #output=(batch_size, Npoints, num classes), coords=(8pcs, Npoints, 3)
         else:
             with torch.no_grad():
-                output_dict = model(sample)
+                output_feat = model(sample)
         
 
-        output = output_dict[0]['linear_probe_feats']
-        # compute loss
-        labels = main_utils.get_labels(sample['gt_boxes_lidar'], output_dict[0]['linear_probe_xyz'].detach().cpu().numpy(), cfg['dataset']['LABEL_TYPE']) #(8, 16384)
+        output = output_feat[0]
+        # # compute loss
+        # labels = main_utils.get_labels(sample['gt_boxes_lidar'], output_dict[0]['linear_probe_xyz'].detach().cpu().numpy(), cfg['dataset']['LABEL_TYPE']) #(8, 16384)
         
-        # Ignore ridable vehicle
-        output, labels = ignore_cyclist(output, labels)
+        # # Ignore ridable vehicle
+        # output, labels = ignore_cyclist(output, labels)
 
         # Undersampling bk class from labels and output to have 1:1 ratio of bk:objects class
-        output, labels = undersample_bk_class(output, labels)
+        output, labels = undersample_bk_class(output, sample['labels'])
 
         #Print class stats
         #class_stats(labels)

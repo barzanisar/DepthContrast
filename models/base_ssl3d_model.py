@@ -66,13 +66,13 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         for input_idx in range(len(self.model_input)): #['points', 'points_moco']
             input_key = self.model_input[input_idx]
             if "moco" in input_key:
-                outputs = self._single_input_forward_MOCO(batch[input_key], input_key, input_idx, batch.get(input_key + "_aug_matrix", None), batch.get(input_key + "_cluster", None))
+                outputs = self._single_input_forward_MOCO(batch[input_key], input_key, input_idx, batch.get(input_key + "_cluster", None))
             else:
-                outputs = self._single_input_forward(batch[input_key], input_key, input_idx, batch.get(input_key + "_aug_matrix", None), batch.get(input_key + "_cluster", None))
+                outputs = self._single_input_forward(batch[input_key], input_key, input_idx, batch.get(input_key + "_cluster", None))
             all_outputs.append(outputs)
         return all_outputs
     
-    def _single_input_forward(self, batch, input_key, target, aug_matrix=None, cluster_ids=None):
+    def _single_input_forward(self, batch, input_key, target, cluster_ids=None):
         if "vox" not in input_key:
             assert isinstance(batch, torch.Tensor)
 
@@ -99,13 +99,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                 batch, non_blocking=True
             )
         
-        # Copy to GPU
-        if aug_matrix is not None:
-            aug_matrix = main_utils.recursive_copy_to_gpu(
-                    aug_matrix, non_blocking=True
-                )
-        
-        output = self.trunk[target](batch, aug_matrix, cluster_ids)
+        output = self.trunk[target](batch, cluster_ids)
         return output
 
     @torch.no_grad()
@@ -197,7 +191,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
         return x_gather[idx_this]
     
-    def _single_input_forward_MOCO(self, batch, input_key, target, aug_matrix=None, cluster_ids=None):
+    def _single_input_forward_MOCO(self, batch, input_key, target, cluster_ids=None):
         if "vox" not in input_key:
             assert isinstance(batch, torch.Tensor)
         if ('vox' in input_key) and ("Lidar" not in self.config):
@@ -231,13 +225,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                 batch = main_utils.recursive_copy_to_gpu(
                     batch, non_blocking=True
                 )
-            # Copy to GPU
-            if aug_matrix is not None:
-                aug_matrix = main_utils.recursive_copy_to_gpu(
-                        aug_matrix, non_blocking=True
-                    )
-            
-            output = self.trunk[target](batch, aug_matrix, cluster_ids)
+
+            output = self.trunk[target](batch, cluster_ids)
             # idx_unshuffle assumes that output features.shape[0] is 8 i.e. equal to number of pcs in the batch
             # Not compatible with Voxelized DC!
             # if torch.distributed.is_initialized():
