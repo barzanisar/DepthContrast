@@ -21,6 +21,7 @@ from datasets.transforms.weather_transforms import *
 from pcdet.utils import calibration_kitti, box_utils
 from lib.LiDAR_snow_sim.tools.snowfall.sampling import snowfall_rate_to_rainfall_rate
 from utils.pcd_preprocess import *
+from utils.data_map import *
 
 
 #from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
@@ -128,27 +129,6 @@ class DepthContrastDataset(Dataset):
         points = data_dict['data']
         if not self.linear_probe:
             points_moco = data_dict['data_moco']
-
-        
-        if self.linear_probe and data_dict.get('gt_boxes_lidar', None) is not None:
-            if False: #self.cfg['LABEL_TYPE']  == 'class_names':
-                # Select gt names and boxes that are in self.class_names
-                selected = [i for i, x in enumerate(data_dict['gt_names']) if x != 'DontCare'] #in self.class_names
-                selected = np.array(selected, dtype=np.int64)
-                data_dict['gt_names'] = data_dict['gt_names'][selected]
-
-            gt_boxes_lidar = data_dict['gt_boxes_lidar']
-            num_objects = gt_boxes_lidar.shape[0]
-            corners_lidar = box_utils.boxes_to_corners_3d(gt_boxes_lidar[:,:7]) #nboxes, 8 corners, 3coords
-            labels = np.zeros(points.shape[0])
-            for k in range(num_objects):
-                flag = box_utils.in_hull(points[:, 0:3], corners_lidar[k])
-                labels[flag] = 1 if self.cfg['LABEL_TYPE']  == 'objects' else self.class_names.index(data_dict['gt_names'][k]) + 1
-            points = np.hstack((points, labels.reshape((-1,1))))
-
-            data_dict.pop('gt_names', None)
-            data_dict.pop('gt_boxes_lidar', None)
-
         
         # TODO: this doesn't yet handle the case where the length of datasets
         # could be different.
@@ -289,7 +269,8 @@ class DenseKittiDataset(DepthContrastDataset):
         self.root_kitti_path = self.root_path / 'data' / 'kitti'
 
         self.infos = []
-        self.include_dense_kitti_data()
+        if self.cfg.get("INFO_PATHS", None) is not None:
+            self.include_dense_kitti_data()
 
         # Semantic Kitti
         if "SEMANTIC_KITTI" in self.cfg:
@@ -327,9 +308,9 @@ class DenseKittiDataset(DepthContrastDataset):
                 sem_kitti_labels_datapath += [ os.path.join(label_seq_path, label_file) for label_file in point_seq_label ]
             except:
                 pass
-        
-        for point_path, label_path in zip(sem_kitti_points_datapath, sem_kitti_labels_datapath):
-            info = {'point_cloud': {'lidar_idx': point_path}, 'dataset': 'semantic_kitti'}
+
+        for point_path, label_path in zip(sem_kitti_points_datapath[:100], sem_kitti_labels_datapath[:100]):
+            info = {'point_cloud': {'lidar_idx': point_path}, 'dataset': 'semantic_kitti', 'label_path': label_path}
             #TODO add annos for linear probe
             sem_kitti_infos.append(info)
         
@@ -472,20 +453,41 @@ class DenseKittiDataset(DepthContrastDataset):
         if self.cluster:
             assert clustered, 'PC is unclustered! This is segContrast'
         
+                # Add object or class label for every point for linear probing
+        if self.linear_probe:
+            if "SEMANTIC_KITTI" not in self.cfg:
+                if False: #self.cfg['LABEL_TYPE']  == 'class_names':
+                    # Select gt names and boxes that are in self.class_names
+                    selected = [i for i, x in enumerate(info['annos']['name']) if x != 'DontCare'] #in self.class_names
+                    selected = np.array(selected, dtype=np.int64)
+                    info['annos']['name'] = info['annos']['name'][selected]
+
+                gt_boxes_lidar = info['annos']['gt_boxes_lidar']
+                num_objects = gt_boxes_lidar.shape[0]
+                corners_lidar = box_utils.boxes_to_corners_3d(gt_boxes_lidar[:,:7]) #nboxes, 8 corners, 3coords
+                labels = np.zeros(points.shape[0])
+                for k in range(num_objects):
+                    flag = box_utils.in_hull(points[:, 0:3], corners_lidar[k])
+                    labels[flag] = 1 #if self.cfg['LABEL_TYPE']  == 'objects' else self.class_names.index(info['annos']['name'][k]) + 1
+                points = np.hstack((points[:,:4], labels.reshape((-1,1)))) #x,y,z,i,label
+        
+            else:
+                labels = np.fromfile(info['label_path'], dtype=np.uint32)
+                labels = labels.reshape((-1))
+                labels = labels & 0xFFFF
+
+                #remap labels to learning values
+                labels = np.vectorize(learning_map.get)(labels)
+                labels = np.expand_dims(labels, axis=-1)
+                unlabeled = labels[:,0] == 0
+
+                # remove unlabeled points
+                labels = np.delete(labels, unlabeled, axis=0)
+                points = np.delete(points, unlabeled, axis=0)
+                points = np.hstack((points[:,:4], labels.reshape((-1,1)))) #x,y,z,i,label 1-19
+
         # Crop and extract FOV points
         points = self.crop_pc(points, calib, img_shape)
-
-        # if not clustered:
-        #     #V.draw_scenes(points=points, color_feature='intensity')
-        #     n_clusters = 1000
-        #     dist_thresh = 0.15
-        #     eps = 1.0
-        #     if dataset == 'semantic_kitti':
-        #         n_clusters = 50
-        #         dist_thresh = 0.25
-        #         eps = 0.25
-        #     points, _ = clusterize_pcd(points, n_clusters, dist_thresh, eps)
-        #     #visualize_pcd_clusters(points)
 
         points_moco = np.copy(points) #points_weather
         
@@ -525,17 +527,21 @@ class DenseKittiDataset(DepthContrastDataset):
                 points_moco, fog_applied = fog_sim(self.cfg, points_moco, self.cluster) 
 
         #print(f'dataset: {dataset}, weather: {weather}, dror: {dror_applied}, up: {upsample_applied}, snow: {snowfall_augmentation_applied}, wet: {wet_surface_applied}, fog: {fog_applied}')
-        
-        # Add gt_boxes for linear probing
-        if self.linear_probe:
-            data_dict['gt_names'] = info['annos']['name']
-            data_dict['gt_boxes_lidar'] = info['annos']['gt_boxes_lidar']
-        
-        data_dict['data'] = np.hstack((points[:,:4], points[:,-1].reshape((-1,1)))) if self.cluster else points[:,:4] #x,y,z,i #drop channel or label, add cluster id
 
+        
         if not self.linear_probe:
             points_moco = self.crop_pc(points_moco, calib, img_shape)
-            data_dict['data_moco'] = np.hstack((points_moco[:,:4], points_moco[:, -1].reshape((-1,1)))) if self.cluster else points_moco[:,:4] #x,y,z,i #drop channel or label , add cluster id
+            if self.cluster:
+                # SegContrast
+                data_dict['data'] = np.hstack((points[:,:4], points[:,-1].reshape((-1,1))))
+                data_dict['data_moco'] = np.hstack((points_moco[:,:4], points_moco[:, -1].reshape((-1,1))))  
+            else:
+                # DepthContrast
+                data_dict['data'] = points[:,:4] #x,y,z,i #drop channel or label, add cluster id
+                data_dict['data_moco'] = points_moco[:,:4] #x,y,z,i #drop channel or label , add cluster id
+        else:
+            data_dict['data'] = points
+
 
         #V.draw_scenes(points=points, color_feature='intensity')
         #V.draw_scenes(points=points_moco, color_feature='intensity')

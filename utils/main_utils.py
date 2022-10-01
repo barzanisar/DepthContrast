@@ -199,17 +199,19 @@ def recursive_copy_to_gpu(value, non_blocking=True, max_depth=3, curr_depth=0):
 
         raise AttributeError("Value must have .cuda attr or be a Seq / Map iterable")
 
-def prep_environment(args, cfg):
+def prep_environment(args, cfg, linear_probe_dataset=None):
     from torch.utils.tensorboard import SummaryWriter
     
     phase = 'linear_probe' if cfg.get('linear_probe', False) else 'train'
+    if linear_probe_dataset is not None:
+        phase += f'_{linear_probe_dataset}'
     # Prepare loggers (must be configured after initialize_distributed_backend())
     model_dir = '{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], phase)
     
     
     if args.rank == 0:
         if cfg['linear_probe']:
-            assert os.path.isdir(model_dir.split('/linear_probe')[0])
+            assert os.path.isdir(model_dir.split(f'/{phase}')[0])
         prep_output_folder(model_dir)
 
     log_fn = '{}/{}_{}.log'.format(model_dir, phase, datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
@@ -321,7 +323,10 @@ def build_dataloader(config, num_workers, cluster, distributed, linear_probe=Fal
 def build_criterion(cfg, cluster, linear_probe, logger=None):
     import criterions
     if linear_probe:
-        criterion = criterions.__dict__['FocalLoss'](cfg['args'])
+        if cfg['name'] == 'FocalLoss':
+            criterion = criterions.__dict__['FocalLoss'](cfg['args'])
+        else:
+            criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
     else:
         criterion = criterions.__dict__['NCELossMoco'](cfg['args'], cluster)
     
@@ -358,28 +363,6 @@ def build_optimizer(params, cfg, logger=None):
         ### By default we use a cosine param scheduler
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['num_epochs'], eta_min=cfg['lr']['base_lr']/1000)
     return optimizer, scheduler
-
-def get_labels(batch_gt_boxes_lidar, coords, label_type = 'class_names'):
-    '''
-    coords: numpy array (batch size, n points, 3)
-
-    batch_labels: list of len "batch_size". Each element is a numpy array of len npoints
-    '''
-    batch_size = len(batch_gt_boxes_lidar)
-    batch_labels = []
-    for pc_idx, gt_boxes_lidar in enumerate(batch_gt_boxes_lidar):
-        points = coords[pc_idx]
-        corners_lidar = box_utils.boxes_to_corners_3d(gt_boxes_lidar[:,:7]) #nboxes, 8 corners, 3coords
-        num_objects = gt_boxes_lidar.shape[0]
-        labels = np.zeros(points.shape[0])
-
-        for k in range(num_objects):
-            flag = box_utils.in_hull(points[:, 0:3], corners_lidar[k]) #flag=points dim labels=np.zeros(points.shape[0]), labels[flag] = class_names[obj_name].get_index
-            labels[flag] = gt_boxes_lidar[k, 7] if label_type=='class_names' else 1
-        batch_labels.append(labels) # background = 0, car = 1, so on OR background = 0, object = 1
-    batch_labels = torch.stack([torch.tensor(batch_labels[i]).long() for i in range(batch_size)])
-    return batch_labels
-
 
 
 class CheckpointManager(object):

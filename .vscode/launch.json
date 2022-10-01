@@ -29,7 +29,7 @@
             },
             "args": [
                 "--cfg",
-                "configs/pointnet_train_all_FOV3000_60/dc/dc_1in2_cube_up_dense_kitti_semkitti.yaml"
+                "configs/pointnet_train_all_FOV3000_60/dc/dc_1in2_cube_up_dense_semkitti.yaml"
             ]
         },
         {
@@ -46,7 +46,22 @@
                 "${workspaceFolder}/tools/main_dist.py", 
                 "--launcher", "pytorch", 
                 "--multiprocessing-distributed", 
-                "--cfg", "configs/pointnet_train_all_FOV3000_60/dc/dc_1in2_cube_up_dense_kitti_semkitti.yaml"
+                "--cfg", "configs/pointnet_train_all_FOV3000_60/dc/dc_1in2_cube_up_dense_semkitti.yaml"
+            ]
+        },
+        {
+            "name": "Dc: linear probe SemKitti",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/linear_probe_semKitti.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/pointnet_train_all_FOV3000_60/dc/dc_lpSem_1in2_cube_up_dense_kitti.yaml"
             ]
         },
         {
@@ -61,7 +76,7 @@
             },
             "args": [
                 "--cfg",
-                "configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_cube_up_dense_kitti_semkitti.yaml"
+                "configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_cube_up_dense_semkitti.yaml"
             ]
         },
         {
@@ -78,7 +93,7 @@
                 "${workspaceFolder}/tools/main_dist.py", 
                 "--launcher", "pytorch", 
                 "--multiprocessing-distributed", 
-                "--cfg", "configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_cube_up_dense_kitti_semkitti.yaml"
+                "--cfg", "configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_cube_up_dense_semkitti.yaml"
             ]
         },
         {
@@ -93,41 +108,11 @@
             },
             "args": [
                 "--cfg",
-                "configs/pointnet_train_all_FOV3000_60/seg/seg_lp_1in2_cube_up_dense_kitti_semkitti.yaml"
+                "configs/pointnet_train_all_FOV3000_60/seg/seg_lp_1in2_cube_up_dense_semkitti.yaml"
             ]
         },
         {
-            "name": "VDC: main-dist",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/tools/main_dist.py",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--cfg",
-                "configs/pointnet_train_all_FOV3000_60/vdc/shortlist/vdc_snow1in10_wet_fog1in10_cubeF_upsample_FOV3000.yaml"
-            ]
-        },
-        {
-            "name": "VDC: linear probe",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/tools/linear_probe.py",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--cfg",
-                "configs/pointnet_train_all_FOV3000_60/dc_vdc/shortlist/linear_probe/dc_vdc_snow1in10_wet_fog1in10_cubeF_upsample_FOV3000.yaml"
-            ]
-        },
-        {
-            "name": "DC: linear probe-dist",
+            "name": "Seg: lp-dist",
             "type": "python",
             "request": "launch",
             "module": "torch.distributed.launch",
@@ -140,70 +125,42 @@
                 "${workspaceFolder}/tools/linear_probe.py", 
                 "--launcher", "pytorch", 
                 "--multiprocessing-distributed", 
-                "--cfg", "configs/point_within_lidar_dc_linear_probe.yaml"
-            ]
-        },
-        {
-            "name": "VDC: linear probe-dist",
-            "type": "python",
-            "request": "launch",
-            "module": "torch.distributed.launch",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [ "--nproc_per_node=1", 
-                "${workspaceFolder}/tools/linear_probe.py", 
-                "--launcher", "pytorch", 
-                "--multiprocessing-distributed", 
-                "--cfg", "configs/pointnet_train_all_FOV3000_60/vdc/shortlist/linear_probe/vdc_FOV3000.yaml"
+                "--cfg", "configs/pointnet_train_all_FOV3000_60/seg/seg_lp_1in2_cube_up_dense_semkitti.yaml"
             ]
         },
         // {
-        //     "name": "Snow_sim :Precompute",
+        //     "name": "precompute-FOV3000",
         //     "type": "python",
         //     "request": "launch",
-        //     "program": "${workspaceFolder}/lib/LiDAR_snow_sim/tools/snowfall/precompute.py",
+        //     "module": "lib.LiDAR_snow_sim.tools.snowfall.precompute",
         //     "console": "integratedTerminal",
         //     "cwd": "${workspaceFolder}",
-        //     "env": {
-        //         "PYTHONPATH": "${workspaceRoot}"
-        //     }
+        //     "args": ["--split", "train_clear_martin.txt", "--snowfall_rate_index", "-1", "--cluster"]
         // },
-        {
-            "name": "precompute-FOV3000",
-            "type": "python",
-            "request": "launch",
-            "module": "lib.LiDAR_snow_sim.tools.snowfall.precompute",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "args": ["--split", "train_clear_martin.txt", "--snowfall_rate_index", "-1", "--cluster"]
-        },
-        {
-            "name": "precompute-360",
-            "type": "python",
-            "request": "launch",
-            "module": "lib.LiDAR_snow_sim.tools.snowfall.precompute",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "args": ["--split", "train_clear_60_0.txt", "--snowfall_rate_index", "-1"]
-        },
-        {
-            "name": "pc_viewer",
-            "type": "python",
-            "request": "launch",
-            "module": "lib.LiDAR_snow_sim.tools.visual_utils.pc_viewer",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "name": "dror",
-            "type": "python",
-            "request": "launch",
-            "module": "lib.cadc_devkit.other.dror",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}"
-        },
+        // {
+        //     "name": "precompute-360",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "lib.LiDAR_snow_sim.tools.snowfall.precompute",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "args": ["--split", "train_clear_60_0.txt", "--snowfall_rate_index", "-1"]
+        // },
+        // {
+        //     "name": "pc_viewer",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "lib.LiDAR_snow_sim.tools.visual_utils.pc_viewer",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}"
+        // },
+        // {
+        //     "name": "dror",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "lib.cadc_devkit.other.dror",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}"
+        // },
     ]
 }
