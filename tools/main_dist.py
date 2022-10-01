@@ -45,7 +45,7 @@ parser.add_argument('--dist-url', default='tcp://127.0.0.1:29500', type=str,
                     help='url used to set up distributed training') #tc port
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
-parser.add_argument('--seed', default=1024, type=int,
+parser.add_argument('--seed', default=1000, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--local_rank', default=0, type=int,
                     help='local process id i.e. GPU id to use.') #local_rank = 0
