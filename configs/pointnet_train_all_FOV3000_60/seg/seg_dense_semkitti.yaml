@@ -67,10 +67,10 @@ optimizer:
   num_epochs: 201
   lr:
     name: "cosine"
-    base_lr: 0.15 #0.1 for linear_probe
+    base_lr: 0.12 #0.1 for linear_probe
 
 model:
-  name: "seg_dense_kitti_semkitti"
+  name: "seg_dense_semkitti"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/seg"
   model_input: ["points", "points_moco"]
   Lidar: True

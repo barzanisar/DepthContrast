@@ -309,7 +309,7 @@ class DenseKittiDataset(DepthContrastDataset):
             except:
                 pass
 
-        for point_path, label_path in zip(sem_kitti_points_datapath[:100], sem_kitti_labels_datapath[:100]):
+        for point_path, label_path in zip(sem_kitti_points_datapath, sem_kitti_labels_datapath):
             info = {'point_cloud': {'lidar_idx': point_path}, 'dataset': 'semantic_kitti', 'label_path': label_path}
             #TODO add annos for linear probe
             sem_kitti_infos.append(info)

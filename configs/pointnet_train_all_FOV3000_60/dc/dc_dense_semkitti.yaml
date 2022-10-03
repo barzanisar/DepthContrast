@@ -67,7 +67,7 @@ optimizer:
   num_epochs: 201
   lr:
     name: "cosine"
-    base_lr: 0.15 #0.1 for linear_probe
+    base_lr: 0.12 #0.1 for linear_probe
 
 model:
   name: "dc_dense_semkitti"
