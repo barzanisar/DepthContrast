@@ -20,7 +20,7 @@ WANDB:
   dir: '/DepthContrast/output'
 
 dataset:
-  BATCHSIZE_PER_REPLICA: 8
+  BATCHSIZE_PER_REPLICA: 14
   APPLY_WEATHER_AUG: True # False for linear probe
   DATASET_NAMES: [DenseKittiDataset]
   SEMANTIC_KITTI:
