@@ -1,4 +1,4 @@
-wb_extra_tags: ['pointnet', 'dense_semkitti', 'seg_contrast']
+wb_extra_tags: ['pointnet', 'dense_kitti', 'seg_contrast', 'weather_aug']
 resume: true
 linear_probe: false # True for linear probe
 cluster: True
@@ -21,13 +21,13 @@ WANDB:
 
 dataset:
   BATCHSIZE_PER_REPLICA: 14 #Change to 14
-  APPLY_WEATHER_AUG: False # False for linear probe
+  APPLY_WEATHER_AUG: True # False for linear probe
   DATASET_NAMES: [DenseKittiDataset]
-  SEMANTIC_KITTI:
-    train: [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10' ]
-    val: ['08']
+  # SEMANTIC_KITTI:
+  #   train: [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10' ]
+  #   val: ['08']
   INFO_PATHS: 
-    train: ['dense_infos_train_all_FOV3000_60.pkl'] #   'kitti_infos_all.pkl',
+    train: ['kitti_infos_all.pkl', 'dense_infos_train_all_FOV3000_60.pkl'] #    
     val: ['dense_infos_val_clear_FOV3000_15.pkl']
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
@@ -70,7 +70,7 @@ optimizer:
     base_lr: 0.12 #0.1 for linear_probe
 
 model:
-  name: "seg_dense_semkitti"
+  name: "seg_1in2_cube_up_dense_kitti"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/seg"
   model_input: ["points", "points_moco"]
   Lidar: True
@@ -86,3 +86,12 @@ loss:
     TEMPERATURE: 0.1
     NUM_NEGATIVES: 65536 #Waymo:65536, Dense_train_all_60+Kitti_trainvaltest: 21995, Dense_train_all_60: 7195 # has to be divisble by batch size or num voxels in each point cloud
     EMBEDDING_DIM: 128
+# Linear Probe
+# loss:
+#   name: "FocalLoss"
+#   args:
+#     num_classes: 1 #4 #1 #num_classes does not include background class i.e. [car, pedestrian]
+#     alpha: None #[0.6, 0.1, 0.1, 0.1, 0.1] if None, then class weights are calc as 1/class_freq
+#     gamma: 0
+#     reduction: 'mean'
+#     ignore_index: -100 # don't ignore any class if objects

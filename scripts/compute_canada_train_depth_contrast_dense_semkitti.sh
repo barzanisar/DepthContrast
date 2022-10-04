@@ -177,53 +177,53 @@ unzip -qq $DENSE_INFOS_DIR/snowfall_simulation_FOV_clustered.zip -d $TMP_DATA_DI
 
 echo "Done extracting dataset Dense infos"
 
-# Extract Kitti Dataset
-echo "Extracting Kitti data"
-TMP_DATA_DIR_KITTI=$SLURM_TMPDIR/kitti_data
+# # Extract Kitti Dataset
+# echo "Extracting Kitti data"
+# TMP_DATA_DIR_KITTI=$SLURM_TMPDIR/kitti_data
 
-echo "Unzipping $KITTI_DATA_DIR/data_object_calib.zip to $TMP_DATA_DIR_KITTI"
-unzip -qq $KITTI_DATA_DIR/data_object_calib.zip -d $TMP_DATA_DIR_KITTI
+# echo "Unzipping $KITTI_DATA_DIR/data_object_calib.zip to $TMP_DATA_DIR_KITTI"
+# unzip -qq $KITTI_DATA_DIR/data_object_calib.zip -d $TMP_DATA_DIR_KITTI
 
-echo "Unzipping $KITTI_DATA_DIR/data_object_velodyne.zip to $TMP_DATA_DIR_KITTI"
-unzip -qq $KITTI_DATA_DIR/data_object_velodyne.zip -d $TMP_DATA_DIR_KITTI
-
-if [ $CLUSTER == "true" ]
-then
-
-    echo "Unzipping $DENSE_DATA_DIR/kitti/training_clustered.zip to $TMP_DATA_DIR_KITTI"
-    unzip -qq $DENSE_DATA_DIR/kitti/training_clustered.zip -d $TMP_DATA_DIR_KITTI
-
-    echo "Unzipping $DENSE_DATA_DIR/kitti/testing_clustered.zip to $TMP_DATA_DIR_KITTI"
-    unzip -qq $DENSE_DATA_DIR/kitti/testing_clustered.zip -d $TMP_DATA_DIR_KITTI
-
-fi
-
-echo "Done extracting Kitti data"
-
-# Extract Kitti dataset infos
-echo "Extracting dataset Kitti infos"
-for file in $KITTI_INFOS_DIR/*.zip; do
-   echo "Unzipping $file to $TMP_DATA_DIR_KITTI"
-   unzip -qq $file -d $TMP_DATA_DIR_KITTI
-done
-echo "Done extracting dataset Kitti infos"
-
-# Extract Semantic Kitti Dataset
-# echo "Extracting Semantic Kitti data"
-# TMP_DATA_DIR_SEM_KITTI=$SLURM_TMPDIR/semantic_kitti_data
-
-# echo "Unzipping $DENSE_DATA_DIR/semantic_kitti/dataset.zip to $TMP_DATA_DIR_SEM_KITTI"
-# unzip -qq $DENSE_DATA_DIR/semantic_kitti/dataset.zip -d $TMP_DATA_DIR_SEM_KITTI
+# echo "Unzipping $KITTI_DATA_DIR/data_object_velodyne.zip to $TMP_DATA_DIR_KITTI"
+# unzip -qq $KITTI_DATA_DIR/data_object_velodyne.zip -d $TMP_DATA_DIR_KITTI
 
 # if [ $CLUSTER == "true" ]
 # then
 
-#    echo "Unzipping $DENSE_DATA_DIR/semantic_kitti/dataset_clustered.zip to $TMP_DATA_DIR_SEM_KITTI"
-#     unzip -qq $DENSE_DATA_DIR/semantic_kitti/dataset_clustered.zip -d $TMP_DATA_DIR_SEM_KITTI
+#     echo "Unzipping $DENSE_DATA_DIR/kitti/training_clustered.zip to $TMP_DATA_DIR_KITTI"
+#     unzip -qq $DENSE_DATA_DIR/kitti/training_clustered.zip -d $TMP_DATA_DIR_KITTI
+
+#     echo "Unzipping $DENSE_DATA_DIR/kitti/testing_clustered.zip to $TMP_DATA_DIR_KITTI"
+#     unzip -qq $DENSE_DATA_DIR/kitti/testing_clustered.zip -d $TMP_DATA_DIR_KITTI
 
 # fi
 
-# echo "Done extracting Semantic Kitti data"
+# echo "Done extracting Kitti data"
+
+# # Extract Kitti dataset infos
+# echo "Extracting dataset Kitti infos"
+# for file in $KITTI_INFOS_DIR/*.zip; do
+#    echo "Unzipping $file to $TMP_DATA_DIR_KITTI"
+#    unzip -qq $file -d $TMP_DATA_DIR_KITTI
+# done
+# echo "Done extracting dataset Kitti infos"
+
+# Extract Semantic Kitti Dataset
+echo "Extracting Semantic Kitti data"
+TMP_DATA_DIR_SEM_KITTI=$SLURM_TMPDIR/semantic_kitti_data
+
+echo "Unzipping $DENSE_DATA_DIR/semantic_kitti/dataset.zip to $TMP_DATA_DIR_SEM_KITTI"
+unzip -qq $DENSE_DATA_DIR/semantic_kitti/dataset.zip -d $TMP_DATA_DIR_SEM_KITTI
+
+if [ $CLUSTER == "true" ]
+then
+
+   echo "Unzipping $DENSE_DATA_DIR/semantic_kitti/dataset_clustered.zip to $TMP_DATA_DIR_SEM_KITTI"
+    unzip -qq $DENSE_DATA_DIR/semantic_kitti/dataset_clustered.zip -d $TMP_DATA_DIR_SEM_KITTI
+
+fi
+
+echo "Done extracting Kitti data"
 
 # Load Singularity
 module load StdEnv/2020 
@@ -263,12 +263,13 @@ singularity exec
 --bind $PROJ_DIR/scripts:/DepthContrast/scripts
 --bind $PROJ_DIR/utils:/DepthContrast/utils
 --bind $TMP_DATA_DIR_DENSE:/DepthContrast/data/dense
---bind $TMP_DATA_DIR_KITTI:/DepthContrast/data/kitti
+--bind $TMP_DATA_DIR_SEM_KITTI:/DepthContrast/data/semantic_kitti
 --bind $PROJ_DIR/data/dense/ImageSets:/DepthContrast/data/dense/ImageSets
 --bind $PROJ_DIR/lib:/DepthContrast/lib
 $DEPTH_CONTRAST_BINDS
 $SING_IMG
 "
+#--bind $TMP_DATA_DIR_KITTI:/DepthContrast/data/kitti
 
 TRAIN_CMD=$BASE_CMD
 if [ $LINEAR_PROBE == "true" ]
