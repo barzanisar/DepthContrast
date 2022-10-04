@@ -114,8 +114,8 @@ def main_worker(gpu, ngpus, args, cfg):
 
     # Define model
     model = main_utils.build_model(cfg['model'], cfg['cluster'], logger)
-    # if args.sync_bn and args.multiprocessing_distributed:
-    #     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    if args.sync_bn and args.multiprocessing_distributed:
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
     model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params=cfg['cluster'])
 
