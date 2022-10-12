@@ -18,7 +18,10 @@
 
 #Weather Ablations on SEG
 sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in10_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 19269 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in10_dense_kitti.yaml
-sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in10_upF_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 19369 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in10_upF_dense_kitti.yaml
+sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_upF_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 19169 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_upF_dense_kitti.yaml
+sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 19369 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_dense_kitti.yaml
+
+# sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in10_upF_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 19369 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in10_upF_dense_kitti.yaml
 # sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_upF_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 19169 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_upF_dense_kitti.yaml
 # sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_snow_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 19469 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_snow_dense_kitti.yaml
 # sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_fog_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --tcp_port 19569 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_fog_dense_kitti.yaml
