@@ -231,7 +231,11 @@ def main_worker(gpu, ngpus, args, cfg):
     else:
         checkpoints_to_eval.append(cfg['checkpoint'])
     
-    #highest_metric = -1
+    max_acc_best = (-1, 'None')
+    mean_acc_best = (-1, 'None')
+    max_miou_best = (-1, 'None')
+    mean_miou_best = (-1, 'None')
+
     for ckpt in checkpoints_to_eval:
         logger.add_line(f' Evaluating ckpt: {ckpt}')
         cfg['checkpoint'] = ckpt
@@ -242,6 +246,19 @@ def main_worker(gpu, ngpus, args, cfg):
         linear_probe_ckpt_dir.mkdir(parents=True, exist_ok=True)
         eval_dict = eval_one_ckpt(args, cfg, logger, tb_writter, linear_probe_dir = str(linear_probe_ckpt_dir), linear_probe_dataset=linear_probe_dataset)
         if eval_dict is not None:
+            if eval_dict['max_acc'] > max_acc_best[0]:
+                max_acc_best[0] = eval_dict['max_acc']
+                max_acc_best[1] = ckpt
+            if eval_dict['mean_acc'] > mean_acc_best[0]:
+                mean_acc_best[0] = eval_dict['mean_acc']
+                mean_acc_best[1] = ckpt
+            if eval_dict['max_mIou'] > max_miou_best[0]:
+                max_miou_best[0] = eval_dict['max_mIou']
+                max_miou_best[1] = ckpt
+            if eval_dict['mean_mIou'] > mean_miou_best[0]:
+                mean_miou_best[0] = eval_dict['mean_mIou']
+                mean_miou_best[1] = ckpt
+
             highest_metric = -1
             highest_metric = wandb_utils.summary(cfg, args, eval_dict, step=None, highest_metric=highest_metric) #step=int(eval_dict['base_model_epoch'])
 
@@ -250,6 +267,11 @@ def main_worker(gpu, ngpus, args, cfg):
             with open(ckpt_record_file, 'a') as f:
                 print('%s' % ckpt, file=f)
             logger.add_line(f'Ckpt {ckpt} has been evaluated')
+    
+    logger.add_line(f'max_acc_best: {max_acc_best}')
+    logger.add_line(f'mean_acc_best: {mean_acc_best}')
+    logger.add_line(f'max_miou_best: {max_miou_best}')
+    logger.add_line(f'mean_miou_best: {mean_miou_best}')
 
 
 
