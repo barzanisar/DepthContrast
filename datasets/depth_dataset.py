@@ -314,7 +314,13 @@ class DenseKittiDataset(DepthContrastDataset):
             #TODO add annos for linear probe
             sem_kitti_infos.append(info)
         
-        self.infos.extend(sem_kitti_infos)
+        if self.linear_probe:
+            # Only linear probe on 10% of sem kitti data to save time
+            perm_idx = np.random.permutation(len(sem_kitti_infos))
+            idx = perm_idx[:int(len(sem_kitti_infos)/10)]
+            self.infos.extend(np.array(sem_kitti_infos)[idx].tolist())
+        else:
+            self.infos.extend(sem_kitti_infos)
         
         
         # shuffle infos
@@ -351,14 +357,9 @@ class DenseKittiDataset(DepthContrastDataset):
 
         # shuffle infos
         perm_idx = np.random.permutation(len(dense_kitti_infos))
-        self.infos.extend(np.array(dense_kitti_infos)[perm_idx].tolist())
-        #self.infos.extend(dense_kitti_infos[:])
-
         # To work on a subset of dense_infos for debugging, 
-        # comment the line above and uncomment below
-        # perm = np.random.permutation(len(dense_infos))
-        # idx = perm[:int(len(dense_infos)/10)]
-        # self.dense_infos.extend(np.array(dense_infos)[idx].tolist())
+        #perm_idx = perm_idx[:int(len(dense_kitti_infos)/10)]
+        self.infos.extend(np.array(dense_kitti_infos)[perm_idx].tolist())
 
         if self.logger is not None:
             self.logger.add_line('Total skipped info %s' % num_skipped_infos)

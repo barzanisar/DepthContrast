@@ -7,11 +7,14 @@ class iouEval:
     # classes
     self.n_classes = n_classes
     self.accum_loss = []
-
-    # What to include and ignore from the means
-    self.ignore = torch.tensor(ignore).long()
-    self.include = torch.tensor(
-        [n for n in range(self.n_classes) if n not in self.ignore]).long()
+    if ignore is None or ignore < 0:
+      self.ignore = None
+      self.include = torch.tensor([n for n in range(self.n_classes)]).long()
+    else:
+      # What to include and ignore from the means
+      self.ignore = torch.tensor(ignore).long()
+      self.include = torch.tensor(
+          [n for n in range(self.n_classes) if n not in self.ignore]).long()
     print("[IOU EVAL] IGNORE: ", self.ignore)
     print("[IOU EVAL] INCLUDE: ", self.include)
 
@@ -59,7 +62,8 @@ class iouEval:
   def getStats(self):
     # remove fp from confusion on the ignore classes cols
     conf = self.conf_matrix.clone().double()
-    conf[:, self.ignore] = 0
+    if self.ignore is not None:
+      conf[:, self.ignore] = 0
 
     # get the clean stats
     tp = conf.diag()

@@ -74,7 +74,7 @@ class FocalLoss(nn.Module):
                 'Reduction must be one of: "mean", "sum", "none".')
 
         super().__init__()
-        self.num_classes = config['num_classes'] + 1
+        self.num_classes = config['num_classes']
         self.alpha = None if config['alpha'] == 'None' else config['alpha']
         self.gamma = config['gamma']
         self.ignore_index = config['ignore_index']

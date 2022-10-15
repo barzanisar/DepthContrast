@@ -326,7 +326,7 @@ def build_criterion(cfg, cluster, linear_probe, logger=None):
         if cfg['name'] == 'FocalLoss':
             criterion = criterions.__dict__['FocalLoss'](cfg['args'])
         else:
-            criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
+            criterion = torch.nn.CrossEntropyLoss(ignore_index=cfg['args']['ignore_index'])
     else:
         criterion = criterions.__dict__['NCELossMoco'](cfg['args'], cluster)
     

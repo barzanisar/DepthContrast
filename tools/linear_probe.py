@@ -17,26 +17,24 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
 
-#from torch.multiprocessing import Pool, Process, set_start_method
-# try:
-#      set_start_method('spawn')
-# except RuntimeError:
-#     print('ERROR: cant spawn')
-#     pass
-
 import torch.multiprocessing as mp
 import numpy as np
   
 import utils.logger
 from utils import main_utils, wandb_utils
 from models.trunks.mlp import MLP
+from utils.ioueval import iouEval
+from utils.data_map import LABELS
+import glob
+from pathlib import Path
+
 
 
 parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training in 3D')
 
 parser.add_argument('--cfg', type=str, default=None, help='specify the config for training')
 parser.add_argument('--quiet', action='store_true')
-
+parser.add_argument('--eval_all', action='store_true', default=False, help='whether to evaluate all checkpoints')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training') #remove, ws is total no. of gpus, NOT nodes!
 parser.add_argument('--rank', default=-1, type=int,
@@ -77,42 +75,19 @@ def main():
 
 
     if args.multiprocessing_distributed:
-        assert args.launcher in ['pytorch', 'slurm', 'fair']
-        if False: #args.launcher == 'fair'
-            num_nodes = int(os.environ['SLURM_NNODES'])
-            args.rank = int(os.environ['SLURM_NODEID'])
-            node0 = 'gra' + os.environ['SLURM_NODELIST'][4:8]
-            # print("=" * 30 + "   DDP   " + "=" * 30)
-            # print(f"node0 : {node0}")
-            # print(f"num_nodes : {num_nodes}")
-            args.dist_url = f"tcp://{node0}:1234" #'tcp://127.0.0.1:29500' "tcp://gra1154:29500"
-            ngpus_per_node = args.ngpus
-            args.world_size = ngpus_per_node * num_nodes #total number of gpus
-            mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, cfg))
-        else:
-            args.ngpus = torch.cuda.device_count()  # remove for fair
-            # print("=" * 30 + "   DDP   " + "=" * 30)
-            # print(f"args.ngpus : {args.ngpus}")
-            # print(f"args.local_rank : {args.local_rank}")
-            # print(f"args.launcher : {args.launcher}")
-            main_worker(args.local_rank, args.ngpus, args, cfg)
+        assert args.launcher  == 'pytorch'
+        args.ngpus = torch.cuda.device_count() 
+        main_worker(args.local_rank, args.ngpus, args, cfg)
     else:
-        args.ngpus = torch.cuda.device_count()  # remove for fair
+        args.ngpus = torch.cuda.device_count()
         # Simply call main_worker function
         main_worker(args.local_rank, args.ngpus, args, cfg)
-    
-def main_worker(gpu, ngpus, args, cfg):
-    args.local_rank = gpu
-    ngpus_per_node = ngpus
-    cfg['cluster'] = False
-    cfg['linear_probe'] = True
 
-    # Setup environment
-    args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
-    logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
-    wandb_utils.init(cfg, args, job_type='linear_probe')
-    ckp_manager_base_model = main_utils.CheckpointManager(model_dir.split('/linear_probe')[0] + '/train', logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
-    ckp_manager_linear = main_utils.CheckpointManager(model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
+def eval_one_ckpt(args, cfg, logger, tb_writter, linear_probe_dir, linear_probe_dataset=None):
+    #checkpoint_name = cfg['checkpoint'].split('.')[0]
+
+    ckp_manager_base_model = main_utils.CheckpointManager(linear_probe_dir.split(f'/linear_probe_{linear_probe_dataset}')[0] + '/train', logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
+    ckp_manager_linear = main_utils.CheckpointManager(linear_probe_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
 
     # Define model
     model = main_utils.build_model(cfg['model'], cfg['cluster'], logger=logger, linear_probe=True)
@@ -175,13 +150,11 @@ def main_worker(gpu, ngpus, args, cfg):
 
     ############################ TRAIN Linear classifier head #########################################
     test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
-    val_epoch_accuracy = -1
-    val_epoch_obj_accuracy = -1
+    val_accuracies = []
+    val_mIoUs = []
+    epochs = []
+    evaluator = iouEval(n_classes=cfg['loss']['args']['num_classes'], ignore=cfg['loss']['args']['ignore_index'])
     for epoch in range(start_epoch, end_epoch):
-        # if (epoch % cfg['ckpt_save_interval']) == 0:
-        #     #ckp_manager_linear.save(epoch, model=model, train_criterion=train_criterion, optimizer=optimizer, filename='checkpoint-ep{}.pth.tar'.format(epoch))
-        #     logger.add_line(f'Saved linear_probe checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
-
         if args.multiprocessing_distributed:
             train_loader.sampler.set_epoch(epoch)
             val_loader.sampler.set_epoch(epoch)
@@ -189,35 +162,104 @@ def main_worker(gpu, ngpus, args, cfg):
         # Train for one epoch
         logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
         logger.add_line('LR: {}'.format(scheduler.get_lr()))
-        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter)
+        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, evaluator)
         scheduler.step(epoch)
 
         # Validate one epoch
-        accuracy, obj_accuracy = run_phase('val', val_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter)
+        accuracy, m_iou= run_phase('val', val_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, evaluator)
 
-        #TODO
+        #Save linear probe ckpt
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
             ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
             logger.add_line(f'Saved linear_probe checkpoint for testing {ckp_manager_linear.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
-        if accuracy > val_epoch_accuracy:
-            logger.add_line('='*30 + 'VALIDATION ACCURACY INCREASED' + '='*30)
-            #ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion, filename='checkpoint-best-acc-ep{}.pth.tar'.format(epoch+1))
-            #logger.add_line(f'Saved Best linear_probe checkpoint checkpoint-best-acc-ep{epoch+1}.pth.tar after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
-            logger.add_line(f'Epoch {epoch}: Val Accuracy increased from {val_epoch_accuracy} to {accuracy}')
-            val_epoch_accuracy = accuracy
-        if obj_accuracy > val_epoch_obj_accuracy:
-            logger.add_line('='*30 + 'VALIDATION OBJECT ACCURACY INCREASED' + '='*30)
-            logger.add_line(f'Epoch {epoch}: Val Obj Accuracy increased from {val_epoch_obj_accuracy} to {obj_accuracy}')
-            val_epoch_obj_accuracy = obj_accuracy
+        
+        val_accuracies.append(accuracy)
+        val_mIoUs.append(m_iou)
+        epochs.append(epoch)
+
+    if len(val_accuracies):
+        max_acc_epoch = epochs[np.array(val_accuracies).argmax()]
+        eval_dict = {
+                    'base_model_epoch': base_model_epoch,
+                    'lp_max_acc_epoch': max_acc_epoch,
+                    'max_acc': np.array(val_accuracies).max(),
+                    'std_acc' : np.array(val_accuracies).std(),
+                    'mean_acc' : np.array(val_accuracies).mean(),
+                    'min_acc' : np.array(val_accuracies).min(),
+                    'max_mIou' : np.array(val_mIoUs).max(),
+                    'std_mIou' : np.array(val_mIoUs).std(),
+                    'mean_mIou' : np.array(val_mIoUs).mean(),
+                    'min_mIou' : np.array(val_mIoUs).min()
+                    }
+        return eval_dict
+    else:
+        return None
+    
+
+def main_worker(gpu, ngpus, args, cfg):
+    args.local_rank = gpu
+    ngpus_per_node = ngpus
+    cfg['cluster'] = False
+    cfg['linear_probe'] = True
+    linear_probe_dataset = 'semKitti' if 'SEMANTIC_KITTI' in cfg['dataset'] else 'dense'
+
+    # Setup environment
+    args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
+    logger, tb_writter, linear_probe_dir = main_utils.prep_environment(args, cfg, linear_probe_dataset=linear_probe_dataset)
+    
+    
+    checkpoints_to_eval = []
+    model_dir = Path(cfg['model']['model_dir']) / cfg['model']['name']
+    ckpt_dir = model_dir / 'train'
+    assert os.path.isdir(ckpt_dir) 
+    assert os.path.isdir(linear_probe_dir) 
+    # evaluated ckpt record
+    ckpt_record_file = Path(linear_probe_dir) / 'eval_list.txt'
+    with open(ckpt_record_file, 'a'):
+        pass
+    if args.eval_all or cfg['checkpoint'] == 'all':
+        ckpt_list = glob.glob(os.path.join(ckpt_dir, 'checkpoint*.pth.tar'))
+        ckpt_list.sort(key=os.path.getmtime)
+        evaluated_ckpt_list = [x.strip() for x in open(ckpt_record_file, 'r').readlines()]
+        if len(evaluated_ckpt_list) == 0:
+            checkpoints_to_eval = [x.split('/')[-1] for x in ckpt_list]
+        else:
+            for cur_ckpt in ckpt_list:
+                cur_ckpt_name = cur_ckpt.split('/')[-1]
+                if cur_ckpt_name not in evaluated_ckpt_list:
+                    checkpoints_to_eval.append(cur_ckpt_name)
+    else:
+        checkpoints_to_eval.append(cfg['checkpoint'])
+    
+    #highest_metric = -1
+    for ckpt in checkpoints_to_eval:
+        logger.add_line(f' Evaluating ckpt: {ckpt}')
+        cfg['checkpoint'] = ckpt
+        ckpt_name = ckpt.split('.')[0]
+        _, run = wandb_utils.reinit(cfg, args, job_type='linear_probe')
+
+        linear_probe_ckpt_dir = Path(linear_probe_dir) / ckpt_name
+        linear_probe_ckpt_dir.mkdir(parents=True, exist_ok=True)
+        eval_dict = eval_one_ckpt(args, cfg, logger, tb_writter, linear_probe_dir = str(linear_probe_ckpt_dir), linear_probe_dataset=linear_probe_dataset)
+        if eval_dict is not None:
+            highest_metric = -1
+            highest_metric = wandb_utils.summary(cfg, args, eval_dict, step=None, highest_metric=highest_metric) #step=int(eval_dict['base_model_epoch'])
+
+            run.finish()
+            # record this epoch which has been evaluated
+            with open(ckpt_record_file, 'a') as f:
+                print('%s' % ckpt, file=f)
+            logger.add_line(f'Ckpt {ckpt} has been evaluated')
 
 
-def class_stats(labels):
-    num_points = labels.view(-1).shape[0]
-    background_points_mask = labels == 0
-    car_mask = labels == 1
-    ped_mask = labels == 2
-    rv_mask = labels == 3
-    lv_mask = labels == 4
+
+def class_stats(y_gt):
+    num_points = y_gt.view(-1).shape[0]
+    background_points_mask = y_gt == 0
+    car_mask = y_gt == 1
+    ped_mask = y_gt == 2
+    rv_mask = y_gt == 3
+    lv_mask = y_gt == 4
     background_percent = background_points_mask.sum()/num_points
     car_percent = car_mask.sum()/num_points
     ped_percent = ped_mask.sum()/num_points
@@ -226,43 +268,43 @@ def class_stats(labels):
 
     print(f'bk: {background_percent}, car: {car_percent}, ped: {ped_percent}, rv:{rv_percent}, lv:{lv_percent}')
 
-def undersample_bk_class(output, labels):
-        background_points_mask = labels == 0
-        obj_points_mask = labels > 0
+def undersample_bk_class(output, y_gt):
+        background_points_mask = y_gt == 0
+        obj_points_mask = y_gt > 0
 
 
-        bk_labels = labels[background_points_mask]
+        bk_y_gt = y_gt[background_points_mask]
         bk_output = output[background_points_mask]
 
-        perm = torch.randperm(bk_labels.size(0))
+        perm = torch.randperm(bk_y_gt.size(0))
         idx = perm[:obj_points_mask.sum().item()]
-        downsampled_bk_labels = bk_labels[idx]
+        downsampled_bk_y_gt = bk_y_gt[idx]
         downsampled_bk_output = bk_output[idx]
 
-        new_labels = torch.cat((downsampled_bk_labels, labels[obj_points_mask]))
+        new_y_gt = torch.cat((downsampled_bk_y_gt, y_gt[obj_points_mask]))
         new_output = torch.cat((downsampled_bk_output, output[obj_points_mask]))
 
-        return new_output, new_labels
+        return new_output, new_y_gt
 
-def ignore_cyclist(output, labels):
-    noncyclist_mask = labels != 3
-    return output[noncyclist_mask], labels[noncyclist_mask]
+def ignore_cyclist(output, y_gt):
+    noncyclist_mask = y_gt != 3
+    return output[noncyclist_mask], y_gt[noncyclist_mask]
 
-def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter):
+def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter, evaluator=None):
     from utils import metrics_utils
-    #class_names = ['PassengerCar', 'Pedestrian', 'RidableVehicle']
     logger.add_line('\n{}: Epoch {}'.format(phase, epoch))
     batch_time = metrics_utils.AverageMeter('Batch Process Time', ':6.3f', window_size=100)
     data_time = metrics_utils.AverageMeter('Batch Load Time', ':6.3f', window_size=100)
     loss_meter = metrics_utils.AverageMeter('Loss', ':.3e')
-    accuracy_meter = metrics_utils.AverageMeter('Accuracy', ':.2f')
-    obj_recall_meter = metrics_utils.AverageMeter('Obj Accuracy', ':.2f')
-    obj_precision_meter = metrics_utils.AverageMeter('Obj Precision', ':.2f')
+    # accuracy_meter = metrics_utils.AverageMeter('Accuracy', ':.2f')
     
-    #IoU 
-    mIoU_meter = metrics_utils.AverageMeter('mIoU', ':.3f')    
+    # #IoU 
+    # mIoU_meter = metrics_utils.AverageMeter('mIoU', ':.3f')    
 
-    progress = utils.logger.ProgressMeter(len(loader), [loss_meter, accuracy_meter, obj_recall_meter, obj_precision_meter, mIoU_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
+    progress = utils.logger.ProgressMeter(len(loader), [loss_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
+
+    #Evaluator metrics:
+    eval_metrics_dict={}
 
     # switch to train mode
     model.train(phase == 'train')
@@ -271,19 +313,11 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     correct = 0
     total = 0
 
-    # Recall
-    correct_obj_points= 0
-    total_obj_points = 0
-
-    # Precision
-    correct_obj_points_predictions = 0
-    total_obj_points_predictions = 0
-
-    all_labels=[]
+    all_y_gt=[]
     all_preds=[]
+    num_classes = cfg['loss']['args']['num_classes']
     
     end = time.time()
-    device = args.local_rank if args.local_rank is not None else 0
     for i, sample in enumerate(loader):
         # measure data loading time
         data_time.update(time.time() - end) # Time to load one batch
@@ -295,24 +329,18 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             with torch.no_grad():
                 output_feat = model(sample)
         
+        if num_classes == 2:
+            # For background/foreground classes, undersample background class 
+            output, y_gt = undersample_bk_class(output_feat[0], sample['labels'])
+        else:
+            output = output_feat[0].view(-1, 20)
+            y_gt = sample['labels'].view(-1)
 
-        output = output_feat[0]
-        # # compute loss
-        # labels = main_utils.get_labels(sample['gt_boxes_lidar'], output_dict[0]['linear_probe_xyz'].detach().cpu().numpy(), cfg['dataset']['LABEL_TYPE']) #(8, 16384)
+
+        # Load y_gt to gpu:
+        y_gt = main_utils.recursive_copy_to_gpu(y_gt)
+        loss = criterion(output, y_gt)
         
-        # # Ignore ridable vehicle
-        # output, labels = ignore_cyclist(output, labels)
-
-        # Undersampling bk class from labels and output to have 1:1 ratio of bk:objects class
-        output, labels = undersample_bk_class(output, sample['labels'])
-
-        #Print class stats
-        #class_stats(labels)
-
-        # Load labels to gpu:
-        labels = main_utils.recursive_copy_to_gpu(labels)
-        loss = criterion(output, labels)
-        #loss = criterion(output.transpose(1,2), labels)
         loss_meter.update(loss.item(), output.size(0))
 
         # compute gradient and do SGD step during training
@@ -321,64 +349,61 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             loss.backward()
             optimizer.step()
 
-        # convert output probabilities to predicted class
-        pred = output.data.max(1, keepdim=True)[1] #pred_labels
-        pred = torch.squeeze(pred)
+        # convert output probabilities to predicted class 
+        pred = output.max(dim=1)[1] #pred_y 
 
         #Update progress
-        all_labels.append(labels.view(-1))
+        all_y_gt.append(y_gt.view(-1))
         all_preds.append(pred.view(-1))
+
+        # correct = pred.eq(y_gt).sum().item()
+        # correct /= y_gt.size(0)
+        # batch_acc = (correct * 100.)
+
+        if evaluator is not None:
+            evaluator.addBatch(pred.long().cpu().numpy(), y_gt.long().cpu().numpy())
+            evaluator.addLoss(loss.item())
+
     
         # compare predictions to true label
-        correct += np.sum(np.squeeze(pred.eq(labels)).cpu().numpy())
-        total += labels.size(0) #* labels.size(1)
-
-        #Obj accuracy or recall = num correctly pred gt obj points/ num total gt obj points
-        gt_obj_flag = labels>0
-        total_obj_points += gt_obj_flag.sum().item()
-        pred_obj = pred[gt_obj_flag]
-        labels_obj = labels[gt_obj_flag]
-        correct_obj_points += np.sum(np.squeeze(pred_obj.eq(labels_obj)).cpu().numpy())
-
-        # accuracy_meter.update(100. * correct/total)
-        # obj_recall_meter.update(100. * correct_obj_points / total_obj_points)
-
-        #Precision
-        pred_obj_flag = pred>0
-        total_obj_points_predictions += pred_obj_flag.sum().item()
-        obj_predictions = pred[pred_obj_flag]
-        labels_for_obj_predictions = labels[pred_obj_flag]
-        correct_obj_points_predictions += np.sum(np.squeeze(obj_predictions.eq(labels_for_obj_predictions)).cpu().numpy())
-
+        correct += np.sum(pred.eq(y_gt).cpu().numpy())
+        total += y_gt.size(0)
 
         # measure elapsed time
         batch_time.update(time.time() - end) # This is printed as Time # Time to train one batch
         end = time.time()
 
         # print to terminal and tensorboard
-        step = epoch * len(loader) + i #sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
         if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
             progress.display(i+1)
     
-    ignore_index = None
-    if cfg['loss']['args']['ignore_index'] == 0:
-        ignore_index=0
 
-    num_classes = cfg['loss']['args']['num_classes'] + 1
-    m_IoU, fw_IoU, IoU = main_utils.compute_IoU(torch.cat(all_preds).view(-1), torch.cat(all_labels).view(-1), num_classes = num_classes, ignore_index=ignore_index)
+    # Evaluator:
+    mean_iou, class_iou = evaluator.getIoU()
+    accuracy = 100. * evaluator.getacc()
+    mean_iou = mean_iou.item()
+    accuracy = accuracy.item()
+    eval_metrics_dict={f'{phase}/loss': evaluator.getloss(),
+                        f'{phase}/acc': accuracy,
+                        f'{phase}/mIoU': mean_iou}
 
-    accuracy = 100. * correct / total
-    obj_accuracy = 100. * correct_obj_points / total_obj_points
-    precision = 100. * correct_obj_points_predictions / total_obj_points_predictions
 
-    mIoU_meter.update(m_IoU)
-    accuracy_meter.update(accuracy)
-    obj_recall_meter.update(obj_accuracy)
-    obj_precision_meter.update(precision)
-    logger.add_line('\n %s Accuracy: %2d%% (%2d/%2d)' % (phase, accuracy, correct, total))
-    logger.add_line('\n %s Obj Recall: %2d%% (%2d/%2d)' % (phase, obj_accuracy, correct_obj_points, total_obj_points))
-    logger.add_line('\n %s Obj Precision: %2d%% (%2d/%2d)' % (phase, precision, correct_obj_points_predictions, total_obj_points_predictions))
-    logger.add_line(f'{phase} mIoU: {m_IoU}, IoU per class: {IoU}')
+    if num_classes > 2:
+        # per class iou
+        for class_num in range(class_iou.shape[0]):
+            eval_metrics_dict[f'{phase}/per_class_iou/{LABELS[class_num]}'] = class_iou[class_num].item()
+    else:
+        eval_metrics_dict[f'{phase}/per_class_iou/background'] = class_iou[0].item()
+        eval_metrics_dict[f'{phase}/per_class_iou/foreground'] = class_iou[1].item()
+
+
+
+    evaluator.reset()
+
+
+    logger.add_line(f'\n {phase} Accuracy: {accuracy}')
+    logger.add_line(f'{phase} mIoU: {mean_iou}, IoU per class: {class_iou}')
+
 
 
     # Sync metrics across all GPUs and print final averages
@@ -386,15 +411,10 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         progress.synchronize_meters(args.local_rank)
         progress.display(len(loader)*args.world_size)
 
-    metrics_dict = {'epoch': epoch, 'phase': phase}
-    if tb_writter is not None:
-        for meter in progress.meters:
-            tb_writter.add_scalar('{}-epoch/{}'.format(phase, meter.name), meter.avg, epoch)
-            metrics_dict[meter.name + f'--{phase}'] = meter.avg
 
-    wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary? how to log for train and val separatly?
+    wandb_utils.log(cfg, args, eval_metrics_dict, epoch)
 
-    return accuracy, obj_accuracy
+    return accuracy, mean_iou
 
 
 if __name__ == '__main__':
