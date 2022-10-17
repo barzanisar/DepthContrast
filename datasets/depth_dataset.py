@@ -256,17 +256,23 @@ class DenseKittiDataset(DepthContrastDataset):
         self.num_dense_features = 5 # [x,y,z,i,channel]
         if self.cluster:
             self.num_dense_features = 6 # [x,y,z,i,cluster_id]
+        
+        self.root_dense_path = self.root_path / 'data' / 'dense'
+        self.root_kitti_path = self.root_path / 'data' / 'kitti'
 
         # Dense
-        self.root_dense_path = self.root_path / 'data' / 'dense'
+        include_dense_infos = False
+        if self.cfg.get("INFO_PATHS", None) is not None:
+            for info_path in self.cfg["INFO_PATHS"][self.mode]:
+                if 'dense_infos' in info_path:
+                    include_dense_infos = True
 
-        self.sensor_type = self.cfg["SENSOR_TYPE"]
-        self.signal_type = self.cfg["SIGNAL_TYPE"]
-        self.dense_lidar_folder = f'lidar_{self.sensor_type}_{self.signal_type}_FOV_clustered_train_all_60' if self.cluster else f'lidar_{self.sensor_type}_{self.signal_type}'
-        self.dense_calib = self.get_dense_calib(self.sensor_type)
+        if include_dense_infos:
+            self.sensor_type = self.cfg["SENSOR_TYPE"]
+            self.signal_type = self.cfg["SIGNAL_TYPE"]
+            self.dense_lidar_folder = f'lidar_{self.sensor_type}_{self.signal_type}_FOV_clustered_train_all_60' if self.cluster else f'lidar_{self.sensor_type}_{self.signal_type}'
+            self.dense_calib = self.get_dense_calib(self.sensor_type)
         
-        # Kitti
-        self.root_kitti_path = self.root_path / 'data' / 'kitti'
 
         self.infos = []
         if self.cfg.get("INFO_PATHS", None) is not None:
