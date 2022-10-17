@@ -247,17 +247,13 @@ def main_worker(gpu, ngpus, args, cfg):
         eval_dict = eval_one_ckpt(args, cfg, logger, tb_writter, linear_probe_dir = str(linear_probe_ckpt_dir), linear_probe_dataset=linear_probe_dataset)
         if eval_dict is not None:
             if eval_dict['max_acc'] > max_acc_best[0]:
-                max_acc_best[0] = eval_dict['max_acc']
-                max_acc_best[1] = ckpt
+                max_acc_best = (eval_dict['max_acc'], ckpt)
             if eval_dict['mean_acc'] > mean_acc_best[0]:
-                mean_acc_best[0] = eval_dict['mean_acc']
-                mean_acc_best[1] = ckpt
+                mean_acc_best = (eval_dict['mean_acc'], ckpt)
             if eval_dict['max_mIou'] > max_miou_best[0]:
-                max_miou_best[0] = eval_dict['max_mIou']
-                max_miou_best[1] = ckpt
+                max_miou_best = (eval_dict['max_mIou'], ckpt)
             if eval_dict['mean_mIou'] > mean_miou_best[0]:
-                mean_miou_best[0] = eval_dict['mean_mIou']
-                mean_miou_best[1] = ckpt
+                mean_miou_best = (eval_dict['mean_mIou'], ckpt)
 
             highest_metric = -1
             highest_metric = wandb_utils.summary(cfg, args, eval_dict, step=None, highest_metric=highest_metric) #step=int(eval_dict['base_model_epoch'])
