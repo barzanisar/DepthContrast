@@ -1,12 +1,11 @@
 #!/bin/bash
-#SBATCH --time=24:00:00
-#SBATCH --job-name=DepthContrast-train
+#SBATCH --job-name=pretrain
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8             # CPU cores/threads
+#SBATCH --time=24:00:00
 #SBATCH --gres=gpu:2                # Number of GPUs (per node)
 #SBATCH --mem=200gb                   # memory per node
 #SBATCH --output=./output/log/%x-%j.out   # STDOUT
-#SBATCH --mail-type=ALL
-#SBATCH --array=1-3%1   # 4 is the number of jobs in the chain
 
 # die function
 die() { echo "$*" 1>&2 ; exit 1; }
