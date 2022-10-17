@@ -236,8 +236,10 @@ def main_worker(gpu, ngpus, args, cfg):
     max_miou_best = (-1, 'None')
     mean_miou_best = (-1, 'None')
 
+    logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
+    logger.add_line(f'{checkpoints_to_eval}')
     for ckpt in checkpoints_to_eval:
-        logger.add_line(f' Evaluating ckpt: {ckpt}')
+        logger.add_line('\n'+'='*30 + f'Evaluating ckpt: {ckpt}' +'='*30)
         cfg['checkpoint'] = ckpt
         ckpt_name = ckpt.split('.')[0]
         _, run = wandb_utils.reinit(cfg, args, job_type='linear_probe')
@@ -262,8 +264,9 @@ def main_worker(gpu, ngpus, args, cfg):
             # record this epoch which has been evaluated
             with open(ckpt_record_file, 'a') as f:
                 print('%s' % ckpt, file=f)
-            logger.add_line(f'Ckpt {ckpt} has been evaluated')
+            logger.add_line('\n'+'='*30 + f'Ckpt {ckpt} has been evaluated'+ '='*30)
     
+    logger.add_line('\n'+'='*30 + '     Summary     '+ '='*30)
     logger.add_line(f'max_acc_best: {max_acc_best}')
     logger.add_line(f'mean_acc_best: {mean_acc_best}')
     logger.add_line(f'max_miou_best: {max_miou_best}')
