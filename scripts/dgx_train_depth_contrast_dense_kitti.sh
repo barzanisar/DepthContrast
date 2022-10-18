@@ -171,13 +171,13 @@ singularity exec
 --bind $PROJ_DIR/models:/DepthContrast/models
 --bind $PROJ_DIR/scripts:/DepthContrast/scripts
 --bind $PROJ_DIR/utils:/DepthContrast/utils
---bind $PROJ_DIR/data/dense:/DepthContrast/data/dense
 --bind $PROJ_DIR/data/kitti:/DepthContrast/data/kitti
 --bind $PROJ_DIR/lib:/DepthContrast/lib
+$DENSE_BINDS
 $OPENPCDET_BINDS
 $SING_IMG
 "
-
+#--bind $PROJ_DIR/data/dense:/DepthContrast/data/dense
 TRAIN_CMD=$BASE_CMD
 if [ $LINEAR_PROBE == "true" ]
 then
