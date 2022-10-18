@@ -63,6 +63,9 @@ def test_dgx():
     a.cuda(0)
     print(a)
 
+    print(os.listdir('.'))
+    print(os.listdir('../'))
+
 def main():
     args = parser.parse_args()
     cfg = yaml.safe_load(open(args.cfg))
@@ -237,4 +240,4 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary?
 
 if __name__ == '__main__':
-    main()
+    test_dgx()

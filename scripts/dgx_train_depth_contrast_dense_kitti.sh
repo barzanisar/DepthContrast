@@ -140,18 +140,14 @@ DENSE_BINDS=""
 for entry in $(readlink $PROJ_DIR/data/dense/*)
 do
     name=$(basename $entry)
-    DENSE_BINDS+=" 
-    --bind $entry:/DepthContrast/data/dense/$name
-     "
+    DENSE_BINDS+=" --bind $entry:/DepthContrast/data/dense/$name"
 done
 
 KITTI_BINDS=""
 for entry in $(readlink $PROJ_DIR/data/kitti/*)
 do
     name=$(basename $entry)
-    KITTI_BINDS+=" 
-    --bind $entry:/DepthContrast/data/kitti/$name
-     "
+    KITTI_BINDS+=" --bind $entry:/DepthContrast/data/kitti/$name"
 done
 
 # Extra binds
