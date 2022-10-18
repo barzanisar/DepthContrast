@@ -66,6 +66,11 @@ def test_dgx():
     print(os.listdir('./data/dense'))
     print(os.listdir('./data/kitti'))
 
+    import glob
+    from pathlib import Path
+    calib_path = Path(glob.glob('./data/dense/calib_hdl64.txt'))
+    print('calib path ', calib_path.exists())
+
 def main():
     args = parser.parse_args()
     cfg = yaml.safe_load(open(args.cfg))
