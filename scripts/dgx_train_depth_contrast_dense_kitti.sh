@@ -125,19 +125,33 @@ module load StdEnv/2020
 module load singularity/3.6
 
 PROJ_DIR=$PWD
-DEPTH_CONTRAST_BINDS=""
+OPENPCDET_BINDS=""
 for entry in $PROJ_DIR/third_party/OpenPCDet/pcdet/*
 do
     name=$(basename $entry)
     if [ "$name" != "version.py" ] && [ "$name" != "ops" ]
     then
-        DEPTH_CONTRAST_BINDS+="--bind $entry:/DepthContrast/third_party/OpenPCDet/pcdet/$name
+        OPENPCDET_BINDS+="--bind $entry:/DepthContrast/third_party/OpenPCDet/pcdet/$name
 "
     fi
 done
 
+DENSE_BINDS=""
+for entry in $(readlink $PROJ_DIR/data/dense/*)
+do
+    name=$(basename $entry)
+    DENSE_BINDS+="--bind $entry:/DepthContrast/data/dense/$name"
+done
+
+KITTI_BINDS=""
+for entry in $(readlink $PROJ_DIR/data/kitti/*)
+do
+    name=$(basename $entry)
+    KITTI_BINDS+="--bind $entry:/DepthContrast/data/kitti/$name"
+done
+
 # Extra binds
-DEPTH_CONTRAST_BINDS+="
+OPENPCDET_BINDS+="
     --bind $PROJ_DIR/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_modules.py:/DepthContrast/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_modules.py
     --bind $PROJ_DIR/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_utils.py:/DepthContrast/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_utils.py
 "
@@ -160,7 +174,9 @@ singularity exec
 --bind $PROJ_DIR/data/dense:/DepthContrast/data/dense
 --bind $PROJ_DIR/data/kitti:/DepthContrast/data/kitti
 --bind $PROJ_DIR/lib:/DepthContrast/lib
-$DEPTH_CONTRAST_BINDS
+$OPENPCDET_BINDS
+$DENSE_BINDS
+$KITTI_BINDS
 $SING_IMG
 "
 
