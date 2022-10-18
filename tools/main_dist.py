@@ -237,4 +237,4 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary?
 
 if __name__ == '__main__':
-    test_dgx()
+    main()
