@@ -14,14 +14,13 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # main.py script parameters
 CFG_FILE=configs/point_within_lidar_vdc_linear_probe.yaml
 CLUSTER="false"
-DIST="true"
+DIST="false"
 LINEAR_PROBE="false"
 TCP_PORT=18888
 LAUNCHER='pytorch'
 
 # Additional parameters
 SING_IMG=/opt/singularity/depth_contrast_snow_sim.sif
-DIST=true
 WANDB_API_KEY=$WANDB_API_KEY
 WANDB_MODE='offline' #'dryrun'
 
