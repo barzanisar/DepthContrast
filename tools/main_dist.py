@@ -57,6 +57,11 @@ parser.add_argument('--multiprocessing-distributed', action='store_true', defaul
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
 
+def test_dgx():
+    a = torch.tensor(1)
+    print("Device count: ", torch.cuda.device_count())
+    a.cuda(0)
+    print(a)
 
 def main():
     args = parser.parse_args()
@@ -232,4 +237,4 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary?
 
 if __name__ == '__main__':
-    main()
+    test_dgx()
