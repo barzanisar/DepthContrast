@@ -63,8 +63,8 @@ def test_dgx():
     a.cuda(0)
     print(a)
 
-    print(os.listdir('.'))
-    print(os.listdir('../'))
+    print(os.listdir('./data/dense'))
+    print(os.listdir('./data/kitti'))
 
 def main():
     args = parser.parse_args()
