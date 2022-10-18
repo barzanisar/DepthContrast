@@ -175,8 +175,6 @@ singularity exec
 --bind $PROJ_DIR/data/kitti:/DepthContrast/data/kitti
 --bind $PROJ_DIR/lib:/DepthContrast/lib
 $OPENPCDET_BINDS
-$DENSE_BINDS
-$KITTI_BINDS
 $SING_IMG
 "
 
