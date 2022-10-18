@@ -68,7 +68,7 @@ def test_dgx():
 
     import glob
     from pathlib import Path
-    calib_path = Path(glob.glob('./data/dense/calib_hdl64.txt'))
+    calib_path = Path(glob.glob('./data/dense/calib_hdl64.txt')[0])
     print('calib path ', calib_path.exists())
 
 def main():
