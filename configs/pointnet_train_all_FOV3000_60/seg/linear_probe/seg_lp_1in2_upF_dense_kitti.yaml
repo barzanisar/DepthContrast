@@ -1,9 +1,9 @@
-wb_extra_tags: ['pointnet', 'dense_kitti', 'seg_contrast', 'weather_aug', 'linear_probe_SemKitti']
+wb_extra_tags: ['pointnet', 'dense_kitti', 'seg_contrast', 'weather_aug', 'linear_probe']
 resume: false
 linear_probe: True # True for linear probe
 cluster: False
 num_workers: 8
-checkpoint: 'all' #'all' 'checkpoint-ep330.pth.tar'
+checkpoint: 'all' #'checkpoint-ep200.pth.tar'
 
 log2tb: true
 log2wb: true
@@ -24,9 +24,9 @@ dataset:
   BATCHSIZE_PER_REPLICA: 16
   APPLY_WEATHER_AUG: False # False for linear probe
   DATASET_NAMES: [DenseKittiDataset]
-  SEMANTIC_KITTI:
-    train: ['00', '01', '02', '03', '04', '05', '06', '07', '09', '10' ] #
-    val: ['08']
+  INFO_PATHS: 
+    train: ['dense_infos_train_all_FOV3000_60.pkl']  
+    val: ['dense_infos_val_all_FOV3000_15.pkl']
   DATA_TYPE: points
   SENSOR_TYPE: 'hdl64'
   SIGNAL_TYPE: 'strongest'
@@ -43,19 +43,19 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 20
+  num_epochs: 10
   lr:
     name: "cosine"
     base_lr: 0.1 #0.1 for linear_probe
 
 model:
-  name: "seg_1in2_cube_up_dense_kitti"
+  name: "seg_1in2_upF_dense_kitti"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/seg"
   model_input: ["points"]
   Lidar: True
   VOX: False
   arch_point: "pointnet_msg"
-  linear_probe_dim: [128, 20] #[128, 20]
+  linear_probe_dim: [128, 2] #[128, 20]
   args_point:
     use_mlp: True
     mlp_dim: [128, 128, 128]
@@ -64,5 +64,12 @@ model:
 loss:
   name: "CrossEntropyLoss"
   args:
-    num_classes: 20 
-    ignore_index: 0 # don't ignore any class if objects
+    num_classes: 2 
+    ignore_index: -100 # don't ignore any class if objects
+  # name: "FocalLoss"
+  # args:
+  #   num_classes: 2 #num_classes includes background class i.e. [car, pedestrian]
+  #   alpha: None #[0.6, 0.1, 0.1, 0.1, 0.1] if None, then class weights are calc as 1/class_freq
+  #   gamma: 0
+  #   reduction: 'mean'
+  #   ignore_index: -100 # don't ignore any class if objects

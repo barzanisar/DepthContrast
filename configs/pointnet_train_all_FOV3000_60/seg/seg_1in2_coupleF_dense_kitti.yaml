@@ -10,7 +10,7 @@ log2wb: true
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 100 #print progress after processing every <freq> iters or batches
 ckpt_save_interval: 20
-save_ckpt_after_epochs: 100
+save_ckpt_after_epochs: 0
 
 WANDB:
   ENABLED: True 

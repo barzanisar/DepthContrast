@@ -1,0 +1,68 @@
+wb_extra_tags: ['pointnet', 'dense_kitti', 'seg_contrast', 'weather_aug', 'linear_probe']
+resume: false
+linear_probe: True # True for linear probe
+cluster: False
+num_workers: 8
+checkpoint: 'all' #'checkpoint-ep200.pth.tar'
+
+log2tb: true
+log2wb: true
+
+test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
+print_freq: 10 #print progress after processing every <freq> iters or batches
+ckpt_save_interval: 20
+save_ckpt_after_epochs: 180
+
+WANDB:
+  ENABLED: True 
+  PROJECT: DepthContrast_dense
+  ENTITY: trailab
+  SUMMARY_HIGHEST_METRIC: 'max_acc'
+  dir: '/DepthContrast/output'
+
+dataset:
+  BATCHSIZE_PER_REPLICA: 16
+  APPLY_WEATHER_AUG: False # False for linear probe
+  DATASET_NAMES: [DenseKittiDataset]
+  INFO_PATHS: 
+    train: ['dense_infos_train_all_FOV3000_60.pkl']  
+    val: ['dense_infos_val_all_FOV3000_15.pkl']
+  DATA_TYPE: points
+  SENSOR_TYPE: 'hdl64'
+  SIGNAL_TYPE: 'strongest'
+  Lidar: True
+  VOX: False
+  FOV_POINTS_ONLY: True
+  POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
+    - name: ToTensorLidar
+  COLLATE_FUNCTION: "point_moco_collator_linear_probe"
+  DROP_LAST: True
+
+optimizer:
+  name: "sgd"
+  weight_decay: 0.0001
+  momentum: 0.9
+  nesterov: True
+  num_epochs: 10
+  lr:
+    name: "cosine"
+    base_lr: 0.1 #0.1 for linear_probe
+
+model:
+  name: "seg_1in2_coupleF_dense_kitti"
+  model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/seg"
+  model_input: ["points"]
+  Lidar: True
+  VOX: False
+  arch_point: "pointnet_msg"
+  linear_probe_dim: [128, 2]
+  args_point:
+    use_mlp: True
+    mlp_dim: [128, 128, 128]
+
+# Linear Probe
+loss:
+  name: "CrossEntropyLoss"
+  args:
+    num_classes: 2 
+    ignore_index: -100 # don't ignore any class if objects
