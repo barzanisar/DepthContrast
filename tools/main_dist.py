@@ -68,8 +68,11 @@ def test_dgx():
 
     import glob
     from pathlib import Path
-    calib_path = Path(glob.glob('./data/dense/*')[0])
-    print('calib path ', calib_path.exists())
+    glob_path = glob.glob('./data/dense/*')[0]
+    calib_path = Path(glob_path)
+    print(f'calib path {calib_path.exists()} {str(calib_path)}')
+    print(f'calib path resolved {calib_path.resolve()}')
+    print('glob path ', os.path.exists(glob_path))
 
 def main():
     args = parser.parse_args()
