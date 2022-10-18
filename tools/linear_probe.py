@@ -84,8 +84,6 @@ def main():
         main_worker(args.local_rank, args.ngpus, args, cfg)
 
 def eval_one_ckpt(args, cfg, logger, tb_writter, linear_probe_dir, linear_probe_dataset=None):
-    #checkpoint_name = cfg['checkpoint'].split('.')[0]
-
     ckp_manager_base_model = main_utils.CheckpointManager(linear_probe_dir.split(f'/linear_probe_{linear_probe_dataset}')[0] + '/train', logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
     ckp_manager_linear = main_utils.CheckpointManager(linear_probe_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
 
@@ -102,7 +100,6 @@ def eval_one_ckpt(args, cfg, logger, tb_writter, linear_probe_dir, linear_probe_
     logger.add_line(f"Linear Probing Epoch {base_model_epoch-1}")
     # Delete moco encoder
     del model.trunk[1]
-    #print(model)
 
     # Freeze training for feature layers
     for param in model.parameters():
@@ -111,7 +108,7 @@ def eval_one_ckpt(args, cfg, logger, tb_writter, linear_probe_dir, linear_probe_
     # linear classifier
     model.trunk[0].head = MLP(cfg["model"]["linear_probe_dim"], use_dropout=len(cfg["model"]["linear_probe_dim"])>2)
 
-    # model To cuda #TODO remove unused params and set to False
+    # model To cuda
     model, args = main_utils.distribute_model_to_cuda(model, args)
 
     # Define criterion 
@@ -231,10 +228,6 @@ def main_worker(gpu, ngpus, args, cfg):
     else:
         checkpoints_to_eval.append(cfg['checkpoint'])
     
-    max_acc_best = (-1, 'None')
-    mean_acc_best = (-1, 'None')
-    max_miou_best = (-1, 'None')
-    mean_miou_best = (-1, 'None')
 
     logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
     logger.add_line(f'{checkpoints_to_eval}')
@@ -248,46 +241,17 @@ def main_worker(gpu, ngpus, args, cfg):
         linear_probe_ckpt_dir.mkdir(parents=True, exist_ok=True)
         eval_dict = eval_one_ckpt(args, cfg, logger, tb_writter, linear_probe_dir = str(linear_probe_ckpt_dir), linear_probe_dataset=linear_probe_dataset)
         if eval_dict is not None:
-            if eval_dict['max_acc'] > max_acc_best[0]:
-                max_acc_best = (eval_dict['max_acc'], ckpt)
-            if eval_dict['mean_acc'] > mean_acc_best[0]:
-                mean_acc_best = (eval_dict['mean_acc'], ckpt)
-            if eval_dict['max_mIou'] > max_miou_best[0]:
-                max_miou_best = (eval_dict['max_mIou'], ckpt)
-            if eval_dict['mean_mIou'] > mean_miou_best[0]:
-                mean_miou_best = (eval_dict['mean_mIou'], ckpt)
 
             highest_metric = -1
             highest_metric = wandb_utils.summary(cfg, args, eval_dict, step=None, highest_metric=highest_metric) #step=int(eval_dict['base_model_epoch'])
 
-            run.finish()
+            if run is not None:
+                run.finish()
             # record this epoch which has been evaluated
             with open(ckpt_record_file, 'a') as f:
                 print('%s' % ckpt, file=f)
             logger.add_line('\n'+'='*30 + f'Ckpt {ckpt} has been evaluated'+ '='*30)
-    
-    logger.add_line('\n'+'='*30 + '     Summary     '+ '='*30)
-    logger.add_line(f'max_acc_best: {max_acc_best}')
-    logger.add_line(f'mean_acc_best: {mean_acc_best}')
-    logger.add_line(f'max_miou_best: {max_miou_best}')
-    logger.add_line(f'mean_miou_best: {mean_miou_best}')
 
-
-
-def class_stats(y_gt):
-    num_points = y_gt.view(-1).shape[0]
-    background_points_mask = y_gt == 0
-    car_mask = y_gt == 1
-    ped_mask = y_gt == 2
-    rv_mask = y_gt == 3
-    lv_mask = y_gt == 4
-    background_percent = background_points_mask.sum()/num_points
-    car_percent = car_mask.sum()/num_points
-    ped_percent = ped_mask.sum()/num_points
-    rv_percent = rv_mask.sum()/num_points
-    lv_percent = lv_mask.sum()/num_points
-
-    print(f'bk: {background_percent}, car: {car_percent}, ped: {ped_percent}, rv:{rv_percent}, lv:{lv_percent}')
 
 def undersample_bk_class(output, y_gt):
         background_points_mask = y_gt == 0
@@ -307,21 +271,12 @@ def undersample_bk_class(output, y_gt):
 
         return new_output, new_y_gt
 
-def ignore_cyclist(output, y_gt):
-    noncyclist_mask = y_gt != 3
-    return output[noncyclist_mask], y_gt[noncyclist_mask]
-
 def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter, evaluator=None):
     from utils import metrics_utils
     logger.add_line('\n{}: Epoch {}'.format(phase, epoch))
     batch_time = metrics_utils.AverageMeter('Batch Process Time', ':6.3f', window_size=100)
     data_time = metrics_utils.AverageMeter('Batch Load Time', ':6.3f', window_size=100)
-    loss_meter = metrics_utils.AverageMeter('Loss', ':.3e')
-    # accuracy_meter = metrics_utils.AverageMeter('Accuracy', ':.2f')
-    
-    # #IoU 
-    # mIoU_meter = metrics_utils.AverageMeter('mIoU', ':.3f')    
-
+    loss_meter = metrics_utils.AverageMeter('Loss', ':.3e')   
     progress = utils.logger.ProgressMeter(len(loader), [loss_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
 
     #Evaluator metrics:
@@ -329,10 +284,6 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
     # switch to train mode
     model.train(phase == 'train')
-
-    #Accuracy
-    correct = 0
-    total = 0
 
     all_y_gt=[]
     all_preds=[]
@@ -377,18 +328,10 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         all_y_gt.append(y_gt.view(-1))
         all_preds.append(pred.view(-1))
 
-        # correct = pred.eq(y_gt).sum().item()
-        # correct /= y_gt.size(0)
-        # batch_acc = (correct * 100.)
-
         if evaluator is not None:
             evaluator.addBatch(pred.long().cpu().numpy(), y_gt.long().cpu().numpy())
             evaluator.addLoss(loss.item())
 
-    
-        # compare predictions to true label
-        correct += np.sum(pred.eq(y_gt).cpu().numpy())
-        total += y_gt.size(0)
 
         # measure elapsed time
         batch_time.update(time.time() - end) # This is printed as Time # Time to train one batch
