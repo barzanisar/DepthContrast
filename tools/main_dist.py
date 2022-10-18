@@ -58,7 +58,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true', defaul
                          'multi node data parallel training')
 
 def gpu_test():
-    print(torch.cuda.version)
+    print(torch.version.cuda)
 
     x= torch.randn(2, 4).cuda()
     y= torch.randn(4, 1).cuda()
