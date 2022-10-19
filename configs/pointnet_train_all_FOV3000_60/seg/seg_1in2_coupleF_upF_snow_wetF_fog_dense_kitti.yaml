@@ -33,9 +33,9 @@ dataset:
   Lidar: True
   VOX: False
   DROR: 0.45
-  UPSAMPLE: '1in1'
-  COUPLED: False
-  WET_SURFACE: '1in10' #'1in10'
+  # UPSAMPLE: '1in1'
+  # COUPLED: False
+  # WET_SURFACE: '1in10' #'1in10'
   SNOW: 'uniform_gunn_1in2' #'1in10'
   FOG_AUGMENTATION: 'CVL_1in2'
   FOG_NOISE_VARIANT: 'v2'
@@ -67,7 +67,7 @@ optimizer:
     base_lr: 0.12 #0.1 for linear_probe
 
 model:
-  name: "seg_1in2_coupleF_dense_kitti"
+  name: "seg_1in2_coupleF_upF_snow_wetF_fog_dense_kitti"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/seg"
   model_input: ["points", "points_moco"]
   Lidar: True
