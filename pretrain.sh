@@ -1,5 +1,9 @@
 # FOV3000
 
+# SEMANTIC-KITTI
+# without seg contrast original transforms and batch size 8 
+sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti-wo-syncbn --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_semkitti.sh --cluster --tcp_port 19369 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti.yaml
+
 # #Dense-Kitti-SemKitti-Pretrain
 
 #SegContrast
@@ -23,11 +27,11 @@
 
 #Weather Ablations on SEG
 #--gres=gpu:v100:4
-sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_fog_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19369 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_fog_dense_kitti.yaml
-sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_snow_wet_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19379 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_snow_wet_dense_kitti.yaml
-sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_snow_wet_fog_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19389 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_snow_wet_fog_dense_kitti.yaml
-sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_snow_wetF_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19399 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_snow_wetF_dense_kitti.yaml
-sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_snow_wetF_fog_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19329 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_snow_wetF_fog_dense_kitti.yaml
+# sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_fog_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19369 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_fog_dense_kitti.yaml
+# sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_snow_wet_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19379 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_snow_wet_dense_kitti.yaml
+# sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_snow_wet_fog_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19389 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_snow_wet_fog_dense_kitti.yaml
+# sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_snow_wetF_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19399 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_snow_wetF_dense_kitti.yaml
+# sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in2_coupleF_upF_snow_wetF_fog_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19329 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_coupleF_upF_snow_wetF_fog_dense_kitti.yaml
 
 
 # sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_1in10_dense_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti.sh --cluster --tcp_port 19269 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in10_dense_kitti.yaml

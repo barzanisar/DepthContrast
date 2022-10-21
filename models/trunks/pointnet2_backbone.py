@@ -21,6 +21,20 @@ sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
 
 from ops.pointnet2.pointnet2_batch import pointnet2_modules
 
+@torch.no_grad()
+def concat_all_gather(tensor):
+    """
+    Performs all_gather operation on the provided tensors.
+    *** Warning ***: torch.distributed.all_gather has no gradient.
+    """
+    tensors_gather = [torch.ones_like(tensor)
+                      for _ in range(torch.distributed.get_world_size())]
+    torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
+
+    output = torch.cat(tensors_gather, dim=0)
+    return output
+
+
 class PointNet2MSG(nn.Module):
     def __init__(self, use_mlp=False, mlp_dim=None, cluster=True, linear_probe = False):
         super().__init__()
@@ -87,15 +101,33 @@ class PointNet2MSG(nn.Module):
             self.use_mlp = True
             self.head = MLP(mlp_dim) # projection head
 
-        self.dout=nn.Dropout(p=0.3)
+        self.dout=nn.Dropout(p=0.4)
             
     def break_up_pc(self, pc):
         #batch_idx = pc[:, 0]
         xyz = pc[:, :, 0:3].contiguous()
         features = (pc[:, :, 3:].contiguous() if pc.size(-1) > 3 else None)
         return xyz, features
+    
+    @torch.no_grad()
+    def _batch_unshuffle_ddp(self, x, idx_unshuffle):
+        """
+        Undo batch shuffle.
+        *** Only support DistributedDataParallel (DDP) model. ***
+        """
+        # gather from all gpus
+        batch_size_this = x.shape[0]
+        x_gather = concat_all_gather(x)
+        batch_size_all = x_gather.shape[0]
+        
+        num_gpus = batch_size_all // batch_size_this
+        
+        # restored index for this gpu
+        gpu_idx = torch.distributed.get_rank()
+        idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
+        return x_gather[idx_this]
 
-    def forward(self, pointcloud: torch.cuda.FloatTensor, cluster_id=None):
+    def forward(self, pointcloud: torch.cuda.FloatTensor, cluster_id=None, idx_unshuffle=None):
         """
         Args:
             batch_dict:
@@ -129,6 +161,10 @@ class PointNet2MSG(nn.Module):
             assert l_features[i - 1].is_contiguous()
 
         point_features = l_features[0] #(B=8, 128, num points = 16384)    
+        
+        if torch.distributed.is_initialized() and idx_unshuffle is not None:
+            point_features = self._batch_unshuffle_ddp(point_features, idx_unshuffle)
+        
         out_feats = None
 
         if self.linear_probe:
@@ -147,13 +183,16 @@ class PointNet2MSG(nn.Module):
                             continue
 
                         seg_feats = pc_feats[:,cluster_labels_this_pc == segment_lbl] #(128, npoints in this seg)
-                        seg_feats = self.dout(seg_feats)
+                        seg_feats = self.dout(seg_feats) #zero some values in [128, num points in this cluster]
                         seg_feats = seg_feats.unsqueeze(0) #1,128, npoints in this seg
                         npoints = seg_feats.shape[-1]
-                        seg_max_feat = F.max_pool1d(seg_feats, npoints).squeeze(-1)
+                        seg_max_feat = F.max_pool1d(seg_feats, npoints).squeeze(-1) #[1, 128, npoints] -> [1, 128, 1] -> [1, 128]
                         batch_seg_feats.append(seg_max_feat)
                 
                 all_seg_feats = torch.vstack(batch_seg_feats) # num clusters x 128
+                if self.use_mlp:
+                    all_seg_feats = self.head(all_seg_feats) # num clusters x 128
+
                 out_feats = all_seg_feats
 
             else:
@@ -161,7 +200,7 @@ class PointNet2MSG(nn.Module):
                 # get one feature vector of dim 128 for the entire point cloud
                 feat = torch.squeeze(F.max_pool1d(point_features, nump)) # (8,128)
                 if self.use_mlp:
-                    feat = self.head(feat) #linear probe out (8=batch, 16384=npoints, 5=nclasses), #Dc out (8, 128)
+                    feat = self.head(feat)
                 out_feats = feat
 
 

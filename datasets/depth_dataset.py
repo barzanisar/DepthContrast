@@ -252,6 +252,7 @@ class DenseKittiDataset(DepthContrastDataset):
         super().__init__(cfg, linear_probe=linear_probe, mode=mode, logger=logger)
 
         self.cluster = cluster
+        self.multiply_i_by_255 = self.cfg.get("multiply_i_by_255", True)
 
         self.num_dense_features = 5 # [x,y,z,i,channel]
         if self.cluster:
@@ -392,7 +393,8 @@ class DenseKittiDataset(DepthContrastDataset):
         lidar_file = self.root_kitti_path / velo_parent_dir / 'velodyne' / ('%s.bin' % idx)
         assert lidar_file.exists(), f'{lidar_file} not found'
         pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
-        pc[:,3] = np.round(pc[:,3] * 255)
+        if self.multiply_i_by_255:
+            pc[:,3] = np.round(pc[:,3] * 255)
         if self.cluster:
             cluster_id_file = Path(str(lidar_file).replace(velo_parent_dir, f'{velo_parent_dir}_clustered'))
             assert cluster_id_file.exists(), f'{cluster_id_file} not found'
@@ -405,7 +407,8 @@ class DenseKittiDataset(DepthContrastDataset):
         lidar_file = Path(idx)
         assert lidar_file.exists(), f'{lidar_file} not found'
         pc = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
-        pc[:,3] = np.round(pc[:,3] * 255)
+        if self.multiply_i_by_255:
+            pc[:,3] = np.round(pc[:,3] * 255)
 
         if self.cluster:
             cluster_id_file = Path(idx.replace('dataset', 'dataset_clustered'))

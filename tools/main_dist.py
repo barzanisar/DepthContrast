@@ -139,8 +139,8 @@ def main_worker(gpu, ngpus, args, cfg):
 
     # Define model
     model = main_utils.build_model(cfg['model'], cfg['cluster'], logger)
-    if args.sync_bn and args.multiprocessing_distributed:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    # if args.sync_bn and args.multiprocessing_distributed:
+    #     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
     model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params=cfg['cluster'])
 
@@ -183,7 +183,7 @@ def main_worker(gpu, ngpus, args, cfg):
         # Train for one epoch
         logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
         logger.add_line('LR: {}'.format(scheduler.get_lr()))
-        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter)
+        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_lr())
         scheduler.step(epoch)
 
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
@@ -191,7 +191,7 @@ def main_worker(gpu, ngpus, args, cfg):
             logger.add_line(f'Saved checkpoint for testing {ckp_manager.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
 
 
-def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter):
+def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter, lr):
     from utils import metrics_utils
     logger.add_line('\n{}: Epoch {}'.format(phase, epoch))
     batch_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Process Time', ':6.3f', window_size=100)
@@ -248,13 +248,13 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         progress.synchronize_meters(args.local_rank)
         progress.display(len(loader)*args.world_size)
 
-    metrics_dict = {'epoch': epoch}
+    metrics_dict = {'epoch': epoch, 'lr': lr}
     if tb_writter is not None:
         for meter in progress.meters:
             tb_writter.add_scalar('{}-epoch/{}'.format(phase, meter.name), meter.avg, epoch)
             metrics_dict[meter.name +'-epoch'] = meter.avg
     
-    wandb_utils.log(cfg, args, metrics_dict, epoch) ### TODO: summary?
+    wandb_utils.log(cfg, args, metrics_dict, epoch)
 
 if __name__ == '__main__':
-    gpu_test()
+    main()
