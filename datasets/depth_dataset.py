@@ -130,8 +130,16 @@ class DepthContrastDataset(Dataset):
         if not self.linear_probe:
             points_moco = data_dict['data_moco']
         
-        # TODO: this doesn't yet handle the case where the length of datasets
-        # could be different.
+        if self.mode != 'train':
+            # mode == val for linear probe
+            assert self.linear_probe
+            cfg["POINT_TRANSFORMS"] = [{'name': 'ToTensorLidar'}]
+        else:
+            # mode == train 
+            for tf in cfg["POINT_TRANSFORMS"]:
+                if tf['name'] == 'SegContrastTransforms':
+                    tf['name'] = 'SegContrastLinearProbeTransforms' if self.linear_probe else 'SegContrastPretrainTransforms'
+
         if False: #cfg["DATA_TYPE"] == "point_vox":
             # Across format
             item = {"data": [], "vox": []}

@@ -33,8 +33,6 @@ parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training i
 
 parser.add_argument('--cfg', type=str, default=None, help='specify the config for training')
 parser.add_argument('--quiet', action='store_true')
-parser.add_argument('--sync_bn', action='store_true', default=True, help='whether to use sync bn')
-
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training') #remove, ws is total no. of gpus, NOT nodes!
 parser.add_argument('--rank', default=-1, type=int,
@@ -139,8 +137,9 @@ def main_worker(gpu, ngpus, args, cfg):
 
     # Define model
     model = main_utils.build_model(cfg['model'], cfg['cluster'], logger)
-    # if args.sync_bn and args.multiprocessing_distributed:
-    #     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    if cfg.get('sync_bn', False) and args.multiprocessing_distributed:
+        logger.add_line('='*30 + 'Sync Batch Normalization' + '='*30)
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
     model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params=cfg['cluster'])
 

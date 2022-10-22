@@ -1,4 +1,5 @@
 wb_extra_tags: ['pointnet', 'semkitti', 'seg_contrast']
+sync_bn: True
 resume: true
 linear_probe: false # True for linear probe
 cluster: True
@@ -68,7 +69,7 @@ optimizer:
     base_lr: 0.12 #0.1 for linear_probe
 
 model:
-  name: "seg_semkitti"
+  name: "seg_semkitti_syncbn"
   model_dir: "checkpoints/pointnetMSG_train_all_FOV3000_60/seg/semKitti"
   model_input: ["points", "points_moco"]
   Lidar: True
