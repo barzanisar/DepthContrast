@@ -9,6 +9,7 @@
 
 # #Dense-Kitti-SemKitti-Pretrain
 sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-12%1 --job-name=seg_dense_semkitti_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti_semkitti.sh --cluster --tcp_port 19569 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti_kitti.yaml
+sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-12%1 --job-name=seg_dense_semkitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_semkitti.sh --cluster --tcp_port 19469 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti.yaml
 
 #SegContrast
 #sbatch --time=10:00:00 --array=1-5%1 --job-name=seg_1in2_cube_up_dense_semkitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_semkitti.sh --cluster --tcp_port 18849 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_cube_up_dense_semkitti.yaml
