@@ -137,7 +137,7 @@ def main_worker(gpu, ngpus, args, cfg):
 
     # Define model
     model = main_utils.build_model(cfg['model'], cfg['cluster'], logger)
-    if cfg.get('sync_bn', False) and args.multiprocessing_distributed:
+    if args.multiprocessing_distributed: # cfg.get('sync_bn', False) and 
         logger.add_line('='*30 + 'Sync Batch Normalization' + '='*30)
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
