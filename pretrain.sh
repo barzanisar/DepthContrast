@@ -1,7 +1,6 @@
 # FOV3000
 
 # SEMANTIC-KITTI
-# using dc transforms and batch size 8, pdropout is 0.4, without sync norm
 sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti-all --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_semkitti.sh --cluster --tcp_port 19569 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti_all.yaml
 
 # sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_semkitti.sh --cluster --tcp_port 19569 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti_syncbn.yaml
@@ -11,12 +10,12 @@ sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti-al
 # sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti-segTransforms-b14 --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_semkitti.sh --cluster --tcp_port 19669 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti_segTransforms_b14.yaml
 
 # #Dense-Kitti-SemKitti-Pretrain
-sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-18%1 --job-name=seg_dense_semkitti_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti_semkitti.sh --cluster --tcp_port 19569 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti_kitti.yaml
-sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-6%1 --job-name=seg_dense_semkitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_semkitti.sh --cluster --tcp_port 19469 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti.yaml
+sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-20%1 --job-name=seg_dense_semkitti_kitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti_semkitti.sh --cluster --tcp_port 19569 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti_kitti.yaml
+sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-20%1 --job-name=seg_dense_semkitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_semkitti.sh --cluster --tcp_port 19469 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti.yaml
 
 #Weather
-sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-18%1 --job-name=seg_dense_semkitti_kitti_weather --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti_semkitti.sh --cluster --tcp_port 19669 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti_kitti_weather.yaml
-sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-15%1 --job-name=seg_dense_semkitti_weather --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_semkitti.sh --cluster --tcp_port 19869 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti_weather.yaml
+sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-20%1 --job-name=seg_dense_semkitti_kitti_weather --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_kitti_semkitti.sh --cluster --tcp_port 19669 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti_kitti_weather.yaml
+sbatch --time=05:00:00 --gres=gpu:t4:4 --array=1-20%1 --job-name=seg_dense_semkitti_weather --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_semkitti.sh --cluster --tcp_port 19869 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti_weather.yaml
 
 #SegContrast
 #sbatch --time=10:00:00 --array=1-5%1 --job-name=seg_1in2_cube_up_dense_semkitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_dense_semkitti.sh --cluster --tcp_port 18849 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/seg_1in2_cube_up_dense_semkitti.yaml

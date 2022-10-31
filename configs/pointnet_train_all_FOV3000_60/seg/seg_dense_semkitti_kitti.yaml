@@ -26,7 +26,7 @@ dataset:
   APPLY_WEATHER_AUG: False # False for linear probe
   DATASET_NAMES: [DenseKittiDataset]
   SEMANTIC_KITTI:
-    train: [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10' ]
+    train: [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10', '11', '12', '13', '14', '15', '16', '17', '19', '20', '21']
     val: ['08']
   INFO_PATHS: 
     train: ['kitti_infos_all.pkl', 'dense_infos_train_all_FOV3000_60.pkl'] #   
