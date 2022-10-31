@@ -2,6 +2,9 @@
 
 # SEMANTIC-KITTI
 # using dc transforms and batch size 8, pdropout is 0.4, without sync norm
+sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti-all --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_semkitti.sh --cluster --tcp_port 19569 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti_all.yaml
+
+# sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_semkitti.sh --cluster --tcp_port 19569 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti_syncbn.yaml
 # sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_semkitti.sh --cluster --tcp_port 19369 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti.yaml
 # sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti-segTransforms --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_semkitti.sh --cluster --tcp_port 19469 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti_segTransforms.yaml
 # sbatch --time=02:00:00 --gres=gpu:t4:4 --array=1-30%1 --job-name=seg_semkitti-syncbn --mail-user=barzanisar93@gmail.com scripts/compute_canada_train_depth_contrast_semkitti.sh --cluster --tcp_port 19569 --cfg_file configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti_syncbn.yaml

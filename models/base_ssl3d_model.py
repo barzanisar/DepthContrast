@@ -207,6 +207,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
         with torch.no_grad():
             self._momentum_update_key(target)  # update the key encoder
+            idx_unshuffle = None
             #shuffle for making use of BN
             if torch.distributed.is_initialized():
                 if "vox" not in input_key: 
