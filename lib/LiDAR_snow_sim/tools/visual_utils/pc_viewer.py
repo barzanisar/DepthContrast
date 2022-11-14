@@ -251,7 +251,7 @@ def test():
     b=1
 
 def cluster_semantic_kitti():
-    train_seq = [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10'] 
+    train_seq = ['11', '12', '13', '14', '15', '16', '17', '19', '20', '21' ] #'00', '01', '02', '03', '04', '05', '06', '07', '09', '10'
 
     for seq in train_seq:
         print(f'Processing Seq: {seq}')
@@ -269,7 +269,7 @@ def cluster_semantic_kitti():
 
             pc = np.fromfile(str(points_path), dtype=np.float32).reshape(-1, 4)
 
-            pc, num_clusters_found = clusterize_pcd(pc, 100, dist_thresh=0.25, eps=0.25)
+            pc, num_clusters_found = clusterize_pcd(pc, 100, dist_thresh=0.25, eps=0.2)
             #visualize_pcd_clusters(pc)
 
             if num_clusters_found > 1:
@@ -377,5 +377,5 @@ def cluster_adverse():
         # visualize_pcd_clusters(pc)
 
 if __name__ == '__main__':
-    cluster_kitti()
+    cluster_semantic_kitti()
    
