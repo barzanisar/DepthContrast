@@ -41,7 +41,7 @@ echo "Done extracting Semantic Kitti data"
 
 # Load Singularity
 module load StdEnv/2020 
-module load singularity/3.6
+module load singularity/3.7
 
 PROJ_DIR=$PWD
 DEPTH_CONTRAST_BINDS=""
