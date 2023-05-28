@@ -81,6 +81,21 @@
             ]
         },
         {
+            "name": "Seg: pretrain snow fog",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/main_dist.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/pointnet_train_all_FOV3000_60/seg/seg_dense_semkitti_kitti_weather.yaml"
+            ]
+        },
+        {
             "name": "Seg: pretrain-dist",
             "type": "python",
             "request": "launch",
