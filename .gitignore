@@ -1,0 +1,13 @@
+wandb/
+data/
+checkpoints/
+output/
+*.pyc
+.idea/
+.vscode/
+*.so
+*.o
+*.ninja
+third_party/pointnet2/build/
+*.egg
+*.egg-info
