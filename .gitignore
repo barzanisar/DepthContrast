@@ -11,3 +11,4 @@ output/
 third_party/pointnet2/build/
 *.egg
 *.egg-info
+lib/
