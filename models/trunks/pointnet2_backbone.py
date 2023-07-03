@@ -13,6 +13,7 @@ import sys
 import numpy as np
 
 from models.trunks.mlp import MLP
+from pcdet.ops.roipoint_pool3d import roipoint_pool3d_utils
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) #trunks
 ROOT_DIR = os.path.dirname(ROOT_DIR) #models
@@ -40,6 +41,7 @@ class PointNet2MSG(nn.Module):
         super().__init__()
         self.linear_probe = linear_probe
         self.cluster = cluster
+        self.bbox = True
         input_channels = 4
         
         self.SA_modules = nn.ModuleList()
@@ -102,6 +104,13 @@ class PointNet2MSG(nn.Module):
             self.head = MLP(mlp_dim) # projection head
 
         self.dout=nn.Dropout(p=0.4)
+
+        self.roipoint_pool3d_layer = roipoint_pool3d_utils.RoIPointPool3d(
+            num_sampled_points=512,
+            pool_extra_width=[0.0, 0.0 ,0.0]
+        )
+
+
             
     def break_up_pc(self, pc):
         #batch_idx = pc[:, 0]
@@ -127,6 +136,7 @@ class PointNet2MSG(nn.Module):
         idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
         return x_gather[idx_this]
 
+    
     def forward(self, pointcloud: torch.cuda.FloatTensor, cluster_id=None, idx_unshuffle=None):
         """
         Args:
@@ -194,7 +204,8 @@ class PointNet2MSG(nn.Module):
                     all_seg_feats = self.head(all_seg_feats) # num clusters x 128
 
                 out_feats = all_seg_feats
-
+            elif self.bbox:
+                b=1
             else:
                 nump = point_features.shape[-1] # 16384
                 # get one feature vector of dim 128 for the entire point cloud

@@ -52,9 +52,10 @@ class DepthContrastDataset(Dataset):
         self.cfg = cfg
         self.batchsize_per_replica = cfg["BATCHSIZE_PER_REPLICA"]
         self.dataset_names = cfg["DATASET_NAMES"] #TODO: is this needed?
-        self.root_path = (Path(__file__) / '../..').resolve() / '%s'.format(cfg["DATA_PATH"]) # DepthContrast
+        self.root_path = (Path(__file__) / '../..').resolve() / cfg["DATA_PATH"] # DepthContrast
         self.point_cloud_range = np.array(cfg["POINT_CLOUD_RANGE"], dtype=np.float32)
         self.class_names = cfg["CLASS_NAMES"]
+        self.used_num_point_features  = 4
 
         if "GT_SAMPLING" in self.cfg:
             self.db_sampler = database_sampler.DataBaseSampler(
@@ -65,28 +66,32 @@ class DepthContrastDataset(Dataset):
         )
         self.data_augmentor = data_augmentor.DataAugmentor(self.cfg["POINT_TRANSFORMS"]) if self.pretraining else None
 
+
         #### Add the voxelizer here
+        self.grid_size = None
+        self.voxel_size = None
+        self.depth_downsample_factor = None 
         if ("Lidar" in cfg) and cfg["VOX"]:
-            self.VOXEL_SIZE = [0.05, 0.05, 0.1] #[0.1, 0.1, 0.15]
+            self.voxel_size = [0.05, 0.05, 0.1] #[0.1, 0.1, 0.15]
 
             self.MAX_POINTS_PER_VOXEL = 5
             self.MAX_NUMBER_OF_VOXELS = 16000 #80000
             if SPCONV_VER == 1:
                 self.voxel_generator = VoxelGenerator(
-                    voxel_size=self.VOXEL_SIZE,
+                    voxel_size=self.voxel_size,
                     point_cloud_range=self.point_cloud_range,
                     max_num_points=self.MAX_POINTS_PER_VOXEL,
                     max_voxels=self.MAX_NUMBER_OF_VOXELS
                 )
             else:
                 self.voxel_generator = VoxelGenerator(
-                    vsize_xyz=self.VOXEL_SIZE,
+                    vsize_xyz=self.voxel_size,
                     coors_range_xyz=self.point_cloud_range,
                     num_point_features = 4,
                     max_num_points_per_voxel=self.MAX_POINTS_PER_VOXEL,
                     max_num_voxels=self.MAX_NUMBER_OF_VOXELS
                 )
-            grid_size = (self.point_cloud_range[3:6] - self.point_cloud_range[0:3]) / np.array(self.VOXEL_SIZE)
+            grid_size = (self.point_cloud_range[3:6] - self.point_cloud_range[0:3]) / np.array(self.voxel_size)
             self.grid_size = np.round(grid_size).astype(np.int64)
 
     def toVox(self, points):
@@ -107,9 +112,10 @@ class DepthContrastDataset(Dataset):
             data_dict['voxel_num_points'] = num_points # dim = num_voxels, gives num points in each voxel
             return data_dict
     
-    def prepare_data(self, data_dict, index):
+    def prepare_data(self, data_dict):
         
         cfg = self.cfg
+        # GT sampling
         if "GT_SAMPLING" in self.cfg:
             data_dict = self.db_sampler(data_dict)
 
@@ -117,10 +123,15 @@ class DepthContrastDataset(Dataset):
         gt_boxes_mask = np.array([n in self.class_names for n in data_dict['gt_names']], dtype=np.bool_)
         data_dict['gt_boxes'] = data_dict['gt_boxes'][gt_boxes_mask]
         data_dict['gt_names'] = data_dict['gt_names'][gt_boxes_mask]
+
+
+        # TODO: not needed, remove
         if 'gt_boxes2d' in data_dict:
             data_dict['gt_boxes2d'] = data_dict['gt_boxes2d'][gt_boxes_mask]
 
         if self.pretraining:
+
+            #Create different views / augmentation
             data_dict['points_moco'] = np.copy(data_dict["points"])
             data_dict['gt_boxes_moco'] = np.copy(data_dict["gt_boxes"])
             
@@ -136,7 +147,7 @@ class DepthContrastDataset(Dataset):
         if self.pretraining:
             data_dict['points_moco'] = data_processor.mask_points_outside_range(data_dict['points_moco'], self.point_cloud_range)
         
-        # sample points if point rcnn
+        # sample points if pointnet backbone
         if not cfg["VOX"]:
             data_dict['points'] = data_processor.sample_points(data_dict['points'], self.cfg["SAMPLE_NUM_POINTS"] )
             if self.pretraining:
@@ -148,45 +159,68 @@ class DepthContrastDataset(Dataset):
             if self.pretraining:
                 data_dict['points_moco'] = data_processor.shuffle_points(data_dict['points_moco'])
 
+        # Add class_index to gt boxes
+        gt_classes = np.array([self.class_names.index(n) + 1 for n in data_dict['gt_names']], dtype=np.int32)
+        gt_box_ids = np.array([i for i in range(data_dict['gt_boxes'].shape[0])], dtype=np.int32)
+
+        assert data_dict['gt_boxes'].shape == data_dict['gt_boxes_moco'].shape
+        #append class id as 8th entry in gt boxes
+        data_dict['gt_boxes'] = np.concatenate((data_dict['gt_boxes'], gt_classes.reshape(-1, 1).astype(np.float32)), axis=1)
+        data_dict['gt_boxes_idx'] = gt_box_ids #.reshape(-1, 1).astype(np.float32)
+
+        #append class id as 8th entry in gt boxes
+        data_dict['gt_boxes_moco'] = np.concatenate((data_dict['gt_boxes_moco'], gt_classes.reshape(-1, 1).astype(np.float32)), axis=1)
+        data_dict['gt_boxes_moco_idx'] = gt_box_ids #.reshape(-1, 1).astype(np.float32)
+
+
         # for per point fg,bg prediction
-        # remove both (in points and points_moco) gt boxes and their points if any is outside range or has less than 5 points
         if self.mode == 'train':
             mask1 = data_processor.mask_boxes_outside_range(data_dict['gt_boxes'], self.point_cloud_range)
             mask2 = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
-            mask = mask1 and mask2
+            # data_dict['valid_gt_boxes_mask'] = mask1 & mask2
+            data_dict['gt_boxes'] = data_dict['gt_boxes'][mask1 & mask2]
+            data_dict['gt_boxes_idx'] = data_dict['gt_boxes_idx'][mask1 & mask2]
             if self.pretraining:
                 mask3 = data_processor.mask_boxes_outside_range(data_dict['gt_boxes_moco'], self.point_cloud_range)
                 mask4 = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'])
-                mask = mask and mask3 and mask4
+                #data_dict['valid_gt_boxes_moco_mask'] = mask3 & mask4
+                data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][mask3 & mask4]
+                data_dict['gt_boxes_moco_idx'] = data_dict['gt_boxes_moco_idx'][mask3 & mask4]
+                #data_dict['valid_gt_boxes_both_views_mask'] = data_dict['valid_gt_boxes_mask'] & data_dict['valid_gt_boxes_moco_mask']
+                # mask = data_dict['valid_gt_boxes_mask'] and data_dict['valid_gt_boxes_moco_mask']
                 # remove object points from both views if masked (outside range or few points) in any one view
-                data_dict['points_moco'] = data_processor.remove_points_in_gt_boxes(data_dict['points_moco'], data_dict['gt_boxes_moco'][~mask])
-                data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][mask]
+                # data_dict['points_moco'] = data_processor.remove_points_in_gt_boxes(data_dict['points_moco'], data_dict['gt_boxes_moco'][~mask])
+                # data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][mask]
             
-            data_dict['points'] = data_processor.remove_points_in_gt_boxes(data_dict['points'], data_dict['gt_boxes'][~mask])
-            data_dict['gt_boxes'] = data_dict['gt_boxes'][mask]
-
-        # if vox then transform points to voxels else 
+            #data_dict['points'] = data_processor.remove_points_in_gt_boxes(data_dict['points'], data_dict['gt_boxes'][~mask])
+            # data_dict['gt_boxes'] = data_dict['gt_boxes'][mask]
+            # data_dict['gt_names'] = data_dict['gt_names'][mask]
+        common_obj_idx = list(set(data_dict['gt_boxes_idx']) & set(data_dict['gt_boxes_idx']))
+        assert len(common_obj_idx) > 0
+        # if vox then transform points to voxels else save points as tensor
         if cfg["VOX"]:
             vox_dict = self.toVox(data_dict["points"])
-            data_dict.update(vox_dict)
+            data_dict["data"] = [vox_dict]
 
             if self.pretraining:
                 vox_dict = self.toVox(data_dict["points_moco"])
-                data_dict.update(vox_dict)
-            #TODO: Delete 
-            # data_dict.pop('points')
-            # data_dict.pop('points_moco')
+                data_dict["data_moco"] = [vox_dict]
         else:
             #transform to tensor
-            data_dict['points'] = torch.tensor(data_dict['points']).float()
+            data_dict['data'] = [torch.tensor(data_dict.pop('points')).float()]
             if self.pretraining:
-                data_dict['points_moco'] = torch.tensor(data_dict['points_moco']).float()
+                data_dict['data_moco'] = [torch.tensor(data_dict.pop('points_moco')).float()]
 
         #TODO: delete unnecessary 
+        #TODO: Delete 
+        # data_dict.pop('points')
+        # if 'points_moco' in data_dict:
+        #     data_dict.pop('points_moco')
         if 'calib' in data_dict:
             data_dict.pop('calib')
         if 'road_plane' in data_dict:
             data_dict.pop('road_plane')
+
         return data_dict
 
     def __getitem__(self, idx):

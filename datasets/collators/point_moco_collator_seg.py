@@ -22,10 +22,10 @@ def point_moco_collator_seg(batch):
         points = np.asarray(data_point[i])
         points_moco = np.asarray(data_moco[i])
         cluster_pi = points[:,-1] # 16384
-        cluster__pj = points_moco[:,-1] # 16384
+        cluster_pj = points_moco[:,-1] # 16384
 
         # Set cluster id not present in both point clouds to -1
-        cluster_pi, cluster_pj = overlap_clusters(cluster_pi, cluster__pj, min_cluster_point=5)
+        cluster_pi, cluster_pj = overlap_clusters(cluster_pi, cluster_pj, min_cluster_point=5)
         pi_cluster.append(cluster_pi) #(8, 16384)
         pj_cluster.append(cluster_pj) #(8, 16384)
 

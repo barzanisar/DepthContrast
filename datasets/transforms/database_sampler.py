@@ -61,7 +61,7 @@ class DataBaseSampler(object):
                         filtered_infos.append(info)
 
                 if self.logger is not None:
-                    self.logger.info('Database filter by min points %s: %d => %d' %
+                    self.logger.add_line('Database filter by min points %s: %d => %d' %
                                      (name, len(db_infos[name]), len(filtered_infos)))
                 db_infos[name] = filtered_infos
 
@@ -107,9 +107,8 @@ class DataBaseSampler(object):
         return gt_boxes, mv_height
 
     def add_sampled_boxes_to_scene(self, data_dict, sampled_gt_boxes, total_valid_sampled_dict):
-        gt_boxes_mask = data_dict['gt_boxes_mask']
-        gt_boxes = data_dict['gt_boxes'][gt_boxes_mask] #remove gtboxes from classes we dont care about e.g. van etc
-        gt_names = data_dict['gt_names'][gt_boxes_mask]
+        gt_boxes = data_dict['gt_boxes']
+        gt_names = data_dict['gt_names']
         points = data_dict['points']
         if self.sampler_cfg.get('USE_ROAD_PLANE', False):
             sampled_gt_boxes, mv_height = self.put_boxes_on_road_planes(
@@ -185,5 +184,6 @@ class DataBaseSampler(object):
         if total_valid_sampled_dict.__len__() > 0:
             data_dict = self.add_sampled_boxes_to_scene(data_dict, sampled_gt_boxes, total_valid_sampled_dict)
 
-        data_dict.pop('gt_boxes_mask') # we dont need this anymore since data dict only contains car, pedestrian, cyclist boxes. Others were removed in add_sampledboxes func
+        if 'gt_boxes_mask' in data_dict:
+            data_dict.pop('gt_boxes_mask') # we dont need this anymore since data dict only contains car, pedestrian, cyclist boxes. Others were removed in add_sampledboxes func
         return data_dict

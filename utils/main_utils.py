@@ -72,18 +72,18 @@ def initialize_distributed_backend(args, ngpus_per_node):
             if args.dist_url == "env://" and args.rank == -1:
                 args.rank = int(os.environ["RANK"])
             # now they change arg.rank definition from rank of node to global rank of gpu
-            args.rank = args.rank * ngpus_per_node + args.local_rank
+            args.rank = args.rank * ngpus_per_node + args.local_rank # global rank of GPUS: 0,1,2,3,4,5,6,7,8
             dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                     world_size=args.world_size, rank=args.rank)
         elif args.launcher == 'slurm':
             if mp.get_start_method(allow_none=True) is None:
                 mp.set_start_method('spawn')
-            proc_id = int(os.environ['SLURM_PROCID']) # global rank
-            ntasks = int(os.environ['SLURM_NNODES']) * ngpus_per_node
+            proc_id = int(os.environ['SLURM_PROCID']) # global rank of GPUS: 0,1,2,3,4,5,6,7,8
+            ntasks = int(os.environ['SLURM_NNODES']) * ngpus_per_node # total num gpus i.e. world size
             node_list = os.environ['SLURM_NODELIST']
             assert ngpus_per_node == torch.cuda.device_count(), torch.cuda.device_count()
             num_gpus = torch.cuda.device_count()
-            torch.cuda.set_device(proc_id % num_gpus)
+            torch.cuda.set_device(proc_id % num_gpus) # if procid id 5 then set_device takes local gpu rank i.e. 1
             addr = subprocess.getoutput('scontrol show hostname {} | head -n 1'.format(node_list))
             print(f"node_list: {node_list}")
             print(f"addr: {addr}")
@@ -94,7 +94,7 @@ def initialize_distributed_backend(args, ngpus_per_node):
             os.environ['MASTER_ADDR'] = '127.0.0.1' #addr #'gra' + os.environ['SLURM_NODELIST'][4:8] #'127.0.0.1'#addr
             addr = os.environ['MASTER_ADDR']
             os.environ['WORLD_SIZE'] = str(ntasks)
-            os.environ['RANK'] = str(proc_id)
+            os.environ['RANK'] = str(proc_id) # global rank of GPUS: 0,1,2,3,4,5,6,7,8
             env_dict = {
                 key: os.environ[key]
                 for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE")
@@ -154,6 +154,19 @@ def write_ply_color(points, colors, out_filename):
         c = [int(x*255) for x in c]
         fout.write('%f %f %f %d %d %d\n' % (points[i,0],points[i,1],points[i,2],c[0],c[1],c[2]))
     fout.close()
+
+def load_data_to_gpu(batch_dict):
+    for key, val in batch_dict.items():
+        if not isinstance(val, np.ndarray):
+            continue
+        elif key in ['frame_id', 'metadata', 'calib', 'gt_boxes_idx', 'gt_boxes_moco_idx']:
+            continue
+        elif key in ['images']:
+            batch_dict[key] = kornia.image_to_tensor(val).float().cuda().contiguous()
+        elif key in ['image_shape']:
+            batch_dict[key] = torch.from_numpy(val).int().cuda()
+        else:
+            batch_dict[key] = torch.from_numpy(val).float().cuda()
 
 ### Recurisive copy to GPU
 def recursive_copy_to_gpu(value, non_blocking=True, max_depth=3, curr_depth=0):
@@ -247,9 +260,9 @@ def prep_environment(args, cfg, linear_probe_dataset=None):
     return logger, tb_writter, model_dir
 
 
-def build_model(cfg, cluster, logger=None, linear_probe=False):
+def build_model(cfg, cluster, dataset, logger=None, linear_probe=False):
     import models
-    return models.build_model(cfg, cluster, logger, linear_probe)
+    return models.build_model(cfg, cluster, dataset, logger, linear_probe)
 
 
 def distribute_model_to_cuda(models, args, find_unused_params=False):

@@ -31,7 +31,7 @@ WANDB_MODE='offline' #'dryrun'
 # Get last element in string and increment by 1
 NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"
 NUM_GPUS=$(($NUM_GPUS + 1))
-
+echo "$SLURM"
 # Usage info
 show_help() {
 echo "

@@ -66,6 +66,21 @@
         //     ]
         // },
         {
+            "name": "Waymo: pretrain",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/main_dist.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/waymo.yaml"
+            ]
+        },
+        {
             "name": "Seg: pretrain",
             "type": "python",
             "request": "launch",
@@ -105,11 +120,14 @@
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
             },
-            "args": [ "--nproc_per_node=1", 
-                "${workspaceFolder}/tools/main_dist.py", 
-                "--launcher", "pytorch", 
-                "--multiprocessing-distributed", 
-                "--cfg", "configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti_segTransforms.yaml"
+            "args": [
+                "--nproc_per_node=1",
+                "${workspaceFolder}/tools/main_dist.py",
+                "--launcher",
+                "pytorch",
+                "--multiprocessing-distributed",
+                "--cfg",
+                "configs/pointnet_train_all_FOV3000_60/seg/semKitti/seg_semkitti_segTransforms.yaml"
             ]
         },
         {
@@ -152,11 +170,14 @@
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
             },
-            "args": [ "--nproc_per_node=1", 
-                "${workspaceFolder}/tools/linear_probe.py", 
-                "--launcher", "pytorch", 
-                "--multiprocessing-distributed", 
-                "--cfg", "configs/pointnet_train_all_FOV3000_60/seg/seg_lpSem_1in2_cube_up_dense_kitti.yaml"
+            "args": [
+                "--nproc_per_node=1",
+                "${workspaceFolder}/tools/linear_probe.py",
+                "--launcher",
+                "pytorch",
+                "--multiprocessing-distributed",
+                "--cfg",
+                "configs/pointnet_train_all_FOV3000_60/seg/seg_lpSem_1in2_cube_up_dense_kitti.yaml"
             ]
         },
         // {

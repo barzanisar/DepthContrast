@@ -24,13 +24,13 @@ class WaymoDataset(DepthContrastDataset):
         self.include_waymo_data() # read tfrecords in sample_seq_list and then find its pkl in waymo_processed_data_10 and include the pkl infos in waymo infos
 
     def include_waymo_data(self):
-        self.logger.info('Loading Waymo dataset')
+        self.logger.add_line('Loading Waymo dataset')
 
         with open(self.infos_pkl_path, 'rb') as f:
             infos = pickle.load(f) # loads all infos
             self.infos.extend(infos[:]) # each info is one frame
 
-        self.logger.info('Total samples for Waymo dataset: %d' % (len(self.infos))) # total frames
+        self.logger.add_line('Total samples for Waymo dataset: %d' % (len(self.infos))) # total frames
     
     def get_lidar(self, sequence_name, sample_idx):
         lidar_file = self.data_path / sequence_name / ('%04d.npy' % sample_idx)
@@ -38,7 +38,7 @@ class WaymoDataset(DepthContrastDataset):
 
         points_all = point_features[:, 0:5] #points_all: x,y,z,i,elongation
         points_all[:, 3] = np.tanh(points_all[:, 3]) * 255.0  #TODO:
-        return points_all #only get xyzi,elongation
+        return points_all #only get xyzi
 
     
     def __len__(self):

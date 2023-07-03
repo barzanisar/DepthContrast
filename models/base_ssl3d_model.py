@@ -45,7 +45,7 @@ def concat_all_gather(tensor):
     return output
 
 class BaseSSLMultiInputOutputModel(nn.Module):
-    def __init__(self, model_config, cluster, logger, linear_probe=False):
+    def __init__(self, model_config, cluster, dataset, logger, linear_probe=False):
         """
         Class to implement a self-supervised model.
         The model is split into `trunk' that computes features.
@@ -57,49 +57,45 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         super().__init__()
         self.eval_mode = None  # this is just informational
         self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
-        self.trunk = self._get_trunk()
+        self.trunk = self._get_trunk(dataset)
         self.m = 0.999 ### Can be tuned momentum parameter for momentum update
         self.model_input = model_config["model_input"] #['points', 'points_moco']
         
-    def multi_input_with_head_mapping_forward(self, batch):
+    def multi_input_with_head_mapping_forward(self, batch_dict):
+        # all_outputs = []
+        # for input_idx in range(len(self.model_input)): #['points', 'points_moco']
+        #     input_key = self.model_input[input_idx]
+        #     if "moco" in input_key:
+        #         outputs = self._single_input_forward_MOCO(batch_dict['input_moco'], input_key, input_idx)
+        #     else:
+        #         outputs = self._single_input_forward(batch_dict['input'], input_key, input_idx)
+        #     all_outputs.append(outputs)
         all_outputs = []
-        for input_idx in range(len(self.model_input)): #['points', 'points_moco']
-            input_key = self.model_input[input_idx]
-            if "moco" in input_key:
-                outputs = self._single_input_forward_MOCO(batch[input_key], input_key, input_idx, batch.get(input_key + "_cluster", None))
-            else:
-                outputs = self._single_input_forward(batch[input_key], input_key, input_idx, batch.get(input_key + "_cluster", None))
-            all_outputs.append(outputs)
+
+        outputs = self._single_input_forward(batch_dict['input'], 0)
+        all_outputs.append(outputs)
+
+        outputs = self._single_input_forward_MOCO(batch_dict['input_moco'], 1)
+        all_outputs.append(outputs)
         return all_outputs
     
-    def _single_input_forward(self, batch, input_key, target, cluster_ids=None):
-        if "vox" not in input_key:
-            assert isinstance(batch, torch.Tensor)
+    def _single_input_forward(self, batch_dict, target):
+        # if "vox" not in input_key:
+        #     assert isinstance(batch_dict, torch.Tensor)
 
-        # if ('vox' in input_key) and ("Lidar" not in self.config):
-        #     points = batch
-        #     points_coords = points[0]
-        #     points_feats = points[1]
-
-        #     ### Invariant to even and odd coords
-        #     points_coords[:, 1:] += (torch.rand(3) * 100).type_as(points_coords)
-        #     points_feats = points_feats/255.0 - 0.5
-
-        #     batch = SparseTensor(points_feats, points_coords.float())
-
-        if ('vox' in input_key) and ("Lidar" in self.config):
-            # Copy to GPU
-            for key in batch:
-                batch[key] = main_utils.recursive_copy_to_gpu(
-                    batch[key], non_blocking=True
-                )
-        else:
-            # Copy to GPU
-            batch = main_utils.recursive_copy_to_gpu(
-                batch, non_blocking=True
-            )
+        # if ('vox' in input_key) and ("Lidar" in self.config):
+        #     Copy to GPU
+        #     for key in batch_dict:
+        #         batch_dict[key] = main_utils.recursive_copy_to_gpu(
+        #             batch_dict[key], non_blocking=True
+        #         )
+        # else:
+        #     # Copy to GPU
+        #     main_utils.load_data_to_gpu(batch_dict)
         
-        output = self.trunk[target](batch, cluster_ids)
+        main_utils.load_data_to_gpu(batch_dict)
+
+        output = self.trunk[target](batch_dict)
         return output
 
     @torch.no_grad()
@@ -191,19 +187,19 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     #     idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
     #     return x_gather[idx_this]
     
-    def _single_input_forward_MOCO(self, batch, input_key, target, cluster_ids=None):
-        if "vox" not in input_key:
-            assert isinstance(batch, torch.Tensor)
-        if ('vox' in input_key) and ("Lidar" not in self.config):
-            points = batch
-            points_coords = points[0]
-            points_feats = points[1]
+    def _single_input_forward_MOCO(self, batch_dict, target):
+        # if "vox" not in input_key:
+        #     assert isinstance(batch, torch.Tensor)
+        # if ('vox' in input_key) and ("Lidar" not in self.config):
+        #     points = batch
+        #     points_coords = points[0]
+        #     points_feats = points[1]
 
-            ### Invariant to even and odd coords
-            points_coords[:, 1:] += (torch.rand(3) * 100).type_as(points_coords)
-            points_feats = points_feats/255.0 - 0.5
-            ### If enable shuffle batch for vox, please comment out this line.
-            batch = SparseTensor(points_feats, points_coords.float())
+        #     ### Invariant to even and odd coords
+        #     points_coords[:, 1:] += (torch.rand(3) * 100).type_as(points_coords)
+        #     points_feats = points_feats/255.0 - 0.5
+        #     ### If enable shuffle batch for vox, please comment out this line.
+        #     batch = SparseTensor(points_feats, points_coords.float())
 
         with torch.no_grad():
             self._momentum_update_key(target)  # update the key encoder
@@ -211,57 +207,64 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             #shuffle for making use of BN
             if torch.distributed.is_initialized():
                 if "vox" not in input_key: 
-                    batch, idx_unshuffle = self._batch_shuffle_ddp(batch, vox=False)
-            else:
-                if ('vox' in input_key) and ("Lidar" not in self.config):
-                    batch = SparseTensor(points_feats, points_coords.float())
+                    batch_dict, idx_unshuffle = self._batch_shuffle_ddp(batch_dict, vox=False)
                 
             # Copy to GPU
-            if ("Lidar" in self.config) and ("vox" in input_key):
-                for key in batch:
-                    batch[key] = main_utils.recursive_copy_to_gpu(
-                        batch[key], non_blocking=True
-                    )
-            else:
-                batch = main_utils.recursive_copy_to_gpu(
-                    batch, non_blocking=True
-                )
-
-            output = self.trunk[target](batch, cluster_ids, idx_unshuffle)
-            # idx_unshuffle assumes that output features.shape[0] is 8 i.e. equal to number of pcs in the batch
-            # Not compatible with Voxelized DC!
-            # if torch.distributed.is_initialized():
-            #     if "vox" not in input_key:
-            #         if 'dc_feats' in feature_names:
-            #             output['dc_feats'] = [self._batch_unshuffle_ddp(output['dc_feats'], idx_unshuffle)]
-            #         if 'vdc_feats' in feature_names:
-            #             output['vdc_feats'] = [self._batch_unshuffle_ddp(output['vdc_feats'], idx_unshuffle)]
-            #         if self.linear_probe:
-            #             output['linear_probe_feats'] = [self._batch_unshuffle_ddp(output['linear_probe_feats'], idx_unshuffle)]
-            #     return output
+            # if ("Lidar" in self.config) and ("vox" in input_key):
+            #     for key in batch_dict:
+            #         batch_dict[key] = main_utils.recursive_copy_to_gpu(
+            #             batch_dict[key], non_blocking=True
+            #         )
             # else:
-            #     return output
+            #     batch_dict = main_utils.recursive_copy_to_gpu(
+            #         batch_dict, non_blocking=True
+            #     )
+            main_utils.load_data_to_gpu(batch_dict)
+            
+            if idx_unshuffle is not None:
+                batch_dict["idx_unshuffle"] = idx_unshuffle
+            
+            output = self.trunk[target](batch_dict)
+            
+            batch_dict.pop('idx_unshuffle', None)
             return output
 
-    def forward(self, batch):
-        return self.multi_input_with_head_mapping_forward(batch)
+    def forward(self, batch_dict):
+        return self.multi_input_with_head_mapping_forward(batch_dict)
 
-    def _get_trunk(self):
+    def _get_trunk(self, dataset):
         import models.trunks as models
         trunks = torch.nn.ModuleList()
-        if 'arch_point' in self.config:
-            assert self.config['arch_point'] in models.TRUNKS, 'Unknown model architecture'
-            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], cluster=self.cluster, linear_probe = self.linear_probe))
-            trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], cluster=self.cluster, linear_probe = self.linear_probe))
-        if 'arch_vox' in self.config:
-            assert self.config['arch_vox'] in models.TRUNKS, 'Unknown model architecture'
-            trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))
-            trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))
+        # if 'arch_point' in self.config:
+        #     assert self.config['arch_point'] in models.TRUNKS, 'Unknown model architecture'
+        #     trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], cluster=self.cluster, linear_probe = self.linear_probe))
+        #     trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], cluster=self.cluster, linear_probe = self.linear_probe))
+        # if 'arch_vox' in self.config:
+        #     assert self.config['arch_vox'] in models.TRUNKS, 'Unknown model architecture'
+        #     trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))
+        #     trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))
 
-        for numh in range(len(trunks)//2):
-            for param_q, param_k in zip(trunks[numh*2].parameters(), trunks[numh*2+1].parameters()):
-                param_k.data.copy_(param_q.data)  # initialize
-                param_k.requires_grad = False  # not update by gradient
+        trunks.append(models.build_network(model_cfg=self.config["MODEL"], num_class=len(dataset.class_names), dataset=dataset))
+        trunks.append(models.build_network(model_cfg=self.config["MODEL_MOCO"], num_class=len(dataset.class_names), dataset=dataset))
+
+        # named_params_q = trunks[0].named_parameters()
+        # named_params_k = trunks[1].named_parameters()
+
+        # # TODO: test
+        # for name, param in named_params_q:
+        #     if 'backbone3d.' in name:
+        #         named_params_k[name].copy_(param)
+        #         named_params_k[name].requires_grad = False
+        
+        for param_q, param_k in zip(trunks[0].parameters(), trunks[1].parameters()):
+            param_k.data.copy_(param_q.data)  # initialize
+            param_k.requires_grad = False  # not update by gradient
+
+
+        # for numh in range(len(trunks)//2):
+        #     for param_q, param_k in zip(trunks[numh*2].parameters(), trunks[numh*2+1].parameters()):
+        #         param_k.data.copy_(param_q.data)  # initialize
+        #         param_k.requires_grad = False  # not update by gradient
 
         # logger = self.logger
         # for model in trunks:
@@ -286,115 +289,115 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         #             """
         return trunks
 
-    def _print_state_dict_shapes(self, state_dict):
-        logging.info("Model state_dict:")
-        for param_tensor in state_dict.keys():
-            logging.info(f"{param_tensor}:\t{state_dict[param_tensor].size()}")
+    # def _print_state_dict_shapes(self, state_dict):
+    #     logging.info("Model state_dict:")
+    #     for param_tensor in state_dict.keys():
+    #         logging.info(f"{param_tensor}:\t{state_dict[param_tensor].size()}")
 
-    def _print_loaded_dict_info(self, state):
-        # get the model state dict original
-        model_state_dict = {}
-        if "," in self.config.TRUNK.NAME:
-            trunk_state_dict, heads_state_dict = (
-                self.trunk.state_dict(),
-                self.heads.state_dict(),
-            )
-        else:
-            trunk_state_dict, heads_state_dict = (
-                self.trunk.state_dict(),
-                self.heads.state_dict(),
-            )
-        model_state_dict.update(trunk_state_dict)
-        model_state_dict.update(heads_state_dict)
+    # def _print_loaded_dict_info(self, state):
+    #     # get the model state dict original
+    #     model_state_dict = {}
+    #     if "," in self.config.TRUNK.NAME:
+    #         trunk_state_dict, heads_state_dict = (
+    #             self.trunk.state_dict(),
+    #             self.heads.state_dict(),
+    #         )
+    #     else:
+    #         trunk_state_dict, heads_state_dict = (
+    #             self.trunk.state_dict(),
+    #             self.heads.state_dict(),
+    #         )
+    #     model_state_dict.update(trunk_state_dict)
+    #     model_state_dict.update(heads_state_dict)
 
-        # get the checkpoint state dict
-        checkpoint_state_dict = {}
-        checkpoint_state_dict.update(state["trunk"])
-        checkpoint_state_dict.update(state["heads"])
+    #     # get the checkpoint state dict
+    #     checkpoint_state_dict = {}
+    #     checkpoint_state_dict.update(state["trunk"])
+    #     checkpoint_state_dict.update(state["heads"])
 
-        # now we compare the state dict and print information
-        not_found, extra_layers = [], []
-        max_len_model = max(len(key) for key in model_state_dict.keys())
-        for layername in model_state_dict.keys():
-            if layername in checkpoint_state_dict:
-                logging.info(
-                    f"Loaded: {layername: <{max_len_model}} of "
-                    f"shape: {model_state_dict[layername].size()} from checkpoint"
-                )
-            else:
-                not_found.append(layername)
-                logging.info(f"Not found:\t\t{layername}, not initialized")
-        for layername in checkpoint_state_dict.keys():
-            if layername not in model_state_dict:
-                extra_layers.append(layername)
-        logging.info(f"Extra layers not loaded from checkpoint:\n {extra_layers}")
+    #     # now we compare the state dict and print information
+    #     not_found, extra_layers = [], []
+    #     max_len_model = max(len(key) for key in model_state_dict.keys())
+    #     for layername in model_state_dict.keys():
+    #         if layername in checkpoint_state_dict:
+    #             logging.info(
+    #                 f"Loaded: {layername: <{max_len_model}} of "
+    #                 f"shape: {model_state_dict[layername].size()} from checkpoint"
+    #             )
+    #         else:
+    #             not_found.append(layername)
+    #             logging.info(f"Not found:\t\t{layername}, not initialized")
+    #     for layername in checkpoint_state_dict.keys():
+    #         if layername not in model_state_dict:
+    #             extra_layers.append(layername)
+    #     logging.info(f"Extra layers not loaded from checkpoint:\n {extra_layers}")
 
-    def get_optimizer_params(self):
-        regularized_params, unregularized_params = [], []
-        conv_types = (nn.Conv1d, nn.Conv2d, nn.Conv3d)
-        bn_types = (
-            nn.BatchNorm1d,
-            nn.BatchNorm2d,
-            nn.BatchNorm3d,
-            nn.SyncBatchNorm,
-            apex.parallel.SyncBatchNorm,
-        )
-        for module in self.modules():
-            if isinstance(module, nn.Linear) or isinstance(module, conv_types):
-                regularized_params.append(module.weight)
-                if module.bias is not None:
-                    if self.optimizer_config["regularize_bias"]:
-                        regularized_params.append(module.bias)
-                    else:
-                        unregularized_params.append(module.bias)
-            elif isinstance(module, bn_types):
-                if module.weight is not None:
-                    if self.optimizer_config["regularize_bn"]:
-                        regularized_params.append(module.weight)
-                    else:
-                        unregularized_params.append(module.weight)
-                if module.bias is not None:
-                    if (
-                        self.optimizer_config["regularize_bn"]
-                        and self.optimizer_config["regularize_bias"]
-                    ):
-                        regularized_params.append(module.bias)
-                    else:
-                        unregularized_params.append(module.bias)
-            elif len(list(module.children())) >= 0:
-                # for any other layers not bn_types, conv_types or nn.Linear, if
-                # the layers are the leaf nodes and have parameters, we regularize
-                # them. Similarly, if non-leaf nodes but have parameters, regularize
-                # them (set recurse=False)
-                for params in module.parameters(recurse=False):
-                    regularized_params.append(params)
+    # def get_optimizer_params(self):
+    #     regularized_params, unregularized_params = [], []
+    #     conv_types = (nn.Conv1d, nn.Conv2d, nn.Conv3d)
+    #     bn_types = (
+    #         nn.BatchNorm1d,
+    #         nn.BatchNorm2d,
+    #         nn.BatchNorm3d,
+    #         nn.SyncBatchNorm,
+    #         apex.parallel.SyncBatchNorm,
+    #     )
+    #     for module in self.modules():
+    #         if isinstance(module, nn.Linear) or isinstance(module, conv_types):
+    #             regularized_params.append(module.weight)
+    #             if module.bias is not None:
+    #                 if self.optimizer_config["regularize_bias"]:
+    #                     regularized_params.append(module.bias)
+    #                 else:
+    #                     unregularized_params.append(module.bias)
+    #         elif isinstance(module, bn_types):
+    #             if module.weight is not None:
+    #                 if self.optimizer_config["regularize_bn"]:
+    #                     regularized_params.append(module.weight)
+    #                 else:
+    #                     unregularized_params.append(module.weight)
+    #             if module.bias is not None:
+    #                 if (
+    #                     self.optimizer_config["regularize_bn"]
+    #                     and self.optimizer_config["regularize_bias"]
+    #                 ):
+    #                     regularized_params.append(module.bias)
+    #                 else:
+    #                     unregularized_params.append(module.bias)
+    #         elif len(list(module.children())) >= 0:
+    #             # for any other layers not bn_types, conv_types or nn.Linear, if
+    #             # the layers are the leaf nodes and have parameters, we regularize
+    #             # them. Similarly, if non-leaf nodes but have parameters, regularize
+    #             # them (set recurse=False)
+    #             for params in module.parameters(recurse=False):
+    #                 regularized_params.append(params)
 
-        non_trainable_params = []
-        for name, param in self.named_parameters():
-            if name in cfg.MODEL.NON_TRAINABLE_PARAMS:
-                param.requires_grad = False
-                non_trainable_params.append(param)
+    #     non_trainable_params = []
+    #     for name, param in self.named_parameters():
+    #         if name in cfg.MODEL.NON_TRAINABLE_PARAMS:
+    #             param.requires_grad = False
+    #             non_trainable_params.append(param)
 
-        trainable_params = [
-            params for params in self.parameters() if params.requires_grad
-        ]
-        regularized_params = [
-            params for params in regularized_params if params.requires_grad
-        ]
-        unregularized_params = [
-            params for params in unregularized_params if params.requires_grad
-        ]
-        logging.info("Traininable params: {}".format(len(trainable_params)))
-        logging.info("Non-Traininable params: {}".format(len(non_trainable_params)))
-        logging.info(
-            "Regularized Parameters: {}. Unregularized Parameters {}".format(
-                len(regularized_params), len(unregularized_params)
-            )
-        )
-        return {
-            "regularized_params": regularized_params,
-            "unregularized_params": unregularized_params,
-        }
+    #     trainable_params = [
+    #         params for params in self.parameters() if params.requires_grad
+    #     ]
+    #     regularized_params = [
+    #         params for params in regularized_params if params.requires_grad
+    #     ]
+    #     unregularized_params = [
+    #         params for params in unregularized_params if params.requires_grad
+    #     ]
+    #     logging.info("Traininable params: {}".format(len(trainable_params)))
+    #     logging.info("Non-Traininable params: {}".format(len(non_trainable_params)))
+    #     logging.info(
+    #         "Regularized Parameters: {}. Unregularized Parameters {}".format(
+    #             len(regularized_params), len(unregularized_params)
+    #         )
+    #     )
+    #     return {
+    #         "regularized_params": regularized_params,
+    #         "unregularized_params": unregularized_params,
+    #     }
 
     @property
     def num_classes(self):

@@ -7,8 +7,8 @@
 
 from models.base_ssl3d_model import BaseSSLMultiInputOutputModel
 
-def build_model(model_config, cluster, logger, linear_probe = False):
-    return BaseSSLMultiInputOutputModel(model_config, cluster, logger, linear_probe)
+def build_model(model_config, cluster, dataset, logger, linear_probe = False):
+    return BaseSSLMultiInputOutputModel(model_config, cluster, dataset, logger, linear_probe)
 
 
 __all__ = ["BaseSSLMultiInputOutputModel", "build_model"]

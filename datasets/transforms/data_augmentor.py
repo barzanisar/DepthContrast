@@ -18,7 +18,7 @@ class DataAugmentor(object):
             cur_augmentor = getattr(self, cur_cfg["NAME"])(config=cur_cfg)
             self.data_augmentor_queue.append(cur_augmentor)
     
-    def random_cuboid_lidar(self, data_dict, config=None):
+    def random_cuboid_lidar(self, data_dict=None, config=None):
         if data_dict is None:
             return partial(self.random_cuboid_lidar, config=config)
         points = data_dict['points']
@@ -55,7 +55,7 @@ class DataAugmentor(object):
         data_dict["points"] = points[new_pointidx,:]
         return data_dict
 
-    def random_drop(self, data_dict, config=None):
+    def random_drop(self, data_dict=None, config=None):
         if data_dict is None:
             return partial(self.random_drop, config=config)
         points = data_dict['points']

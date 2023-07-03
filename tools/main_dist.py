@@ -16,6 +16,7 @@ import torch
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
+from pcdet.config import cfg, cfg_from_yaml_file
 
 #from torch.multiprocessing import Pool, Process, set_start_method
 # try:
@@ -55,35 +56,10 @@ parser.add_argument('--multiprocessing-distributed', action='store_true', defaul
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
 
-def gpu_test():
-    print(torch.version.cuda)
-
-    x= torch.randn(2, 4).cuda()
-    y= torch.randn(4, 1).cuda()
-    out= (x @ y)
-    assert out.size() == torch.Size([2, 1])
-    print(f'Success, no Cuda errors means it worked see:\n{out=}')
-
-def test_dgx():
-    a = torch.tensor(1)
-    print("Device count: ", torch.cuda.device_count())
-    a.cuda(0)
-    print(a)
-
-    print(os.listdir('./data/dense'))
-    print(os.listdir('./data/kitti'))
-
-    import glob
-    from pathlib import Path
-    glob_path = glob.glob('./data/dense/*')[0]
-    calib_path = Path(glob_path)
-    print(f'calib path {calib_path.exists()} {str(calib_path)}')
-    print(f'calib path resolved {calib_path.resolve()}')
-    print('glob path ', os.path.exists(glob_path))
-
 def main():
     args = parser.parse_args()
-    cfg = yaml.safe_load(open(args.cfg))
+    cfg_from_yaml_file(args.cfg, cfg)
+    #cfg = yaml.safe_load(open(args.cfg))
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -135,16 +111,17 @@ def main_worker(gpu, ngpus, args, cfg):
     # print(f"local_rank: {args.local_rank}")
     # print(f"rank: {args.rank}")
 
+    # Define dataloaders
+    train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], cfg['cluster'], args.multiprocessing_distributed, logger)  
+
     # Define model
-    model = main_utils.build_model(cfg['model'], cfg['cluster'], logger)
-    if args.multiprocessing_distributed: # cfg.get('sync_bn', False) and 
+    model = main_utils.build_model(cfg['model'], cfg['cluster'], train_loader.dataset, logger)
+    if args.multiprocessing_distributed:
         logger.add_line('='*30 + 'Sync Batch Normalization' + '='*30)
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model) #TODO: only sync bn for head layers
 
     model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params=cfg['cluster'])
 
-    # Define dataloaders
-    train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], cfg['cluster'], args.multiprocessing_distributed, logger)       
 
     # Define criterion    
     train_criterion = main_utils.build_criterion(cfg['loss'], cfg['cluster'], cfg['linear_probe'],logger=logger)
@@ -208,16 +185,16 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         data_time.update(time.time() - end) # Time to load one batch
 
         if phase == 'train':
-            output_dict = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
+            output_dict_list = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
         else:
             with torch.no_grad():
-                output_dict = model(sample)
+                output_dict_list = model(sample)
 
         # # compute loss
         # for name, param in model.named_parameters():
         #     print(f'{name}, {param.requires_grad}')
         
-        loss = criterion(output_dict)
+        loss = output_dict_list[0][0]['loss'] + criterion(output_dict_list[0][0]['batch_dict'], output_dict_list[1][0]['batch_dict'],)
         loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
 
 

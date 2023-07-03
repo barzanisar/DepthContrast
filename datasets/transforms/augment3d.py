@@ -377,8 +377,23 @@ def get_transform3d(data, input_transforms_list, vox=False):
 
                 crop_range = float(transform_config['crop'])
                 new_range = range_xyz * crop_range / 2.0
-                
-                sample_center = point_cloud[np.random.choice(len(point_cloud)), 0:3]
+
+                if "dist_sample" in transform_config:
+                    numb,numv = np.histogram(point_cloud[:,2])
+                    max_idx = np.argmax(numb)
+                    minidx = max(0,max_idx-2)
+                    maxidx = min(len(numv)-1,max_idx+2)
+                    range_v = [numv[minidx], numv[maxidx]]
+                loop_count = 0
+                #write_ply_color(point_cloud[:,:3], point_cloud[:,3:], "before.ply")
+                while True:
+                    sample_center = point_cloud[np.random.choice(len(point_cloud)), 0:3]
+                    loop_count += 1
+                    if "dist_sample" in transform_config:
+                        if (loop_count <= 100):
+                            if (sample_center[-1] > range_v[1]) or (sample_center[-1] < range_v[0]):
+                                continue
+                    break
                 max_xyz = sample_center + new_range
                 min_xyz = sample_center - new_range
 

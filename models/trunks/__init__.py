@@ -22,7 +22,15 @@ try:
 except:
     PointNet2MSG = None
     UNetV2 = None
-    
+
+from pcdet.models.detectors import build_detector
+
+def build_network(model_cfg, num_class, dataset):
+    model = build_detector(
+        model_cfg=model_cfg, num_class=num_class, dataset=dataset
+    )
+    return model
+
 TRUNKS = {
     "pointnet": PointNet,
     "unet": Res16UNet34,
