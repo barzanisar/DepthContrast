@@ -87,7 +87,7 @@ class DataAugmentor(object):
                 gt_boxes, points,
             )
         
-        data_dict['gt_boxes'] = gt_boxes
+        data_dict['gt_boxes'] = gt_boxes #TODO: not needed
         data_dict['points'] = points
         return data_dict
     

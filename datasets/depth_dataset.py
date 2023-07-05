@@ -14,7 +14,7 @@ from pathlib import Path
 
 from datasets.transforms import database_sampler, data_augmentor, data_processor
 
-#from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
+from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
     
 try:
     try:
@@ -114,52 +114,70 @@ class DepthContrastDataset(Dataset):
     
     def prepare_data(self, data_dict):
         
+        PLOT= False
         cfg = self.cfg
-        # GT sampling
-        if "GT_SAMPLING" in self.cfg:
-            data_dict = self.db_sampler(data_dict)
+
+        # # GT sampling
+        # if "GT_SAMPLING" in self.cfg:
+        #     data_dict = self.db_sampler(data_dict)
 
         # remove gt_boxes not in class_names
         gt_boxes_mask = np.array([n in self.class_names for n in data_dict['gt_names']], dtype=np.bool_)
         data_dict['gt_boxes'] = data_dict['gt_boxes'][gt_boxes_mask]
         data_dict['gt_names'] = data_dict['gt_names'][gt_boxes_mask]
 
+        # remove points and boxes outside range
+        data_dict['points'] = data_processor.mask_points_outside_range(data_dict['points'], self.point_cloud_range)
+        mask = data_processor.mask_boxes_outside_range(data_dict['gt_boxes'], self.point_cloud_range)
+        data_dict['gt_boxes'] = data_dict['gt_boxes'][mask]
+        data_dict['gt_names'] = data_dict['gt_names'][mask]
+
+        if PLOT:
+            # After gt sampling and cropping
+            V.draw_scenes(points=data_dict["points"], gt_boxes=data_dict["gt_boxes"], color_feature='intensity')
 
         # TODO: not needed, remove
         if 'gt_boxes2d' in data_dict:
-            data_dict['gt_boxes2d'] = data_dict['gt_boxes2d'][gt_boxes_mask]
+            data_dict['gt_boxes2d'] = data_dict['gt_boxes2d'][gt_boxes_mask][mask]
 
         if self.pretraining:
+            assert len(data_dict['points']) > 0
+            a = len(data_dict['points'])
 
             #Create different views / augmentation
             data_dict['points_moco'] = np.copy(data_dict["points"])
             data_dict['gt_boxes_moco'] = np.copy(data_dict["gt_boxes"])
             
-            # transform data_dict points and gt_boxes
-            data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"])
+            # # transform data_dict points and gt_boxes
+            # data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"])
 
-            # transform data_dict points_moco and gt_boxes_moco
-            data_dict["points_moco"], data_dict["gt_boxes_moco"] = self.data_augmentor.forward(data_dict["points_moco"], data_dict["gt_boxes_moco"])        
+            # # transform data_dict points_moco and gt_boxes_moco
+            # data_dict["points_moco"], data_dict["gt_boxes_moco"] = self.data_augmentor.forward(data_dict["points_moco"], data_dict["gt_boxes_moco"])        
         
+        if PLOT:
+            # After augmenting both views
+            V.draw_scenes(points=data_dict["points"], gt_boxes=data_dict["gt_boxes"], color_feature='intensity')
+            V.draw_scenes(points=data_dict["points_moco"], gt_boxes=data_dict["gt_boxes_moco"], color_feature='intensity')
+
+        assert len(data_dict['points']) > 0
+        assert len(data_dict['points_moco']) > 0
+        c = len(data_dict['points'])
+        d = len(data_dict['points_moco'])
+
         # data processor
-        # crop points outside range in both points and points moco
-        data_dict['points'] = data_processor.mask_points_outside_range(data_dict['points'], self.point_cloud_range)
-        if self.pretraining:
-            data_dict['points_moco'] = data_processor.mask_points_outside_range(data_dict['points_moco'], self.point_cloud_range)
-        
         # sample points if pointnet backbone
         if not cfg["VOX"]:
             data_dict['points'] = data_processor.sample_points(data_dict['points'], self.cfg["SAMPLE_NUM_POINTS"] )
             if self.pretraining:
                 data_dict['points_moco'] = data_processor.sample_points(data_dict['points_moco'], self.cfg["SAMPLE_NUM_POINTS"])
 
-        # shuffle points
-        if self.mode == 'train':
-            data_dict['points'] = data_processor.shuffle_points(data_dict['points'])
-            if self.pretraining:
-                data_dict['points_moco'] = data_processor.shuffle_points(data_dict['points_moco'])
+        # # shuffle points
+        # if self.mode == 'train':
+        #     data_dict['points'] = data_processor.shuffle_points(data_dict['points'])
+        #     if self.pretraining:
+        #         data_dict['points_moco'] = data_processor.shuffle_points(data_dict['points_moco'])
 
-        # Add class_index to gt boxes
+        # Add class_index to gt boxes and keep note of gtbox id
         gt_classes = np.array([self.class_names.index(n) + 1 for n in data_dict['gt_names']], dtype=np.int32)
         gt_box_ids = np.array([i for i in range(data_dict['gt_boxes'].shape[0])], dtype=np.int32)
 
@@ -175,47 +193,36 @@ class DepthContrastDataset(Dataset):
 
         # for per point fg,bg prediction
         if self.mode == 'train':
-            mask1 = data_processor.mask_boxes_outside_range(data_dict['gt_boxes'], self.point_cloud_range)
-            mask2 = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
-            # data_dict['valid_gt_boxes_mask'] = mask1 & mask2
-            data_dict['gt_boxes'] = data_dict['gt_boxes'][mask1 & mask2]
-            data_dict['gt_boxes_idx'] = data_dict['gt_boxes_idx'][mask1 & mask2]
+            mask = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
+            data_dict['gt_boxes'] = data_dict['gt_boxes'][mask]
+            data_dict['gt_boxes_idx'] = data_dict['gt_boxes_idx'][mask]
             if self.pretraining:
-                mask3 = data_processor.mask_boxes_outside_range(data_dict['gt_boxes_moco'], self.point_cloud_range)
-                mask4 = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'])
-                #data_dict['valid_gt_boxes_moco_mask'] = mask3 & mask4
-                data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][mask3 & mask4]
-                data_dict['gt_boxes_moco_idx'] = data_dict['gt_boxes_moco_idx'][mask3 & mask4]
-                #data_dict['valid_gt_boxes_both_views_mask'] = data_dict['valid_gt_boxes_mask'] & data_dict['valid_gt_boxes_moco_mask']
-                # mask = data_dict['valid_gt_boxes_mask'] and data_dict['valid_gt_boxes_moco_mask']
-                # remove object points from both views if masked (outside range or few points) in any one view
-                # data_dict['points_moco'] = data_processor.remove_points_in_gt_boxes(data_dict['points_moco'], data_dict['gt_boxes_moco'][~mask])
-                # data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][mask]
+                mask = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'])
+                data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][mask]
+                data_dict['gt_boxes_moco_idx'] = data_dict['gt_boxes_moco_idx'][mask]
             
-            #data_dict['points'] = data_processor.remove_points_in_gt_boxes(data_dict['points'], data_dict['gt_boxes'][~mask])
-            # data_dict['gt_boxes'] = data_dict['gt_boxes'][mask]
-            # data_dict['gt_names'] = data_dict['gt_names'][mask]
         common_obj_idx = list(set(data_dict['gt_boxes_idx']) & set(data_dict['gt_boxes_idx']))
         assert len(common_obj_idx) > 0
+        
+        if PLOT:
+            # After sampling points and removing empty boxes
+            V.draw_scenes(points=data_dict["points"], gt_boxes=data_dict["gt_boxes"], color_feature='intensity')
+            V.draw_scenes(points=data_dict["points_moco"], gt_boxes=data_dict["gt_boxes_moco"], color_feature='intensity')
         # if vox then transform points to voxels else save points as tensor
         if cfg["VOX"]:
             vox_dict = self.toVox(data_dict["points"])
-            data_dict["data"] = [vox_dict]
+            data_dict["data"] = vox_dict
 
             if self.pretraining:
                 vox_dict = self.toVox(data_dict["points_moco"])
-                data_dict["data_moco"] = [vox_dict]
+                data_dict["data_moco"] = vox_dict
         else:
             #transform to tensor
-            data_dict['data'] = [torch.tensor(data_dict.pop('points')).float()]
+            data_dict['data'] = torch.tensor(data_dict.pop('points')).float()
             if self.pretraining:
-                data_dict['data_moco'] = [torch.tensor(data_dict.pop('points_moco')).float()]
+                data_dict['data_moco'] = torch.tensor(data_dict.pop('points_moco')).float()
 
         #TODO: delete unnecessary 
-        #TODO: Delete 
-        # data_dict.pop('points')
-        # if 'points_moco' in data_dict:
-        #     data_dict.pop('points_moco')
         if 'calib' in data_dict:
             data_dict.pop('calib')
         if 'road_plane' in data_dict:

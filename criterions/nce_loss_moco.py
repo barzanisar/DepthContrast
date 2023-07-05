@@ -90,31 +90,36 @@ class NCELossMoco(nn.Module):
     
     @torch.no_grad()
     def _dequeue_and_enqueue_cluster(self, keys):
+        # keys: (N=num clusters in this gpu's batch, 128)
         # gather keys before updating queue
         if torch.cuda.device_count() > 1:
             # similar to shuffling, since for each gpu the number of segments may not be the same
             # we create a aux variable keys_gather of size (1, MAX_SEG_BATCH, 128)
             # add the current seg batch to [0,:CURR_SEG_BATCH, 128] gather them all in
             # [NUM_GPUS,MAX_SEG_BATCH,128] and concatenate only the filled seg batches
-            seg_size = torch.from_numpy(np.array([keys.shape[0]])).cuda()
+
+            num_clusters_this_gpu = keys.shape[0]
+            feature_dim = keys.shape[-1] # 128
+
+            seg_size = torch.from_numpy(np.array([num_clusters_this_gpu])).cuda()
             all_seg_size = concat_all_gather(seg_size)
 
-            keys_gather = torch.ones((1, all_seg_size.max(), keys.shape[-1])).cuda()
-            keys_gather[0, :keys.shape[0],:] = keys[:,:]
+            keys_gather = torch.ones((1, all_seg_size.max(), feature_dim)).cuda() # (1, max num clusters, 128)
+            keys_gather[0, :num_clusters_this_gpu,:] = keys[:,:]
 
-            all_keys = concat_all_gather(keys_gather)
+            all_keys = concat_all_gather(keys_gather) # (num gpus, max num clusters, 128)
             gather_keys = None
 
-            for k in range(len(all_seg_size)):
+            for k in range(len(all_seg_size)): #k is the gpu idx
                 if gather_keys is None:
                     gather_keys = all_keys[k][:all_seg_size[k],:]
                 else:
                     gather_keys = torch.cat((gather_keys, all_keys[k][:all_seg_size[k],:]))
 
 
-            keys = gather_keys
+            keys = gather_keys #(num clusters in all gpus, 128)
 
-        batch_size = keys.shape[0]
+        batch_size = keys.shape[0] # num clusters in all gpus
 
         ptr = int(self.queue_ptr)
         #assert self.K % batch_size == 0  # for simplicity
@@ -134,34 +139,56 @@ class NCELossMoco(nn.Module):
                                                                         
     def forward(self, output_dict, output_dict_moco):
         
+        batch_size = output_dict['batch_size']
         output_0 = output_dict['pretext_head_feats'] #query features (8, 128)
         output_1 = output_dict_moco['pretext_head_feats'] #key_features = moco features (8, 128)
+        
+        # Select corresponding object features across views
+        mask_0 = []
+        mask_1 = []
+        for pc_idx in range(batch_size):
+            # common_obj_ids = list(set(output_dict['gt_boxes_idx'][pc_idx]) & set(output_dict_moco['gt_boxes_idx'][pc_idx]))
+            mask_0.append(np.in1d(output_dict['gt_boxes_idx'][pc_idx], output_dict_moco['gt_boxes_idx'][pc_idx], assume_unique=True))
+            mask_1.append(np.in1d(output_dict_moco['gt_boxes_idx'][pc_idx], output_dict['gt_boxes_idx'][pc_idx], assume_unique=True))
 
-        normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query dc embedding or vdc
-        normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key dc embedding or vdc
+        output_q = output_0[np.array(mask_0).flatten()]    
+        output_k = output_1[np.array(mask_1).flatten()]
+        
+        # if no common obj, return 0 loss
+        if output_q.numel() == 0:
+            return 0
+            
+        assert output_q.shape == output_k.shape
+        normalized_output1 = nn.functional.normalize(output_q, dim=1, p=2) #query embeddings 
+        normalized_output2 = nn.functional.normalize(output_k, dim=1, p=2) #key embeddings
 
-        # positive logits: Nx1 = batch size of positive examples (or matched num voxels)x 1
-        l_pos_s12 = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1) #(v_i_1).transpose() * v_i_2 => dim (n = matched num voxels)
+        # positive logits: Nx1 = batch size of positive examples
+        l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1)
         
         # negative logits: NxK
         l_neg_s1q2 = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()])
         
         # logits: Nx(1+K)
-        logits_s12_s1q2 = torch.cat([l_pos_s12, l_neg_s1q2], dim=1)
+        logits_s12_s1q2 = torch.cat([l_pos, l_neg_s1q2], dim=1)
         
         # apply temperature
         logits_s12_s1q2 /= self.T
 
+        N = logits_s12_s1q2.shape[0] # num positive pairs
         labels_s12_s1q2 = torch.zeros(
-            logits_s12_s1q2.shape[0], device=logits_s12_s1q2.device, dtype=torch.int64
-        ) # because zero'th class is the true class
+            N, device=logits_s12_s1q2.device, dtype=torch.int64
+        ) # because for each pair out of N pairs, zero'th class (out of K=60000 classes) is the true class
 
-        loss_s12_s1q2 = self.xe_criterion(torch.squeeze(logits_s12_s1q2), labels_s12_s1q2) #loss between pointnet query and key embedding
-
-        if self.cluster:
-            self._dequeue_and_enqueue_cluster(normalized_output2)
+        if len(logits_s12_s1q2.shape) > 2:
+            loss_s12_s1q2 = self.xe_criterion(torch.squeeze(logits_s12_s1q2), labels_s12_s1q2) #loss between pointnet query and key embedding
         else:
-            self._dequeue_and_enqueue_pcd(normalized_output2)
+            loss_s12_s1q2 = self.xe_criterion(logits_s12_s1q2, labels_s12_s1q2) # Nx(1+K) logits, N labels
+        
+        self._dequeue_and_enqueue_cluster(normalized_output2)
+        # if self.cluster:
+        #     self._dequeue_and_enqueue_cluster(normalized_output2)
+        # else:
+        #     self._dequeue_and_enqueue_pcd(normalized_output2)
 
             
 

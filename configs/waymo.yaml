@@ -8,7 +8,7 @@ log2tb: false
 log2wb: false
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
-print_freq: 100 #print progress after processing every <freq> iters or batches
+print_freq: 1 #print progress after processing every <freq> iters or batches
 ckpt_save_interval: 10
 save_ckpt_after_epochs: 0
 
@@ -24,7 +24,7 @@ dataset:
   DATA_PATH: 'data/waymo'
   multiply_i_by_255: True
   BATCHSIZE_PER_REPLICA: 1 #Change to 14
-  POINT_CLOUD_RANGE: [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ]
+  POINT_CLOUD_RANGE:  [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist']
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
@@ -43,12 +43,12 @@ dataset:
     - NAME: random_world_flip
       ALONG_AXIS_LIST: ['x', 'y']
     - NAME: random_world_rotation
-      WORLD_ROT_ANGLE: [-0.78539816, 0.78539816]
+      WORLD_ROT_ANGLE: [-0.78539816, 0.78539816] #-45deg, + 45deg
     - NAME: random_world_scaling
       WORLD_SCALE_RANGE: [0.95, 1.05]
-    - NAME: random_cuboid_lidar
-      npoints: 10000
-    - NAME: random_drop
+    # - NAME: random_cuboid_lidar
+    #   npoints: 10000
+    # - NAME: random_drop
 
   SAMPLE_NUM_POINTS: 20000
   

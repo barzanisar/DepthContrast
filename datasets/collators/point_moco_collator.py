@@ -12,14 +12,14 @@ import numpy as np
 def point_moco_collator(batch):
     batch_size = len(batch)
 
-    pcs_batch = [x["data"][0][:,:4] for x in batch] #select xyzi
+    pcs_batch = [x["data"][:,:4] for x in batch] #select xyzi
     
     #append batchidx, x,y,z,i
     for batch_id, pc in enumerate(pcs_batch):
         pcs_batch[batch_id]= np.pad(pc, ((0, 0), (1, 0)), mode='constant', constant_values=batch_id) 
     points = np.concatenate(pcs_batch, axis=0) #(16384 x 8, 4)
 
-    pcs_moco_batch = [x["data_moco"][0][:,:4] for x in batch]
+    pcs_moco_batch = [x["data_moco"][:,:4] for x in batch]
     #append batchidx, x,y,z,i
     for batch_id, pc in enumerate(pcs_moco_batch):
         pcs_moco_batch[batch_id]= np.pad(pc, ((0, 0), (1, 0)), mode='constant', constant_values=batch_id) 

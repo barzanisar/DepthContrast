@@ -194,7 +194,8 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         # for name, param in model.named_parameters():
         #     print(f'{name}, {param.requires_grad}')
         
-        loss = output_dict_list[0][0]['loss'] + criterion(output_dict_list[0][0]['batch_dict'], output_dict_list[1][0]['batch_dict'],)
+        loss = output_dict_list[0][0]['loss']  # detection loss
+        #loss = criterion(output_dict_list[0][0]['batch_dict'], output_dict_list[1][0]['batch_dict']) # contrastive loss
         loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
 
 

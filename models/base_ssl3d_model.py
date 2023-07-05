@@ -94,7 +94,6 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         #     main_utils.load_data_to_gpu(batch_dict)
         
         main_utils.load_data_to_gpu(batch_dict)
-
         output = self.trunk[target](batch_dict)
         return output
 

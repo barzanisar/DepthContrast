@@ -3,6 +3,7 @@ import torch
 from pcdet.ops.roiaware_pool3d import roiaware_pool3d_utils
 from pcdet.utils import box_utils, common_utils
 
+np.random.seed(100)
 
 def mask_points_outside_range(points, point_cloud_range):
     keep_mask = common_utils.mask_points_by_range(points, point_cloud_range)
