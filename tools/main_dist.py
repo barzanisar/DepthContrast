@@ -14,9 +14,13 @@ import yaml
 
 import torch
 import torch.nn.parallel
+from torch.nn.utils import clip_grad_norm_
+
 import torch.backends.cudnn as cudnn
 import torch.optim
 from pcdet.config import cfg, cfg_from_yaml_file
+
+from functools import reduce
 
 #from torch.multiprocessing import Pool, Process, set_start_method
 # try:
@@ -97,7 +101,11 @@ def main():
         args.ngpus = torch.cuda.device_count()
         # Simply call main_worker function
         main_worker(args.local_rank, args.ngpus, args, cfg)
-    
+
+def get_module_by_name(module, access_string):
+    names = access_string.split(sep='.')
+    return reduce(getattr, names, module)
+   
 def main_worker(gpu, ngpus, args, cfg):
     args.local_rank = gpu
     ngpus_per_node = ngpus
@@ -111,20 +119,50 @@ def main_worker(gpu, ngpus, args, cfg):
     # print(f"local_rank: {args.local_rank}")
     # print(f"rank: {args.rank}")
 
+    
+    CLUSTER = False
+    if 'PRETEXT_HEAD'in cfg['model']['MODEL']:
+        CLUSTER = cfg['model']['MODEL']['PRETEXT_HEAD']['NAME'] == 'SegHead'
+    
     # Define dataloaders
-    train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], cfg['cluster'], args.multiprocessing_distributed, logger)  
+    train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], CLUSTER, args.multiprocessing_distributed, logger)  
 
     # Define model
-    model = main_utils.build_model(cfg['model'], cfg['cluster'], train_loader.dataset, logger)
+    model = main_utils.build_model(cfg['model'], CLUSTER, train_loader.dataset, logger)
     if args.multiprocessing_distributed:
         logger.add_line('='*30 + 'Sync Batch Normalization' + '='*30)
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model) #TODO: only sync bn for head layers
+        
+        # Only sync bn for detection head layers and not backbone 3d for shuffle bn to work
+        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model) 
+        # TODO: This is a dirty way of doing it
+        if 'POINT_HEAD' in cfg['model']['MODEL']:
+            model.trunk[0].point_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.trunk[0].point_head)
+        if 'ROI_HEAD' in cfg['model']['MODEL']:
+            model.trunk[0].roi_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.trunk[0].roi_head)
 
-    model, args = main_utils.distribute_model_to_cuda(model, args, find_unused_params=cfg['cluster'])
+        # model.trunk[0].point_head.cls_layers[1] = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model._modules.trunk[0].point_head.cls_layers[1])
+        # print(model.trunk[0].point_head)
+        # for name, module in model.named_modules():
+        #     if isinstance(module, torch.nn.modules.batchnorm._BatchNorm) and 'backbone_3d' not in name:
+        #         print('NAME: ', name)
+        #         #module = torch.nn.SyncBatchNorm.convert_sync_batchnorm(module)
+        #         print('MODULE: \n', module) #model.trunk[0].backbone_3d #model.trunk[0].point_head.cls_layers[1]
+                
+        #         # model_module = get_module_by_name(model, name)
+        #         # model_module = module
+        #         #model.trunk[0].point_head.cls_layers[1] = module
+        #         #print('MODEL MODULE: \n', get_module_by_name(model, name))
+
+        for name, module in model.named_modules():
+            print('NAME: ', name)
+            print('MODULE: \n', module)
+
+
+    model, args = main_utils.distribute_model_to_cuda(model, args) #, find_unused_params=CLUSTER
 
 
     # Define criterion    
-    train_criterion = main_utils.build_criterion(cfg['loss'], cfg['cluster'], cfg['linear_probe'],logger=logger)
+    train_criterion = main_utils.build_criterion(cfg['loss'], CLUSTER, cfg['linear_probe'],logger=logger)
     train_criterion = train_criterion.cuda()
             
     # Define optimizer
@@ -190,12 +228,9 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             with torch.no_grad():
                 output_dict_list = model(sample)
 
-        # # compute loss
-        # for name, param in model.named_parameters():
-        #     print(f'{name}, {param.requires_grad}')
         
         loss = output_dict_list[0][0]['loss']  # detection loss
-        #loss = criterion(output_dict_list[0][0]['batch_dict'], output_dict_list[1][0]['batch_dict']) # contrastive loss
+        loss += criterion(output_dict_list[0][0]['batch_dict'], output_dict_list[1][0]['batch_dict']) # contrastive loss
         loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
 
 
@@ -203,7 +238,11 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         if phase == 'train':
             optimizer.zero_grad()
             loss.backward()
+            clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
+
+        is_nan = torch.stack([torch.isnan(p).any() for p in model.parameters()]).any()
+        assert not is_nan
 
         # measure elapsed time
         batch_time.update(time.time() - end) # This is printed as Time # Time to train one batch

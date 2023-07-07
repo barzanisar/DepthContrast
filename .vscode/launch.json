@@ -81,6 +81,26 @@
             ]
         },
         {
+            "name": "Waymo: pretrain-dist",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--nproc_per_node=1",
+                "${workspaceFolder}/tools/main_dist.py",
+                "--launcher",
+                "pytorch",
+                "--multiprocessing-distributed",
+                "--cfg",
+                "configs/waymo.yaml"
+            ]
+        },
+        {
             "name": "Seg: pretrain",
             "type": "python",
             "request": "launch",

@@ -139,28 +139,37 @@ class NCELossMoco(nn.Module):
                                                                         
     def forward(self, output_dict, output_dict_moco):
         
-        batch_size = output_dict['batch_size']
-        output_0 = output_dict['pretext_head_feats'] #query features (8, 128)
-        output_1 = output_dict_moco['pretext_head_feats'] #key_features = moco features (8, 128)
-        
-        # Select corresponding object features across views
-        mask_0 = []
-        mask_1 = []
-        for pc_idx in range(batch_size):
-            # common_obj_ids = list(set(output_dict['gt_boxes_idx'][pc_idx]) & set(output_dict_moco['gt_boxes_idx'][pc_idx]))
-            mask_0.append(np.in1d(output_dict['gt_boxes_idx'][pc_idx], output_dict_moco['gt_boxes_idx'][pc_idx], assume_unique=True))
-            mask_1.append(np.in1d(output_dict_moco['gt_boxes_idx'][pc_idx], output_dict['gt_boxes_idx'][pc_idx], assume_unique=True))
+        batch_size = output_dict['batch_size'] #2
+        output_0 = output_dict['pretext_head_feats'] #query features (N0= num clusters , 128)
+        output_1 = output_dict_moco['pretext_head_feats'] #key_features = moco features (N1, 128)
 
-        output_q = output_0[np.array(mask_0).flatten()]    
-        output_k = output_1[np.array(mask_1).flatten()]
-        
-        # if no common obj, return 0 loss
-        if output_q.numel() == 0:
-            return 0
+        if self.cluster:
+            box_ids_of_pts_0 = output_dict['box_ids_of_pts'] # (2, 20000)
+            box_ids_of_pts_1 = output_dict_moco['box_ids_of_pts']
             
-        assert output_q.shape == output_k.shape
-        normalized_output1 = nn.functional.normalize(output_q, dim=1, p=2) #query embeddings 
-        normalized_output2 = nn.functional.normalize(output_k, dim=1, p=2) #key embeddings
+            # Select corresponding object features across views
+            mask_0 = []
+            mask_1 = []
+            for pc_idx in range(batch_size):
+                # common_obj_ids = list(set(output_dict['gt_boxes_idx'][pc_idx]) & set(output_dict_moco['gt_boxes_idx'][pc_idx]))
+                # mask_0.append(np.in1d(output_dict['gt_boxes_idx'][pc_idx], output_dict_moco['gt_boxes_idx'][pc_idx], assume_unique=True))
+                # mask_1.append(np.in1d(output_dict_moco['gt_boxes_idx'][pc_idx], output_dict['gt_boxes_idx'][pc_idx], assume_unique=True))
+                cluster_labels_this_pc_0 = np.unique(box_ids_of_pts_0[pc_idx])[1:] # [-1, 3, 4, 8, ...] -> [3, 4, 8, ...]
+                cluster_labels_this_pc_1 = np.unique(box_ids_of_pts_1[pc_idx])[1:] # [-1, 2, 5, 8, 6] -> [2, 5, 8, 6]
+
+                mask_0.append(np.in1d(cluster_labels_this_pc_0, cluster_labels_this_pc_1, assume_unique=True))
+                mask_1.append(np.in1d(cluster_labels_this_pc_1, cluster_labels_this_pc_0, assume_unique=True))
+
+            output_0 = output_0[np.concatenate(np.array(mask_0))] # (N=num common clusters, C=128)
+            output_1 = output_1[np.concatenate(np.array(mask_1))] # (N=num common clusters, C=128)
+            
+            # if no common obj, return 0 loss
+            if output_0.numel() == 0:
+                return 0
+            
+        assert output_0.shape == output_1.shape
+        normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query embeddings 
+        normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key embeddings
 
         # positive logits: Nx1 = batch size of positive examples
         l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1)
@@ -184,11 +193,11 @@ class NCELossMoco(nn.Module):
         else:
             loss_s12_s1q2 = self.xe_criterion(logits_s12_s1q2, labels_s12_s1q2) # Nx(1+K) logits, N labels
         
-        self._dequeue_and_enqueue_cluster(normalized_output2)
-        # if self.cluster:
-        #     self._dequeue_and_enqueue_cluster(normalized_output2)
-        # else:
-        #     self._dequeue_and_enqueue_pcd(normalized_output2)
+
+        if self.cluster:
+            self._dequeue_and_enqueue_cluster(normalized_output2)
+        else:
+            self._dequeue_and_enqueue_pcd(normalized_output2)
 
             
 

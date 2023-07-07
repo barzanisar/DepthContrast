@@ -117,9 +117,9 @@ class DepthContrastDataset(Dataset):
         PLOT= False
         cfg = self.cfg
 
-        # # GT sampling
-        # if "GT_SAMPLING" in self.cfg:
-        #     data_dict = self.db_sampler(data_dict)
+        # GT sampling
+        if "GT_SAMPLING" in self.cfg:
+            data_dict = self.db_sampler(data_dict)
 
         # remove gt_boxes not in class_names
         gt_boxes_mask = np.array([n in self.class_names for n in data_dict['gt_names']], dtype=np.bool_)
@@ -148,21 +148,16 @@ class DepthContrastDataset(Dataset):
             data_dict['points_moco'] = np.copy(data_dict["points"])
             data_dict['gt_boxes_moco'] = np.copy(data_dict["gt_boxes"])
             
-            # # transform data_dict points and gt_boxes
-            # data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"])
+            # transform data_dict points and gt_boxes
+            data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"])
 
-            # # transform data_dict points_moco and gt_boxes_moco
-            # data_dict["points_moco"], data_dict["gt_boxes_moco"] = self.data_augmentor.forward(data_dict["points_moco"], data_dict["gt_boxes_moco"])        
+            # transform data_dict points_moco and gt_boxes_moco
+            data_dict["points_moco"], data_dict["gt_boxes_moco"] = self.data_augmentor.forward(data_dict["points_moco"], data_dict["gt_boxes_moco"])        
         
         if PLOT:
             # After augmenting both views
             V.draw_scenes(points=data_dict["points"], gt_boxes=data_dict["gt_boxes"], color_feature='intensity')
             V.draw_scenes(points=data_dict["points_moco"], gt_boxes=data_dict["gt_boxes_moco"], color_feature='intensity')
-
-        assert len(data_dict['points']) > 0
-        assert len(data_dict['points_moco']) > 0
-        c = len(data_dict['points'])
-        d = len(data_dict['points_moco'])
 
         # data processor
         # sample points if pointnet backbone
@@ -172,10 +167,10 @@ class DepthContrastDataset(Dataset):
                 data_dict['points_moco'] = data_processor.sample_points(data_dict['points_moco'], self.cfg["SAMPLE_NUM_POINTS"])
 
         # # shuffle points
-        # if self.mode == 'train':
-        #     data_dict['points'] = data_processor.shuffle_points(data_dict['points'])
-        #     if self.pretraining:
-        #         data_dict['points_moco'] = data_processor.shuffle_points(data_dict['points_moco'])
+        if self.mode == 'train':
+            data_dict['points'] = data_processor.shuffle_points(data_dict['points'])
+            if self.pretraining:
+                data_dict['points_moco'] = data_processor.shuffle_points(data_dict['points_moco'])
 
         # Add class_index to gt boxes and keep note of gtbox id
         gt_classes = np.array([self.class_names.index(n) + 1 for n in data_dict['gt_names']], dtype=np.int32)
@@ -184,22 +179,24 @@ class DepthContrastDataset(Dataset):
         assert data_dict['gt_boxes'].shape == data_dict['gt_boxes_moco'].shape
         #append class id as 8th entry in gt boxes
         data_dict['gt_boxes'] = np.concatenate((data_dict['gt_boxes'], gt_classes.reshape(-1, 1).astype(np.float32)), axis=1)
-        data_dict['gt_boxes_idx'] = gt_box_ids #.reshape(-1, 1).astype(np.float32)
+        data_dict['gt_boxes_idx'] = gt_box_ids #.reshape(-1, 1).astype(np.float32) #TODO: remove if not needed
 
         #append class id as 8th entry in gt boxes
         data_dict['gt_boxes_moco'] = np.concatenate((data_dict['gt_boxes_moco'], gt_classes.reshape(-1, 1).astype(np.float32)), axis=1)
         data_dict['gt_boxes_moco_idx'] = gt_box_ids #.reshape(-1, 1).astype(np.float32)
 
-
         # for per point fg,bg prediction
         if self.mode == 'train':
-            mask = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
+            mask, box_ids_of_pts = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
             data_dict['gt_boxes'] = data_dict['gt_boxes'][mask]
             data_dict['gt_boxes_idx'] = data_dict['gt_boxes_idx'][mask]
+            data_dict['box_ids_of_pts'] = box_ids_of_pts 
             if self.pretraining:
-                mask = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'])
+                mask, box_ids_of_pts_moco = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'])
                 data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][mask]
                 data_dict['gt_boxes_moco_idx'] = data_dict['gt_boxes_moco_idx'][mask]
+                data_dict['box_ids_of_pts_moco'] = box_ids_of_pts_moco
+
             
         common_obj_idx = list(set(data_dict['gt_boxes_idx']) & set(data_dict['gt_boxes_idx']))
         assert len(common_obj_idx) > 0
@@ -216,11 +213,11 @@ class DepthContrastDataset(Dataset):
             if self.pretraining:
                 vox_dict = self.toVox(data_dict["points_moco"])
                 data_dict["data_moco"] = vox_dict
-        else:
-            #transform to tensor
-            data_dict['data'] = torch.tensor(data_dict.pop('points')).float()
-            if self.pretraining:
-                data_dict['data_moco'] = torch.tensor(data_dict.pop('points_moco')).float()
+        # else:
+        #     #transform to tensor
+        #     data_dict['data'] = data_dict.pop('points')
+        #     if self.pretraining:
+        #         data_dict['data_moco'] = data_dict.pop('points_moco')
 
         #TODO: delete unnecessary 
         if 'calib' in data_dict:

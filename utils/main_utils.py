@@ -157,16 +157,17 @@ def write_ply_color(points, colors, out_filename):
 
 def load_data_to_gpu(batch_dict):
     for key, val in batch_dict.items():
-        if not isinstance(val, np.ndarray):
+        if key in ['frame_id', 'metadata', 'calib', 'gt_boxes_idx', 'box_ids_of_pts']:
             continue
-        elif key in ['frame_id', 'metadata', 'calib', 'gt_boxes_idx', 'gt_boxes_moco_idx']:
-            continue
-        elif key in ['images']:
-            batch_dict[key] = kornia.image_to_tensor(val).float().cuda().contiguous()
-        elif key in ['image_shape']:
-            batch_dict[key] = torch.from_numpy(val).int().cuda()
+        # elif key in ['images']:
+        #     batch_dict[key] = kornia.image_to_tensor(val).float().cuda().contiguous()
+        # elif key in ['image_shape']:
+        #     batch_dict[key] = torch.from_numpy(val).int().cuda()
         else:
-            batch_dict[key] = torch.from_numpy(val).float().cuda()
+            if isinstance(val, np.ndarray):
+                batch_dict[key] = torch.from_numpy(val).float().cuda()
+            elif torch.is_tensor(val):
+                val.cuda(non_blocking=True)
 
 ### Recurisive copy to GPU
 def recursive_copy_to_gpu(value, non_blocking=True, max_depth=3, curr_depth=0):

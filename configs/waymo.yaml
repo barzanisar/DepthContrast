@@ -1,7 +1,7 @@
 wb_extra_tags: ['pointnet', 'waymo']
-resume: true
+resume: false
 linear_probe: false # True for linear probe
-cluster: False
+# cluster: False
 num_workers: 0
 
 log2tb: false
@@ -23,7 +23,7 @@ dataset:
   DATASET_NAMES: [WaymoDataset]
   DATA_PATH: 'data/waymo'
   multiply_i_by_255: True
-  BATCHSIZE_PER_REPLICA: 1 #Change to 14
+  BATCHSIZE_PER_REPLICA: 8 #Change to 14
   POINT_CLOUD_RANGE:  [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist']
   LABEL_TYPE: objects #sample_index, objects, class_names
@@ -65,7 +65,7 @@ optimizer:
   num_epochs: 401
   lr:
     name: "cosine"
-    base_lr: 0.12 #0.1 for linear_probe
+    base_lr: 0.01 #0.1 for linear_probe #0.12
 
 model:
   name: "pretrain_on_gt_boxes"
@@ -90,7 +90,7 @@ model:
       FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
 
     PRETEXT_HEAD: 
-      NAME: BboxHead
+      NAME: SegHead
       use_mlp: True
       mlp_dim: [128, 128, 128]
 
@@ -110,7 +110,7 @@ model:
       FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
 
     PRETEXT_HEAD: 
-      NAME: BboxHead
+      NAME: SegHead
       use_mlp: True
       mlp_dim: [128, 128, 128]
 
@@ -118,7 +118,7 @@ model:
       NAME: PointHeadBox
       CLS_FC: [256, 256]
       REG_FC: [256, 256]
-      CLASS_AGNOSTIC: False
+      CLASS_AGNOSTIC: True
       USE_POINT_FEATURES_BEFORE_FUSION: False
       TARGET_CONFIG:
         GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
@@ -203,19 +203,19 @@ model:
             'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
         }
 
-    POST_PROCESSING:
-      RECALL_THRESH_LIST: [0.3, 0.5, 0.7]
-      SCORE_THRESH: 0.1
-      OUTPUT_RAW_SCORE: False
+    # POST_PROCESSING:
+    #   RECALL_THRESH_LIST: [0.3, 0.5, 0.7]
+    #   SCORE_THRESH: 0.1
+    #   OUTPUT_RAW_SCORE: False
 
-      EVAL_METRIC: kitti
+    #   EVAL_METRIC: kitti
 
-      NMS_CONFIG:
-          MULTI_CLASSES_NMS: False
-          NMS_TYPE: nms_gpu
-          NMS_THRESH: 0.1
-          NMS_PRE_MAXSIZE: 4096
-          NMS_POST_MAXSIZE: 500
+    #   NMS_CONFIG:
+    #       MULTI_CLASSES_NMS: False
+    #       NMS_TYPE: nms_gpu
+    #       NMS_THRESH: 0.1
+    #       NMS_PRE_MAXSIZE: 4096
+    #       NMS_POST_MAXSIZE: 500
 
   # arch_point: "pointnet_msg"
   # args_point:

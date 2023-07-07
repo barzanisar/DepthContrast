@@ -106,7 +106,53 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
 
     @torch.no_grad()
-    def _batch_shuffle_ddp(self, x, vox=False, idx_shuffle=None):
+    def _batch_shuffle_ddp(self, batch_dict):
+        points = batch_dict['points'] #(40000)
+        batch_size_this = batch_dict['batch_size']
+        # box_ids_of_pts = batch_dict['box_ids_of_pts'] #(2, 20000)
+
+
+        # Gather all pcs from all gpus
+        points_feature_dim = points.shape[-1]
+        pcs_gather = torch.from_numpy(points).float().cuda().view(batch_size_this, -1, points_feature_dim) # (2, 20000, 5)
+        # box_ids_of_pts_gather = torch.from_numpy(box_ids_of_pts).float()
+        # pcs_gather = torch.concatenate((pcs_gather, box_ids_of_pts_gather), axis = 1).cuda() # (2, 20000, 6)
+
+        all_pcs = concat_all_gather(pcs_gather) # (batch_size_all=8, 20000, 5)
+
+
+        # batch_size_gather = torch.from_numpy(np.array([batch_size_this])).cuda()
+        # batch_size_all_list = concat_all_gather(batch_size_gather) # (num_gpus) (list of batch sizes across all gpus, list len = num_gpus)
+        # batch_size_all = torch.sum(batch_size_all_list)
+        batch_size_all = all_pcs.shape[0]
+        num_gpus = batch_size_all // batch_size_this
+        
+        # random shuffle index
+        idx_shuffle = torch.randperm(batch_size_all).cuda()
+    
+        # broadcast to all gpus
+        torch.distributed.broadcast(idx_shuffle, src=0)
+        
+        # index for restoring
+        idx_unshuffle = torch.argsort(idx_shuffle)
+        
+        # shuffled index for this gpu
+        gpu_idx = torch.distributed.get_rank()
+        idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx] #(num_gpus=4, batch_size_this=2)
+
+        # Return new pcs for this gpu
+        new_pcs_this = all_pcs[idx_this] #(2, 20000, 5) 
+        
+        batch_dict['batch_size'] = new_pcs_this.shape[0]
+        batch_dict['points'] = new_pcs_this.view(-1, points_feature_dim) # (2x20000, 5)
+
+        # batch_dict['points'] = new_pcs_this[:,:,:points_feature_dim].view(-1, points_feature_dim) # (2x20000, 5)
+        # batch_dict['box_ids_of_pts'] = new_pcs_this[:,:,-1].squeeze(-1) # (2, 20000)
+        return batch_dict, idx_unshuffle
+
+
+    @torch.no_grad()
+    def _batch_shuffle_ddp_old(self, x, vox=False, idx_shuffle=None):
         """
         Batch shuffle, for making use of BatchNorm.
         *** Only support DistributedDataParallel (DDP) model. ***
@@ -205,8 +251,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             idx_unshuffle = None
             #shuffle for making use of BN
             if torch.distributed.is_initialized():
-                if "vox" not in input_key: 
-                    batch_dict, idx_unshuffle = self._batch_shuffle_ddp(batch_dict, vox=False)
+                #if "vox" not in input_key: 
+                batch_dict, idx_unshuffle = self._batch_shuffle_ddp(batch_dict)
                 
             # Copy to GPU
             # if ("Lidar" in self.config) and ("vox" in input_key):
