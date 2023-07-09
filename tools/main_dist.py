@@ -102,10 +102,6 @@ def main():
         # Simply call main_worker function
         main_worker(args.local_rank, args.ngpus, args, cfg)
 
-def get_module_by_name(module, access_string):
-    names = access_string.split(sep='.')
-    return reduce(getattr, names, module)
-   
 def main_worker(gpu, ngpus, args, cfg):
     args.local_rank = gpu
     ngpus_per_node = ngpus
@@ -139,24 +135,6 @@ def main_worker(gpu, ngpus, args, cfg):
             model.trunk[0].point_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.trunk[0].point_head)
         if 'ROI_HEAD' in cfg['model']['MODEL']:
             model.trunk[0].roi_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.trunk[0].roi_head)
-
-        # model.trunk[0].point_head.cls_layers[1] = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model._modules.trunk[0].point_head.cls_layers[1])
-        # print(model.trunk[0].point_head)
-        # for name, module in model.named_modules():
-        #     if isinstance(module, torch.nn.modules.batchnorm._BatchNorm) and 'backbone_3d' not in name:
-        #         print('NAME: ', name)
-        #         #module = torch.nn.SyncBatchNorm.convert_sync_batchnorm(module)
-        #         print('MODULE: \n', module) #model.trunk[0].backbone_3d #model.trunk[0].point_head.cls_layers[1]
-                
-        #         # model_module = get_module_by_name(model, name)
-        #         # model_module = module
-        #         #model.trunk[0].point_head.cls_layers[1] = module
-        #         #print('MODEL MODULE: \n', get_module_by_name(model, name))
-
-        for name, module in model.named_modules():
-            print('NAME: ', name)
-            print('MODULE: \n', module)
-
 
     model, args = main_utils.distribute_model_to_cuda(model, args) #, find_unused_params=CLUSTER
 

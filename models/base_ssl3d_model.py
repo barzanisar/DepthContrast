@@ -62,14 +62,6 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         self.model_input = model_config["model_input"] #['points', 'points_moco']
         
     def multi_input_with_head_mapping_forward(self, batch_dict):
-        # all_outputs = []
-        # for input_idx in range(len(self.model_input)): #['points', 'points_moco']
-        #     input_key = self.model_input[input_idx]
-        #     if "moco" in input_key:
-        #         outputs = self._single_input_forward_MOCO(batch_dict['input_moco'], input_key, input_idx)
-        #     else:
-        #         outputs = self._single_input_forward(batch_dict['input'], input_key, input_idx)
-        #     all_outputs.append(outputs)
         all_outputs = []
 
         outputs = self._single_input_forward(batch_dict['input'], 0)
@@ -80,18 +72,6 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         return all_outputs
     
     def _single_input_forward(self, batch_dict, target):
-        # if "vox" not in input_key:
-        #     assert isinstance(batch_dict, torch.Tensor)
-
-        # if ('vox' in input_key) and ("Lidar" in self.config):
-        #     Copy to GPU
-        #     for key in batch_dict:
-        #         batch_dict[key] = main_utils.recursive_copy_to_gpu(
-        #             batch_dict[key], non_blocking=True
-        #         )
-        # else:
-        #     # Copy to GPU
-        #     main_utils.load_data_to_gpu(batch_dict)
         
         main_utils.load_data_to_gpu(batch_dict)
         output = self.trunk[target](batch_dict)
@@ -109,21 +89,14 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     def _batch_shuffle_ddp(self, batch_dict):
         points = batch_dict['points'] #(40000)
         batch_size_this = batch_dict['batch_size']
-        # box_ids_of_pts = batch_dict['box_ids_of_pts'] #(2, 20000)
-
 
         # Gather all pcs from all gpus
         points_feature_dim = points.shape[-1]
         pcs_gather = torch.from_numpy(points).float().cuda().view(batch_size_this, -1, points_feature_dim) # (2, 20000, 5)
-        # box_ids_of_pts_gather = torch.from_numpy(box_ids_of_pts).float()
-        # pcs_gather = torch.concatenate((pcs_gather, box_ids_of_pts_gather), axis = 1).cuda() # (2, 20000, 6)
 
         all_pcs = concat_all_gather(pcs_gather) # (batch_size_all=8, 20000, 5)
 
 
-        # batch_size_gather = torch.from_numpy(np.array([batch_size_this])).cuda()
-        # batch_size_all_list = concat_all_gather(batch_size_gather) # (num_gpus) (list of batch sizes across all gpus, list len = num_gpus)
-        # batch_size_all = torch.sum(batch_size_all_list)
         batch_size_all = all_pcs.shape[0]
         num_gpus = batch_size_all // batch_size_this
         
@@ -146,8 +119,6 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         batch_dict['batch_size'] = new_pcs_this.shape[0]
         batch_dict['points'] = new_pcs_this.view(-1, points_feature_dim) # (2x20000, 5)
 
-        # batch_dict['points'] = new_pcs_this[:,:,:points_feature_dim].view(-1, points_feature_dim) # (2x20000, 5)
-        # batch_dict['box_ids_of_pts'] = new_pcs_this[:,:,-1].squeeze(-1) # (2, 20000)
         return batch_dict, idx_unshuffle
 
 
@@ -213,38 +184,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             return ret_x, idx_unshuffle, idx_shuffle
         else:
             return x_gather[idx_this], idx_unshuffle
-
-    # @torch.no_grad()
-    # def _batch_unshuffle_ddp(self, x, idx_unshuffle):
-    #     """
-    #     Undo batch shuffle.
-    #     *** Only support DistributedDataParallel (DDP) model. ***
-    #     """
-    #     # gather from all gpus
-    #     batch_size_this = x.shape[0]
-    #     x_gather = concat_all_gather(x)
-    #     batch_size_all = x_gather.shape[0]
-        
-    #     num_gpus = batch_size_all // batch_size_this
-        
-    #     # restored index for this gpu
-    #     gpu_idx = torch.distributed.get_rank()
-    #     idx_this = idx_unshuffle.view(num_gpus, -1)[gpu_idx]
-    #     return x_gather[idx_this]
     
     def _single_input_forward_MOCO(self, batch_dict, target):
-        # if "vox" not in input_key:
-        #     assert isinstance(batch, torch.Tensor)
-        # if ('vox' in input_key) and ("Lidar" not in self.config):
-        #     points = batch
-        #     points_coords = points[0]
-        #     points_feats = points[1]
-
-        #     ### Invariant to even and odd coords
-        #     points_coords[:, 1:] += (torch.rand(3) * 100).type_as(points_coords)
-        #     points_feats = points_feats/255.0 - 0.5
-        #     ### If enable shuffle batch for vox, please comment out this line.
-        #     batch = SparseTensor(points_feats, points_coords.float())
 
         with torch.no_grad():
             self._momentum_update_key(target)  # update the key encoder
@@ -255,15 +196,6 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                 batch_dict, idx_unshuffle = self._batch_shuffle_ddp(batch_dict)
                 
             # Copy to GPU
-            # if ("Lidar" in self.config) and ("vox" in input_key):
-            #     for key in batch_dict:
-            #         batch_dict[key] = main_utils.recursive_copy_to_gpu(
-            #             batch_dict[key], non_blocking=True
-            #         )
-            # else:
-            #     batch_dict = main_utils.recursive_copy_to_gpu(
-            #         batch_dict, non_blocking=True
-            #     )
             main_utils.load_data_to_gpu(batch_dict)
             
             if idx_unshuffle is not None:
@@ -334,116 +266,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         #             """
         return trunks
 
-    # def _print_state_dict_shapes(self, state_dict):
-    #     logging.info("Model state_dict:")
-    #     for param_tensor in state_dict.keys():
-    #         logging.info(f"{param_tensor}:\t{state_dict[param_tensor].size()}")
-
-    # def _print_loaded_dict_info(self, state):
-    #     # get the model state dict original
-    #     model_state_dict = {}
-    #     if "," in self.config.TRUNK.NAME:
-    #         trunk_state_dict, heads_state_dict = (
-    #             self.trunk.state_dict(),
-    #             self.heads.state_dict(),
-    #         )
-    #     else:
-    #         trunk_state_dict, heads_state_dict = (
-    #             self.trunk.state_dict(),
-    #             self.heads.state_dict(),
-    #         )
-    #     model_state_dict.update(trunk_state_dict)
-    #     model_state_dict.update(heads_state_dict)
-
-    #     # get the checkpoint state dict
-    #     checkpoint_state_dict = {}
-    #     checkpoint_state_dict.update(state["trunk"])
-    #     checkpoint_state_dict.update(state["heads"])
-
-    #     # now we compare the state dict and print information
-    #     not_found, extra_layers = [], []
-    #     max_len_model = max(len(key) for key in model_state_dict.keys())
-    #     for layername in model_state_dict.keys():
-    #         if layername in checkpoint_state_dict:
-    #             logging.info(
-    #                 f"Loaded: {layername: <{max_len_model}} of "
-    #                 f"shape: {model_state_dict[layername].size()} from checkpoint"
-    #             )
-    #         else:
-    #             not_found.append(layername)
-    #             logging.info(f"Not found:\t\t{layername}, not initialized")
-    #     for layername in checkpoint_state_dict.keys():
-    #         if layername not in model_state_dict:
-    #             extra_layers.append(layername)
-    #     logging.info(f"Extra layers not loaded from checkpoint:\n {extra_layers}")
-
-    # def get_optimizer_params(self):
-    #     regularized_params, unregularized_params = [], []
-    #     conv_types = (nn.Conv1d, nn.Conv2d, nn.Conv3d)
-    #     bn_types = (
-    #         nn.BatchNorm1d,
-    #         nn.BatchNorm2d,
-    #         nn.BatchNorm3d,
-    #         nn.SyncBatchNorm,
-    #         apex.parallel.SyncBatchNorm,
-    #     )
-    #     for module in self.modules():
-    #         if isinstance(module, nn.Linear) or isinstance(module, conv_types):
-    #             regularized_params.append(module.weight)
-    #             if module.bias is not None:
-    #                 if self.optimizer_config["regularize_bias"]:
-    #                     regularized_params.append(module.bias)
-    #                 else:
-    #                     unregularized_params.append(module.bias)
-    #         elif isinstance(module, bn_types):
-    #             if module.weight is not None:
-    #                 if self.optimizer_config["regularize_bn"]:
-    #                     regularized_params.append(module.weight)
-    #                 else:
-    #                     unregularized_params.append(module.weight)
-    #             if module.bias is not None:
-    #                 if (
-    #                     self.optimizer_config["regularize_bn"]
-    #                     and self.optimizer_config["regularize_bias"]
-    #                 ):
-    #                     regularized_params.append(module.bias)
-    #                 else:
-    #                     unregularized_params.append(module.bias)
-    #         elif len(list(module.children())) >= 0:
-    #             # for any other layers not bn_types, conv_types or nn.Linear, if
-    #             # the layers are the leaf nodes and have parameters, we regularize
-    #             # them. Similarly, if non-leaf nodes but have parameters, regularize
-    #             # them (set recurse=False)
-    #             for params in module.parameters(recurse=False):
-    #                 regularized_params.append(params)
-
-    #     non_trainable_params = []
-    #     for name, param in self.named_parameters():
-    #         if name in cfg.MODEL.NON_TRAINABLE_PARAMS:
-    #             param.requires_grad = False
-    #             non_trainable_params.append(param)
-
-    #     trainable_params = [
-    #         params for params in self.parameters() if params.requires_grad
-    #     ]
-    #     regularized_params = [
-    #         params for params in regularized_params if params.requires_grad
-    #     ]
-    #     unregularized_params = [
-    #         params for params in unregularized_params if params.requires_grad
-    #     ]
-    #     logging.info("Traininable params: {}".format(len(trainable_params)))
-    #     logging.info("Non-Traininable params: {}".format(len(non_trainable_params)))
-    #     logging.info(
-    #         "Regularized Parameters: {}. Unregularized Parameters {}".format(
-    #             len(regularized_params), len(unregularized_params)
-    #         )
-    #     )
-    #     return {
-    #         "regularized_params": regularized_params,
-    #         "unregularized_params": unregularized_params,
-    #     }
-
+    
     @property
     def num_classes(self):
         raise NotImplementedError

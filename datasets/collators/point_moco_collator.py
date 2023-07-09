@@ -51,13 +51,13 @@ def point_moco_collator(batch):
                     {'points': points,
                      'box_ids_of_pts': box_ids_of_pts,
                      'gt_boxes': batch_gt_boxes3d, 
-                     'gt_boxes_idx': batch_gt_boxes_idx, 
+                    #  'gt_boxes_idx': batch_gt_boxes_idx, 
                      'batch_size': batch_size},
                     'input_moco': 
                     {'points': points_moco,
                      'box_ids_of_pts': box_ids_of_pts_moco, 
                      'gt_boxes': batch_gt_boxes3d_moco, 
-                     'gt_boxes_idx': batch_gt_boxes_moco_idx, 
+                    #  'gt_boxes_idx': batch_gt_boxes_moco_idx, 
                      'batch_size': batch_size}
     }
 
