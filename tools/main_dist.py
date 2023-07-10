@@ -117,8 +117,8 @@ def main_worker(gpu, ngpus, args, cfg):
 
     
     CLUSTER = False
-    if 'PRETEXT_HEAD'in cfg['model']['MODEL']:
-        CLUSTER = cfg['model']['MODEL']['PRETEXT_HEAD']['NAME'] == 'SegHead'
+    if 'PRETEXT_HEAD'in cfg['model']['MODEL_BASE']:
+        CLUSTER = cfg['model']['MODEL_BASE']['PRETEXT_HEAD']['NAME'] == 'SegHead'
     
     # Define dataloaders
     train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], CLUSTER, args.multiprocessing_distributed, logger)  
@@ -131,10 +131,8 @@ def main_worker(gpu, ngpus, args, cfg):
         # Only sync bn for detection head layers and not backbone 3d for shuffle bn to work
         # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model) 
         # TODO: This is a dirty way of doing it
-        if 'POINT_HEAD' in cfg['model']['MODEL']:
-            model.trunk[0].point_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.trunk[0].point_head)
-        if 'ROI_HEAD' in cfg['model']['MODEL']:
-            model.trunk[0].roi_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.trunk[0].roi_head)
+        if 'MODEL_HEAD' in cfg['model']:
+            model.head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.head)
 
     model, args = main_utils.distribute_model_to_cuda(model, args) #, find_unused_params=CLUSTER
 
@@ -201,14 +199,15 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         data_time.update(time.time() - end) # Time to load one batch
 
         if phase == 'train':
-            output_dict_list = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
+            output_dict = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
         else:
             with torch.no_grad():
-                output_dict_list = model(sample)
+                output_dict = model(sample)
 
         
-        loss = output_dict_list[0][0]['loss']  # detection loss
-        loss += criterion(output_dict_list[0][0]['batch_dict'], output_dict_list[1][0]['batch_dict']) # contrastive loss
+        loss = criterion(output_dict['output_base'], output_dict['output_moco']) # contrastive loss
+        if 'MODEL_HEAD' in cfg['model']:
+            loss += output_dict['loss_head']  # detection loss
         loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
 
 
@@ -218,6 +217,12 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             loss.backward()
             clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
+            # for name, param in model.named_parameters():
+            #     if param.requires_grad:
+            #         if param.grad is not None:
+            #             print(name, f' {param.grad.shape}')
+            #         else:
+            #             print(name, f' is None')
 
         is_nan = torch.stack([torch.isnan(p).any() for p in model.parameters()]).any()
         assert not is_nan

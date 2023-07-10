@@ -58,19 +58,68 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         self.eval_mode = None  # this is just informational
         self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
         self.trunk = self._get_trunk(dataset)
+        self.head = self._get_head(dataset)
         self.m = 0.999 ### Can be tuned momentum parameter for momentum update
         self.model_input = model_config["model_input"] #['points', 'points_moco']
         
     def multi_input_with_head_mapping_forward(self, batch_dict):
-        all_outputs = []
+        output_dict = {}
 
-        outputs = self._single_input_forward(batch_dict['input'], 0)
-        all_outputs.append(outputs)
+        outputs_base = self._single_input_forward(batch_dict['input'], 0)
+        outputs_base[0]['batch_dict'].pop('points')
+        output_dict['output_base'] =  outputs_base[0]['batch_dict']
 
-        outputs = self._single_input_forward_MOCO(batch_dict['input_moco'], 1)
-        all_outputs.append(outputs)
-        return all_outputs
+        outputs_moco = self._single_input_forward_MOCO(batch_dict['input_moco'], 1)
+        outputs_moco[0]['batch_dict'].pop('points')
+        output_dict['output_moco'] =  outputs_moco[0]['batch_dict']
+        
+
+        if 'MODEL_HEAD' in self.config:
+            
+            if self.config['MODEL_HEAD'].get('INPUT_MOCO_FEATS', False):
+                new_batch_dict = self._concat_encoder_outputs(output_dict['output_base'], output_dict['output_moco'])
+                outputs = self.head(new_batch_dict) 
+            else:
+                outputs = self.head(output_dict['output_base'])
+
+            
+            output_dict['loss_head']= outputs[0]['loss']
+
+            #all_outputs.append(loss_dict)
+        return output_dict
     
+    def _concat_encoder_outputs(self, output_base_dict, output_moco_dict):
+        all_outputs = []
+        new_batch_dict = {}
+
+        all_outputs.append(output_base_dict)
+        all_outputs.append(output_moco_dict)
+        #points (N, 5), point_features (N, 128), point_coords (N, 4), gt_boxes (B, max gt boxes in a pc, 8)
+        new_batch_dict = {}
+        #new_batch_dict['points'] = torch.cat([output['points'] for output in all_outputs], dim=0)
+        new_batch_dict['point_features'] = torch.cat([output['point_features'] for output in all_outputs], dim=0)
+        with torch.no_grad():
+            all_outputs[1]['point_coords'][:,0] += all_outputs[0]['batch_size']
+        new_batch_dict['point_coords'] = torch.cat([output['point_coords'] for output in all_outputs], dim=0)
+        new_batch_dict['batch_size'] = all_outputs[0]['batch_size'] + all_outputs[1]['batch_size']
+
+        gt_box_dim = all_outputs[0]['gt_boxes'].shape[-1]
+        device = all_outputs[0]['gt_boxes'].device
+        max_gt_num = max([output['gt_boxes'].shape[1] for output in all_outputs])
+        new_gt_boxes = torch.zeros(
+            [new_batch_dict['batch_size'], max_gt_num, gt_box_dim],
+            dtype=torch.float32,
+            device=device)
+        batch_idx = 0
+        for output in all_outputs:
+            bs = output['batch_size']
+            gt_boxes = output['gt_boxes']
+            num_boxes = gt_boxes.shape[1]
+            new_gt_boxes[batch_idx: batch_idx+bs, :num_boxes , :] = gt_boxes
+            batch_idx += bs
+
+        new_batch_dict['gt_boxes'] = new_gt_boxes
+        return new_batch_dict
     def _single_input_forward(self, batch_dict, target):
         
         main_utils.load_data_to_gpu(batch_dict)
@@ -118,8 +167,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         
         batch_dict['batch_size'] = new_pcs_this.shape[0]
         batch_dict['points'] = new_pcs_this.view(-1, points_feature_dim) # (2x20000, 5)
+        batch_dict['idx_unshuffle'] = idx_unshuffle
 
-        return batch_dict, idx_unshuffle
+        return batch_dict
 
 
     @torch.no_grad()
@@ -189,18 +239,14 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
         with torch.no_grad():
             self._momentum_update_key(target)  # update the key encoder
-            idx_unshuffle = None
             #shuffle for making use of BN
             if torch.distributed.is_initialized():
                 #if "vox" not in input_key: 
-                batch_dict, idx_unshuffle = self._batch_shuffle_ddp(batch_dict)
+                batch_dict = self._batch_shuffle_ddp(batch_dict)
                 
             # Copy to GPU
             main_utils.load_data_to_gpu(batch_dict)
-            
-            if idx_unshuffle is not None:
-                batch_dict["idx_unshuffle"] = idx_unshuffle
-            
+
             output = self.trunk[target](batch_dict)
             
             batch_dict.pop('idx_unshuffle', None)
@@ -208,6 +254,13 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
     def forward(self, batch_dict):
         return self.multi_input_with_head_mapping_forward(batch_dict)
+
+    def _get_head(self, dataset):
+        import models.trunks as models
+        if "MODEL_HEAD" in self.config:
+            return models.build_network(model_cfg=self.config["MODEL_HEAD"], num_class=len(dataset.class_names), dataset=dataset)
+        else:
+            return None
 
     def _get_trunk(self, dataset):
         import models.trunks as models
@@ -221,8 +274,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         #     trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))
         #     trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))
 
-        trunks.append(models.build_network(model_cfg=self.config["MODEL"], num_class=len(dataset.class_names), dataset=dataset))
-        trunks.append(models.build_network(model_cfg=self.config["MODEL_MOCO"], num_class=len(dataset.class_names), dataset=dataset))
+        trunks.append(models.build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
+        trunks.append(models.build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
 
         # named_params_q = trunks[0].named_parameters()
         # named_params_k = trunks[1].named_parameters()

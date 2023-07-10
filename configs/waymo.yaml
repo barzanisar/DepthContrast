@@ -9,7 +9,7 @@ log2wb: false
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
-ckpt_save_interval: 10
+ckpt_save_interval: 1
 save_ckpt_after_epochs: 0
 
 WANDB:
@@ -23,7 +23,7 @@ dataset:
   DATASET_NAMES: [WaymoDataset]
   DATA_PATH: 'data/waymo'
   multiply_i_by_255: True
-  BATCHSIZE_PER_REPLICA: 8 #Change to 14
+  BATCHSIZE_PER_REPLICA: 6 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist']
   LABEL_TYPE: objects #sample_index, objects, class_names
@@ -62,7 +62,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 401
+  num_epochs: 3
   lr:
     name: "cosine"
     base_lr: 0.01 #0.1 for linear_probe #0.12
@@ -75,26 +75,7 @@ model:
   VOX: False
   linear_probe_dim: [128, 2]
 
-  MODEL_MOCO:
-    NAME: PointRCNN
-    BACKBONE_3D:
-      NAME: PointNet2MSG
-      SA_CONFIG:
-        NPOINTS: [4096, 1024, 256, 64]
-        RADIUS: [[0.1, 0.5], [0.5, 1.0], [1.0, 2.0], [2.0, 4.0]]
-        NSAMPLE: [[16, 32], [16, 32], [16, 32], [16, 32]]
-        MLPS: [[[16, 16, 32], [32, 32, 64]],
-              [[64, 64, 128], [64, 96, 128]],
-              [[128, 196, 256], [128, 196, 256]],
-              [[256, 256, 512], [256, 384, 512]]]
-      FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
-
-    PRETEXT_HEAD: 
-      NAME: SegHead
-      use_mlp: True
-      mlp_dim: [128, 128, 128]
-
-  MODEL:
+  MODEL_BASE:
     NAME: PointRCNN
 
     BACKBONE_3D:
@@ -113,6 +94,11 @@ model:
       NAME: SegHead
       use_mlp: True
       mlp_dim: [128, 128, 128]
+
+  MODEL_HEAD:
+    NAME: PointRCNN
+
+    INPUT_MOCO_FEATS: True
 
     POINT_HEAD:
       NAME: PointHeadBox
