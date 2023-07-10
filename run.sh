@@ -4,12 +4,16 @@
 #KITTI_TRAIN=$(readlink -f ../data/kitti/training)
 #KITTI_TEST=$(readlink -f ../data/kitti/testing)
 #WAYMO_RAW=$(readlink -f ../data/waymo/raw_data)
-#WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
-DENSE_LIDAR=$(readlink -f ./data/dense/lidar_hdl64_strongest)
-SNOWFALL_LIDAR=$(readlink -f ./data/dense/snowfall_simulation)
-SNOWFALL_LIDAR_FOV=$(readlink -f ./data/dense/snowfall_simulation_FOV)
-SNOWFLAKES=$(readlink -f ./data/dense/snowflakes)
-DROR=$(readlink -f ./data/dense/DROR)
+WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
+WAYMO_PROCESSED_INFO_TRAIN_PKL=$(readlink -f ./data/waymo/waymo_processed_data_10_infos_train.pkl)
+WAYMO_GTDB=$(readlink -f ./data/waymo/pcdet_gt_database_train_sampled_1)
+WAYMO_GTDB_PKL=$(readlink -f ./data/waymo/pcdet_waymo_dbinfos_train_sampled_1.pkl)
+
+# DENSE_LIDAR=$(readlink -f ./data/dense/lidar_hdl64_strongest)
+# SNOWFALL_LIDAR=$(readlink -f ./data/dense/snowfall_simulation)
+# SNOWFALL_LIDAR_FOV=$(readlink -f ./data/dense/snowfall_simulation_FOV)
+# SNOWFLAKES=$(readlink -f ./data/dense/snowflakes)
+# DROR=$(readlink -f ./data/dense/DROR)
 
 # Setup volume linking (host link:container link)
 CUR_DIR=$(pwd)
@@ -17,12 +21,15 @@ PROJ_DIR=$CUR_DIR
 #KITTI_TRAIN=$KITTI_TRAIN:/DepthContrast/data/kitti/training
 #KITTI_TEST=$KITTI_TEST:/DepthContrast/data/kitti/testing
 #WAYMO_RAW=$WAYMO_RAW:/DepthContrast/data/waymo/raw_data
-#WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_10
-DENSE_LIDAR=$DENSE_LIDAR:/DepthContrast/data/dense/lidar_hdl64_strongest
-SNOWFALL_LIDAR=$SNOWFALL_LIDAR:/DepthContrast/data/dense/snowfall_simulation
-SNOWFALL_LIDAR_FOV=$SNOWFALL_LIDAR_FOV:/DepthContrast/data/dense/snowfall_simulation_FOV
-SNOWFLAKES=$SNOWFLAKES:/DepthContrast/data/dense/snowflakes
-DROR=$DROR:/DepthContrast/data/dense/DROR
+WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_10
+WAYMO_PROCESSED_INFO_TRAIN_PKL=$WAYMO_PROCESSED_INFO_TRAIN_PKL:/DepthContrast/data/waymo/waymo_processed_data_10_infos_train.pkl
+WAYMO_GTDB=$WAYMO_GTDB:/DepthContrast/data/waymo/pcdet_gt_database_train_sampled_1
+WAYMO_GTDB_PKL=$WAYMO_GTDB_PKL:/DepthContrast/data/waymo/pcdet_waymo_dbinfos_train_sampled_1.pkl
+# DENSE_LIDAR=$DENSE_LIDAR:/DepthContrast/data/dense/lidar_hdl64_strongest
+# SNOWFALL_LIDAR=$SNOWFALL_LIDAR:/DepthContrast/data/dense/snowfall_simulation
+# SNOWFALL_LIDAR_FOV=$SNOWFALL_LIDAR_FOV:/DepthContrast/data/dense/snowfall_simulation_FOV
+# SNOWFLAKES=$SNOWFLAKES:/DepthContrast/data/dense/snowflakes
+# DROR=$DROR:/DepthContrast/data/dense/DROR
 
 PCDET_VOLUMES=""
 for entry in $PROJ_DIR/third_party/OpenPCDet/pcdet/*
@@ -46,11 +53,10 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --env="QT_X11_NO_MITSHM=1" \
         --hostname="inside-DOCKER" \
         --name="DepthContrast" \
-        --volume $DENSE_LIDAR \
-        --volume $SNOWFALL_LIDAR \
-        --volume $SNOWFLAKES \
-        --volume $SNOWFALL_LIDAR_FOV \
-        --volume $DROR \
+        --volume $WAYMO_PROCESSED \
+        --volume $WAYMO_PROCESSED_INFO_TRAIN_PKL \
+        --volume $WAYMO_GTDB \
+        --volume $WAYMO_GTDB_PKL \
         --volume $PROJ_DIR/data:/DepthContrast/data \
         --volume $PROJ_DIR/output:/DepthContrast/output \
         --volume $PROJ_DIR/tools:/DepthContrast/tools \
@@ -64,6 +70,11 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --volume $PROJ_DIR/lib:/DepthContrast/lib \
         $PCDET_VOLUMES \
         --rm \
-        depth_contrast_vdc_dc:latest bash
+        depth_contrast_snow_sim:first_try bash
 
 #--volume $WAYMO_PROCESSED \
+# --volume $DENSE_LIDAR \
+# --volume $SNOWFALL_LIDAR \
+# --volume $SNOWFLAKES \
+# --volume $SNOWFALL_LIDAR_FOV \
+# --volume $DROR \

@@ -1,7 +1,6 @@
 wb_extra_tags: ['pointnet', 'waymo']
 resume: false
 linear_probe: false # True for linear probe
-# cluster: False
 num_workers: 0
 
 log2tb: false
