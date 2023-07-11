@@ -1,7 +1,8 @@
+# python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
 wb_extra_tags: ['pointnet', 'waymo']
 resume: false
 linear_probe: false # True for linear probe
-num_workers: 0
+num_workers: 8
 
 log2tb: false
 log2wb: false
