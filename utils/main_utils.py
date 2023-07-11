@@ -113,12 +113,13 @@ def initialize_distributed_backend(args, ngpus_per_node):
                 mp.set_start_method('spawn')
             env_dict = {
                 key: os.environ[key]
-                for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE")
+                for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE", "LOCAL_RANK")
             }
             print("LAUNCHING!")
-            print(env_dict)
+            #print(env_dict)
             num_gpus = torch.cuda.device_count()
             torch.cuda.set_device(args.local_rank % num_gpus)
+            print(env_dict, f"args.local_rank: {args.local_rank}", f"num gpus: {num_gpus}", f"set device: {args.local_rank % num_gpus}")
             dist.init_process_group(
                 backend=args.dist_backend,
                 init_method='tcp://127.0.0.1:%d' % args.tcp_port,
@@ -127,6 +128,9 @@ def initialize_distributed_backend(args, ngpus_per_node):
             )
             args.world_size = dist.get_world_size()
             args.rank = dist.get_rank()  # dist.get_rank() returns global rank
+            print(env_dict, f"args.world_size: {args.world_size}", f"args.rank: {args.rank}", f"args.tcp_port: {args.tcp_port}")
+
+            torch.distributed.barrier()
 
     if args.rank == -1:
         args.rank = 0
