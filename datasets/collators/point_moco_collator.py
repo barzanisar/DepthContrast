@@ -8,6 +8,8 @@
 
 import torch
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 def point_moco_collator(batch):
     batch_size = len(batch)

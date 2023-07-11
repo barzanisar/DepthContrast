@@ -20,7 +20,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 from pcdet.config import cfg, cfg_from_yaml_file
 
-from functools import reduce
+# from functools import reduce
 
 #from torch.multiprocessing import Pool, Process, set_start_method
 # try:
@@ -43,7 +43,7 @@ parser.add_argument('--world-size', default=-1, type=int,
 parser.add_argument('--rank', default=-1, type=int,
                     help='node rank for distributed training') #remove
 parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'fair'], default='none')
-parser.add_argument('--tcp_port', type=int, default=18888, help='tcp port for distrbuted training')
+parser.add_argument('--tcp_port', type=int, default=18878, help='tcp port for distrbuted training')
 parser.add_argument('--dist-url', default='tcp://127.0.0.1:29500', type=str,
                     help='url used to set up distributed training') #tc port
 parser.add_argument('--dist-backend', default='nccl', type=str,
