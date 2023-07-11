@@ -8,6 +8,8 @@
 #SBATCH --output=./output/log/%x-%j.out   # STDOUT
 #SBATCH --mail-type=ALL
 #SBATCH --array=1-3%1   # 4 is the number of jobs in the chain
+#SBATCH --mail-user=barzanisar93@gmail.com
+
 
 # die function
 die() { echo "$*" 1>&2 ; exit 1; }
@@ -20,7 +22,7 @@ TCP_PORT=18888
 LAUNCHER='pytorch'
 
 # Additional parameters
-DATA_DIR=/home/$USER/projects/def-swasland-ab/Datasets/Waymo
+DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
 SING_IMG=/home/$USER/projects/rrg-swasland/singularity/depth_contrast_snow_sim.sif
 DIST=true
 WANDB_API_KEY=$WANDB_API_KEY
@@ -110,14 +112,23 @@ echo ""
 echo "Extracting Waymo data"
 TMP_DATA_DIR=$SLURM_TMPDIR/data
 
-echo "Unzipping $DATA_DIR/waymo_processed_data_10.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/waymo_processed_data_10.zip -d $TMP_DATA_DIR
+# echo "Unzipping $DATA_DIR/waymo_processed_data_10.zip to $TMP_DATA_DIR"
+# unzip -qq $DATA_DIR/waymo_processed_data_10.zip -d $TMP_DATA_DIR
 
-echo "Unzipping $DATA_DIR/Infos/waymo_processed_data_10_infos.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/Infos/waymo_processed_data_10_infos.zip -d $TMP_DATA_DIR
+# echo "Unzipping $DATA_DIR/Infos/waymo_processed_data_10_infos.zip to $TMP_DATA_DIR"
+# unzip -qq $DATA_DIR/Infos/waymo_processed_data_10_infos.zip -d $TMP_DATA_DIR
 
-echo "Unzipping $DATA_DIR/Infos/waymo_infos.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/Infos/waymo_infos.zip -d $TMP_DATA_DIR
+# echo "Unzipping $DATA_DIR/Infos/waymo_infos.zip to $TMP_DATA_DIR"
+# unzip -qq $DATA_DIR/Infos/waymo_infos.zip -d $TMP_DATA_DIR
+
+echo "Unzipping $DATA_DIR/waymo_processed_data_10_short.zip to $TMP_DATA_DIR"
+unzip -qq $DATA_DIR/waymo_processed_data_10_short.zip -d $TMP_DATA_DIR
+
+echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_infos.zip to $TMP_DATA_DIR"
+unzip -qq $DATA_DIR/waymo_processed_data_10_short_infos.zip -d $TMP_DATA_DIR
+
+echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip to $TMP_DATA_DIR"
+unzip -qq $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip -d $TMP_DATA_DIR
 
 echo "Done extracting Waymo data"
 

@@ -17,8 +17,8 @@ def drop_info_with_name(info, name):
 class WaymoDataset(DepthContrastDataset):
     def __init__(self, cfg, cluster, linear_probe=False, mode='train', logger=None):
         super().__init__(cfg, linear_probe=linear_probe, mode=mode, logger=logger)
-        self.data_path = self.root_path / 'waymo_processed_data_10'
-        self.infos_pkl_path = self.root_path / ('waymo_processed_data_10_infos_%s.pkl' % (self.mode)) #TODO: add DATA_SPLIT in cfg
+        self.data_path = self.root_path / cfg.PROCESSED_DATA_TAG
+        self.infos_pkl_path = self.root_path / f'{cfg.PROCESSED_DATA_TAG}_infos_{cfg.DATA_SPLIT[self.mode]}.pkl'
 
         self.infos = []
         self.include_waymo_data() # read tfrecords in sample_seq_list and then find its pkl in waymo_processed_data_10 and include the pkl infos in waymo infos
