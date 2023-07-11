@@ -240,9 +240,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         with torch.no_grad():
             self._momentum_update_key(target)  # update the key encoder
             #shuffle for making use of BN
-            if torch.distributed.is_initialized():
-                #if "vox" not in input_key: 
-                batch_dict = self._batch_shuffle_ddp(batch_dict)
+            # if torch.distributed.is_initialized():
+            #     #if "vox" not in input_key: 
+            #     batch_dict = self._batch_shuffle_ddp(batch_dict)
                 
             # Copy to GPU
             main_utils.load_data_to_gpu(batch_dict)
