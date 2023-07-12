@@ -2,7 +2,7 @@
 wb_extra_tags: ['pointnet', 'waymo']
 resume: false
 linear_probe: false # True for linear probe
-num_workers: 4 # should be same as --cpus-per-task
+num_workers: 0 # should be same as --cpus-per-task
 
 log2tb: false
 log2wb: false
