@@ -136,57 +136,55 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
     @torch.no_grad()
     def _batch_shuffle_ddp(self, batch_dict):
-        points = batch_dict['points'] #(40000)
-        batch_size_this = batch_dict['batch_size']
-        gpu_idx = torch.distributed.get_rank()
-
-        print(f'Inside shuffle, this pc batch size: {batch_size_this}, gpu_idx: {gpu_idx}')
+        points = batch_dict['points'] #(6, 20k, 4)
+        batch_size_this = batch_dict['batch_size'] # points.shape[0]
+        #gpu_idx = torch.distributed.get_rank()
+        #print(f'Inside shuffle, this pc batch size: {batch_size_this}, gpu_idx: {gpu_idx}')
         # Gather all pcs from all gpus
-        points_feature_dim = points.shape[-1]
-        pcs_gather = torch.from_numpy(points).float().cuda().view(batch_size_this, -1, points_feature_dim) # (2, 20000, 5) #.cuda()
-        print(f'Inside shuffle, this pc: {pcs_gather.shape}, {pcs_gather.device}')
-        all_pcs = concat_all_gather(pcs_gather) # (batch_size_all=8, 20000, 5)
-        print(f'Inside shuffle, all pcs: {all_pcs.shape}, {all_pcs.device}, {pcs_gather.device}')
+        pcs_gather = torch.from_numpy(points).float().cuda() # (6, 20k, 4) 
+        #print(f'Inside shuffle, this pc: {pcs_gather.shape}, {pcs_gather.device}')
+        all_pcs = concat_all_gather(pcs_gather) # (batch_size_all=24, 20000, 4)
+        #print(f'Inside shuffle, all pcs: {all_pcs.shape}, {all_pcs.device}, {pcs_gather.device}')
 
 
         batch_size_all = all_pcs.shape[0]
         num_gpus = batch_size_all // batch_size_this
-        print(f'Inside shuffle, num_gpus: {num_gpus}, {all_pcs.device}')
+        #print(f'Inside shuffle, num_gpus: {num_gpus}, {all_pcs.device}')
 
         
         # random shuffle index
         idx_shuffle = torch.randperm(batch_size_all).cuda()
-        print(f'Inside shuffle, idx_shuffle: {idx_shuffle}, {all_pcs.device}')
+        #print(f'Inside shuffle, idx_shuffle: {idx_shuffle}, {all_pcs.device}')
     
         # broadcast to all gpus
         torch.distributed.broadcast(idx_shuffle, src=0)
         
         # index for restoring
         idx_unshuffle = torch.argsort(idx_shuffle)
-        print(f'Inside shuffle, idx_unshuffle: {idx_unshuffle}, {all_pcs.device}')
+        #print(f'Inside shuffle, idx_unshuffle: {idx_unshuffle}, {all_pcs.device}')
 
         
         # shuffled index for this gpu
         gpu_idx = torch.distributed.get_rank()
-        print(f'Inside shuffle, gpu_idx: {gpu_idx}, {all_pcs.device}')
+        #print(f'Inside shuffle, gpu_idx: {gpu_idx}, {all_pcs.device}')
 
         idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx] #(num_gpus=4, batch_size_this=2)
-        print(f'Inside shuffle, idx_shuffle reshaped: {idx_shuffle.view(num_gpus, -1).shape}, {all_pcs.device}')
-        print(f'Inside shuffle, idx_this: {idx_this}, {all_pcs.device}')
+        # print(f'Inside shuffle, idx_shuffle reshaped: {idx_shuffle.view(num_gpus, -1).shape}, {all_pcs.device}')
+        # print(f'Inside shuffle, idx_this: {idx_this}, {all_pcs.device}')
 
 
 
         # Return new pcs for this gpu
-        new_pcs_this = all_pcs[idx_this] #(2, 20000, 5) 
-        print(f'Inside shuffle, new_pcs_this: {new_pcs_this.shape}, {new_pcs_this.device}')
+        new_pcs_this = all_pcs[idx_this] #(6, 20000, 4) 
+        #print(f'Inside shuffle, new_pcs_this: {new_pcs_this.shape}, {new_pcs_this.device}')
         
         batch_dict['batch_size'] = new_pcs_this.shape[0]
-        batch_dict['points'] = new_pcs_this.view(-1, points_feature_dim) # (2x20000, 5)
-        print(f'Inside shuffle, points: {points.shape}, {new_pcs_this.device}')
+        batch_dict['points'] = new_pcs_this # (6, 20000, 4)
+        #print(f'Inside shuffle, points: {points.shape}')
 
         batch_dict['idx_unshuffle'] = idx_unshuffle
 
-        torch.distributed.barrier()
+        #torch.distributed.barrier() #TODO: remove
 
         return batch_dict
 
@@ -264,7 +262,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                 batch_dict = self._batch_shuffle_ddp(batch_dict)
                 
             # Copy to GPU
+            #print("Before loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
             main_utils.load_data_to_gpu(batch_dict)
+            #print("After loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
 
             output = self.trunk[target](batch_dict)
             
