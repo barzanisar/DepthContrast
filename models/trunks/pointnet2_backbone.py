@@ -13,14 +13,14 @@ import sys
 import numpy as np
 
 from models.trunks.mlp import MLP
-from pcdet.ops.roipoint_pool3d import roipoint_pool3d_utils
+from third_party.OpenPCDet.pcdet.ops.roipoint_pool3d import roipoint_pool3d_utils
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) #trunks
 ROOT_DIR = os.path.dirname(ROOT_DIR) #models
 ROOT_DIR = os.path.dirname(ROOT_DIR) #DepthContrast
 sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
 
-from ops.pointnet2.pointnet2_batch import pointnet2_modules
+from third_party.OpenPCDet.pcdet.ops.pointnet2.pointnet2_batch import pointnet2_modules
 
 @torch.no_grad()
 def concat_all_gather(tensor):

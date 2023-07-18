@@ -18,7 +18,7 @@ from torch.nn.utils import clip_grad_norm_
 
 import torch.backends.cudnn as cudnn
 import torch.optim
-from pcdet.config import cfg, cfg_from_yaml_file
+from third_party.OpenPCDet.pcdet.config import cfg, cfg_from_yaml_file
 
 # from functools import reduce
 

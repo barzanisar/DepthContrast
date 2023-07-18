@@ -4,7 +4,7 @@ import pickle
 from pathlib import Path
 
 import numpy as np
-from pcdet.utils import box_utils, calibration_kitti
+from third_party.OpenPCDet.pcdet.utils import box_utils, calibration_kitti
 
 from datasets.depth_dataset import DepthContrastDataset
 from datasets.transforms.weather_transforms import *

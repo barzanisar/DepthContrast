@@ -120,10 +120,10 @@ ENV TORCH_CUDA_ARCH_LIST="Kepler;Kepler+Tesla;Maxwell;Maxwell+Tegra;Pascal;Volta
 ENV PYTHONPATH="/usr/lib/python3.8/site-packages/:${PYTHONPATH}"
 #WORKDIR /DepthContrast/third_party/pointnet2
 #RUN python setup.py install
-WORKDIR /DepthContrast/third_party/OpenPCDet
+#WORKDIR /DepthContrast/third_party/OpenPCDet
 RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
 RUN python -m pip --no-cache-dir install torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
-RUN python setup.py develop
+RUN python ./third_party/OpenPCDet/setup.py develop
 
 WORKDIR /DepthContrast
 RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt

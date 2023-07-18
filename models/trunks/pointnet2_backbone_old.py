@@ -19,7 +19,7 @@ ROOT_DIR = os.path.dirname(ROOT_DIR) #models
 ROOT_DIR = os.path.dirname(ROOT_DIR) #DepthContrast
 sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
 
-from ops.pointnet2.pointnet2_batch import pointnet2_modules
+from third_party.OpenPCDet.pcdet.ops.pointnet2.pointnet2_batch import pointnet2_modules
 try:
     try:
         try:

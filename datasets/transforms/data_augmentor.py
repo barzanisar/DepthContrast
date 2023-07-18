@@ -1,7 +1,7 @@
 from functools import partial
 
 import numpy as np
-from pcdet.utils import common_utils
+from third_party.OpenPCDet.pcdet.utils import common_utils
 from . import augmentor_utils
 
 def check_aspect2D(crop_range, aspect_min):

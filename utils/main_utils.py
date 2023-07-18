@@ -23,7 +23,6 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) #utils
 ROOT_DIR = os.path.dirname(ROOT_DIR) #DepthContrast
 sys.path.append(os.path.join(ROOT_DIR, 'third_party', 'OpenPCDet', "pcdet"))
 
-from pcdet.utils import box_utils
 
 def confusion_matrix(preds, labels, num_classes):
     hist = (
@@ -117,8 +116,32 @@ def initialize_distributed_backend(args, ngpus_per_node):
             }
             print("LAUNCHING!")
             #print(env_dict)
-            num_gpus = torch.cuda.device_count()
-            torch.cuda.set_device(args.local_rank % num_gpus)
+            # ngpus_per_node = torch.cuda.device_count()
+
+            # """ This next line is the key to getting DistributedDataParallel working on SLURM:
+            #     SLURM_NODEID is 0 or 1 in this example, SLURM_LOCALID is the id of the 
+            #     current process inside a node and is also 0 or 1 in this example."""
+
+            # local_rank = int(os.environ.get("SLURM_LOCALID")) 
+            # rank = int(os.environ.get("SLURM_NODEID"))*ngpus_per_node + local_rank
+
+            # current_device = local_rank
+
+            # torch.cuda.set_device(current_device)
+            """ this block initializes a process group and initiate communications
+		        between all processes running on all nodes """
+
+            # print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
+            # #init the process group
+            # dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=rank)
+            # print("process group ready!")
+            # args.rank = rank
+            # x = torch.rand(1,3).cuda(non_blocking=True)
+            # print(x)
+            # torch.distributed.barrier()
+
+            num_gpus = torch.cuda.device_count() #TODO: args.world_size, total num gpus over all nodes, set in sbatch --world-size $SLURM_NTASKS
+            torch.cuda.set_device(args.local_rank % num_gpus) # TODO: local rank= set with int(os.environ.get("SLURM_LOCALID")) and check if os. LOCAL_RANK gives the same thing
             print(env_dict, f"args.local_rank: {args.local_rank}", f"num gpus: {num_gpus}", f"set device: {args.local_rank % num_gpus}")
             dist.init_process_group(
                 backend=args.dist_backend,

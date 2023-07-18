@@ -1,7 +1,7 @@
 import numpy as np
 import torch
-from pcdet.ops.roiaware_pool3d import roiaware_pool3d_utils
-from pcdet.utils import box_utils, common_utils
+from third_party.OpenPCDet.pcdet.ops.roiaware_pool3d import roiaware_pool3d_utils
+from third_party.OpenPCDet.pcdet.utils import box_utils, common_utils
 
 # np.random.seed(100)
 

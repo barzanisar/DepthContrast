@@ -1,8 +1,8 @@
 import pickle
 import numpy as np
 
-from pcdet.ops.iou3d_nms import iou3d_nms_utils
-from pcdet.utils import box_utils
+from third_party.OpenPCDet.pcdet.ops.iou3d_nms import iou3d_nms_utils
+from third_party.OpenPCDet.pcdet.utils import box_utils
 
 
 class DataBaseSampler(object):
