@@ -70,7 +70,7 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --volume $PROJ_DIR/lib:/DepthContrast/lib \
         $PCDET_VOLUMES \
         --rm \
-        depth_contrast_snow_sim:first_try bash
+        ssl:free_invalid bash
 
 #--volume $WAYMO_PROCESSED \
 # --volume $DENSE_LIDAR \

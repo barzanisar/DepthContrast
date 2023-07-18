@@ -62,7 +62,7 @@ RUN ln -s /usr/bin/python3.8 /usr/local/bin/python
 COPY requirements.txt requirements.txt
 RUN python -m pip install --upgrade pip
 RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
-RUN apt-get update && apt-get install libgl1
+RUN apt-get update && apt-get install -y libgl1
 RUN pip install -U urllib3 requests
 
 
@@ -118,10 +118,8 @@ WORKDIR /DepthContrast
 COPY third_party third_party
 ENV TORCH_CUDA_ARCH_LIST="Kepler;Kepler+Tesla;Maxwell;Maxwell+Tegra;Pascal;Volta;Turing"
 ENV PYTHONPATH="/usr/lib/python3.8/site-packages/:${PYTHONPATH}"
-#WORKDIR /DepthContrast/third_party/pointnet2
-#RUN python setup.py install
-#WORKDIR /DepthContrast/third_party/OpenPCDet
-RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
+
+RUN python -m pip --no-cache-dir install --upgrade -r ./third_party/OpenPCDet/requirements.txt
 RUN python -m pip --no-cache-dir install torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 RUN python ./third_party/OpenPCDet/setup.py develop
 
