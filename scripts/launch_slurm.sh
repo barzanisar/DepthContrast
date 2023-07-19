@@ -8,29 +8,6 @@
 # echo "command line args for launch_ddp.sh"
 # echo "$1 $2 $3 $4 $5"
 
-# Extract Dataset
-echo "Extracting Waymo data"
-TMP_DATA_DIR=$SLURM_TMPDIR/data
-
-# echo "Unzipping $DATA_DIR/waymo_processed_data_10.zip to $TMP_DATA_DIR"
-# unzip -qq $DATA_DIR/waymo_processed_data_10.zip -d $TMP_DATA_DIR
-
-# echo "Unzipping $DATA_DIR/Infos/waymo_processed_data_10_infos.zip to $TMP_DATA_DIR"
-# unzip -qq $DATA_DIR/Infos/waymo_processed_data_10_infos.zip -d $TMP_DATA_DIR
-
-# echo "Unzipping $DATA_DIR/Infos/waymo_infos.zip to $TMP_DATA_DIR"
-# unzip -qq $DATA_DIR/Infos/waymo_infos.zip -d $TMP_DATA_DIR
-
-echo "Unzipping $DATA_DIR/waymo_processed_data_10_short.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/waymo_processed_data_10_short.zip -d $TMP_DATA_DIR
-
-echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_infos.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/waymo_processed_data_10_short_infos.zip -d $TMP_DATA_DIR
-
-echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip -d $TMP_DATA_DIR
-
-echo "Done extracting Waymo data"
 
 # Get last element in string and increment by 1
 NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"
@@ -83,13 +60,14 @@ $SING_IMG
 "
 
 TRAIN_CMD=$BASE_CMD
-# TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$CFG_FILE"
-TRAIN_CMD+="python -m torch.distributed.launch
---nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-/DepthContrast/tools/main_dist.py
---launcher pytorch
---tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size 8 --dist-url tcp://$MASTER_ADDR:$TCP_PORT
-"
+TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --launcher slurm
+--tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $SLURM_NTASKS --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
+# TRAIN_CMD+="python -m torch.distributed.launch
+# --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+# /DepthContrast/tools/main_dist.py
+# --launcher pytorch
+# --tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size 8 --dist-url tcp://$MASTER_ADDR:$TCP_PORT
+# "
 
 echo "Running training"
 echo "Node $SLURM_NODEID says: main node at $MASTER_ADDR:$MASTER_PORT"
