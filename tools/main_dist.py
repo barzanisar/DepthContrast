@@ -90,10 +90,10 @@ def main():
             mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, cfg))
         else:
             args.ngpus = torch.cuda.device_count()  # remove for fair
-            print("=" * 30 + "   DDP   " + "=" * 30)
-            print(f"args.ngpus : {args.ngpus}")
-            print(f"args.local_rank : {args.local_rank}")
-            print(f"args.launcher : {args.launcher}")
+            # print("=" * 30 + "   DDP   " + "=" * 30)
+            # print(f"args.ngpus : {args.ngpus}")
+            # print(f"args.local_rank : {args.local_rank}")
+            # print(f"args.launcher : {args.launcher}")
             main_worker(args.local_rank, args.ngpus, args, cfg)
     else:
         args.ngpus = torch.cuda.device_count()
