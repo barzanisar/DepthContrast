@@ -23,7 +23,7 @@ LAUNCHER='pytorch'
 
 # Additional parameters
 DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
-SING_IMG=/home/$USER/projects/rrg-swasland/singularity/depth_contrast_snow_sim.sif
+SING_IMG=/home/$USER/projects/rrg-swasland/singularity/ssl.sif
 DIST=true
 WANDB_API_KEY=$WANDB_API_KEY
 WANDB_MODE='offline' #'dryrun'
