@@ -134,7 +134,7 @@ def initialize_distributed_backend(args, ngpus_per_node):
             print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
             #init the process group
             dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=rank)
-            print("process group ready!")
+            print('From Rank: {}, ==> Process Group Ready!...'.format(rank))
             args.rank = rank
             # x = torch.rand(1,3).cuda(non_blocking=True)
             # print(x)
