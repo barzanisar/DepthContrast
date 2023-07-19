@@ -81,7 +81,7 @@ echo ""
 
 export DATA_DIR=$DATA_DIR
 
-srun -N $SLURM_NNODES -n $SLURM_NNODES extract_dataset_slurm.sh
+srun -N $SLURM_NNODES -n $SLURM_NNODES scripts/extract_dataset_slurm.sh
 
 export MASTER_ADDR=$(hostname)
 export TCP_PORT=$TCP_PORT
