@@ -108,52 +108,53 @@ def initialize_distributed_backend(args, ngpus_per_node):
             args.rank = dist.get_rank() # global rank
 
         elif args.launcher == 'pytorch':
-            if mp.get_start_method(allow_none=True) is None:
-                mp.set_start_method('spawn')
+            # if mp.get_start_method(allow_none=True) is None:
+            #     mp.set_start_method('spawn')
             env_dict = {
                 key: os.environ[key]
                 for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE", "LOCAL_RANK")
             }
             print("LAUNCHING!")
-            #print(env_dict)
-            # ngpus_per_node = torch.cuda.device_count()
+            print(env_dict)
+
+            ngpus_per_node = torch.cuda.device_count()
 
             # """ This next line is the key to getting DistributedDataParallel working on SLURM:
             #     SLURM_NODEID is 0 or 1 in this example, SLURM_LOCALID is the id of the 
             #     current process inside a node and is also 0 or 1 in this example."""
 
-            # local_rank = int(os.environ.get("SLURM_LOCALID")) 
-            # rank = int(os.environ.get("SLURM_NODEID"))*ngpus_per_node + local_rank
+            local_rank = args.local_rank
+            rank = int(os.environ.get("SLURM_NODEID"))*ngpus_per_node + local_rank
 
-            # current_device = local_rank
-
-            # torch.cuda.set_device(current_device)
+            current_device = local_rank
+            torch.cuda.set_device(current_device)
             """ this block initializes a process group and initiate communications
 		        between all processes running on all nodes """
 
-            # print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
-            # #init the process group
-            # dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=rank)
-            # print("process group ready!")
-            # args.rank = rank
+            print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
+            #init the process group
+            dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=rank)
+            print("process group ready!")
+            args.rank = rank
             # x = torch.rand(1,3).cuda(non_blocking=True)
             # print(x)
+            print(env_dict, f"args.rank: {args.rank}", f"args.world_size: {args.world_size}", f"dist.get_world_size(): {dist.get_world_size()}")
             # torch.distributed.barrier()
 
-            num_gpus = torch.cuda.device_count() #TODO: args.world_size, total num gpus over all nodes, set in sbatch --world-size $SLURM_NTASKS
-            torch.cuda.set_device(args.local_rank % num_gpus) # TODO: local rank= set with int(os.environ.get("SLURM_LOCALID")) and check if os. LOCAL_RANK gives the same thing
-            print(env_dict, f"args.local_rank: {args.local_rank}", f"num gpus: {num_gpus}", f"set device: {args.local_rank % num_gpus}")
-            dist.init_process_group(
-                backend=args.dist_backend,
-                init_method='tcp://127.0.0.1:%d' % args.tcp_port,
-                rank=args.local_rank,
-                world_size=num_gpus
-            )
-            args.world_size = dist.get_world_size()
-            args.rank = dist.get_rank()  # dist.get_rank() returns global rank
-            print(env_dict, f"args.world_size: {args.world_size}", f"args.rank: {args.rank}", f"args.tcp_port: {args.tcp_port}")
+            # num_gpus = torch.cuda.device_count() #TODO: args.world_size, total num gpus over all nodes, set in sbatch --world-size $SLURM_NTASKS
+            # torch.cuda.set_device(args.local_rank % num_gpus) # TODO: local rank= set with int(os.environ.get("SLURM_LOCALID")) and check if os. LOCAL_RANK gives the same thing
+            # print(env_dict, f"args.local_rank: {args.local_rank}", f"num gpus: {num_gpus}", f"set device: {args.local_rank % num_gpus}")
+            # dist.init_process_group(
+            #     backend=args.dist_backend,
+            #     init_method='tcp://127.0.0.1:%d' % args.tcp_port,
+            #     rank=args.local_rank,
+            #     world_size=num_gpus
+            # )
+            # args.world_size = dist.get_world_size()
+            # args.rank = dist.get_rank()  # dist.get_rank() returns global rank
+            # print(env_dict, f"args.world_size: {args.world_size}", f"args.rank: {args.rank}", f"args.tcp_port: {args.tcp_port}")
 
-            torch.distributed.barrier()
+            # torch.distributed.barrier()
 
     if args.rank == -1:
         args.rank = 0

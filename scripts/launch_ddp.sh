@@ -1,12 +1,12 @@
 #!/bin/bash
 
 
-# $SLURM_NTASKS should be the same as $SLURM_NNODES
-echo "SLURM NTASKS: $SLURM_NTASKS"
-echo "SLURM_NNODES: $SLURM_NNODES" 
+# # $SLURM_NTASKS should be the same as $SLURM_NNODES
+# echo "SLURM NTASKS: $SLURM_NTASKS"
+# echo "SLURM_NNODES: $SLURM_NNODES" 
 
-echo "command line args for launch_ddp.sh"
-echo "$1 $2 $3 $4 $5"
+# echo "command line args for launch_ddp.sh"
+# echo "$1 $2 $3 $4 $5"
 
 
 # Get last element in string and increment by 1
@@ -40,6 +40,7 @@ SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
 SINGULARITYENV_WANDB_MODE=offline
 SINGULARITYENV_NCCL_BLOCKING_WAIT=1
 SINGULARITYENV_MASTER_ADDR=$MASTER_ADDR
+SINGULARITYENV_MASTER_PORT=$TCP_PORT
 singularity exec
 --nv
 --pwd /DepthContrast
@@ -72,7 +73,7 @@ echo "Node $SLURM_NODEID says: main node at $MASTER_ADDR:$MASTER_PORT"
 echo "Node $SLURM_NODEID says: Launching python script..."
 
 echo "$TRAIN_CMD"
-# eval $TRAIN_CMD
-# echo "Done training"
+eval $TRAIN_CMD
+echo "Done training"
 
 

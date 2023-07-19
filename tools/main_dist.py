@@ -20,8 +20,6 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 from third_party.OpenPCDet.pcdet.config import cfg, cfg_from_yaml_file
 
-# from functools import reduce
-
 #from torch.multiprocessing import Pool, Process, set_start_method
 # try:
 #      set_start_method('spawn')
@@ -103,6 +101,7 @@ def main():
         main_worker(args.local_rank, args.ngpus, args, cfg)
 
 def main_worker(gpu, ngpus, args, cfg):
+    # Run on every GPU
     args.local_rank = gpu
     ngpus_per_node = ngpus
     

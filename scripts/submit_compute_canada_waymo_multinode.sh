@@ -110,7 +110,5 @@ export CFG_FILE=$CFG_FILE
 export TMP_DATA_DIR=$TMP_DATA_DIR
 export SING_IMG=$SING_IMG
 
-echo "SLURM_NNODES: $SLURM_NNODES"
-
-srun scripts/launch_ddp.sh $MASTER_ADDR $TCP_PORT $CFG_FILE $TMP_DATA_DIR $SING_IMG
+srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $TMP_DATA_DIR $SING_IMG
 
