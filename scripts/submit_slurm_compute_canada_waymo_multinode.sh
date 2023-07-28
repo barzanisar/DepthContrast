@@ -78,7 +78,9 @@ echo "Job Array ID / Job ID: $SLURM_ARRAY_JOB_ID / $SLURM_JOB_ID"
 echo "This is job $SLURM_ARRAY_TASK_ID out of $SLURM_ARRAY_TASK_COUNT jobs."
 echo ""
 
+
 # Extract Dataset in every node's local scratch
+export DATA_DIR=$DATA_DIR
 srun -N $SLURM_NNODES -n $SLURM_NNODES scripts/extract_dataset_slurm.sh
 
 export MASTER_ADDR=$(hostname)

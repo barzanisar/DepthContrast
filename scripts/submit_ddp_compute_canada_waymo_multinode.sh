@@ -81,6 +81,7 @@ export MASTER_ADDR=$(hostname)
 export TCP_PORT=$TCP_PORT
 export CFG_FILE=$CFG_FILE
 export SING_IMG=$SING_IMG
+export DATA_DIR=$DATA_DIR
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
 
