@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Extract Dataset
-echo "Extracting Waymo data"
+echo "Extracting Waymo data in Node: $SLURM_NODEID, SLURM_TMPDIR: $SLURM_TMPDIR"
 TMP_DATA_DIR=$SLURM_TMPDIR/data
 
 # echo "Unzipping $DATA_DIR/waymo_processed_data_10.zip to $TMP_DATA_DIR"
@@ -24,4 +24,4 @@ unzip -qq $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zi
 
 echo "Done extracting Waymo data"
 
-export TMP_DATA_DIR=$TMP_DATA_DIR
+#export TMP_DATA_DIR=$TMP_DATA_DIR

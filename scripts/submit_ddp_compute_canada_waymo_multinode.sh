@@ -21,9 +21,6 @@ TCP_PORT=18888
 # Additional parameters
 DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
 SING_IMG=/home/$USER/projects/rrg-swasland/singularity/ssl.sif
-#WANDB_API_KEY=$WANDB_API_KEY
-WANDB_MODE='offline'
-
 
 
 # Usage info
@@ -79,25 +76,10 @@ echo "Job Array ID / Job ID: $SLURM_ARRAY_JOB_ID / $SLURM_JOB_ID"
 echo "This is job $SLURM_ARRAY_TASK_ID out of $SLURM_ARRAY_TASK_COUNT jobs."
 echo ""
 
-# Extract Dataset
-echo "Extracting Waymo data"
-TMP_DATA_DIR=$SLURM_TMPDIR/data
-
-echo "Unzipping $DATA_DIR/waymo_processed_data_10_short.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/waymo_processed_data_10_short.zip -d $TMP_DATA_DIR
-
-echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_infos.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/waymo_processed_data_10_short_infos.zip -d $TMP_DATA_DIR
-
-echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip -d $TMP_DATA_DIR
-
-echo "Done extracting Waymo data"
 
 export MASTER_ADDR=$(hostname)
 export TCP_PORT=$TCP_PORT
 export CFG_FILE=$CFG_FILE
-export TMP_DATA_DIR=$TMP_DATA_DIR
 export SING_IMG=$SING_IMG
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
