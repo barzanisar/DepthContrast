@@ -74,38 +74,74 @@ def initialize_distributed_backend(args, ngpus_per_node):
             args.rank = args.rank * ngpus_per_node + args.local_rank # global rank of GPUS: 0,1,2,3,4,5,6,7,8
             dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                     world_size=args.world_size, rank=args.rank)
+        # elif args.launcher == 'slurm':
+        #     # if mp.get_start_method(allow_none=True) is None:
+        #     #     mp.set_start_method('spawn')
+        #     proc_id = int(os.environ['SLURM_PROCID']) # global rank of GPUS: 0,1,2,3,4,5,6,7,8
+        #     ntasks = int(os.environ['SLURM_NNODES']) * ngpus_per_node # total num gpus i.e. world size
+        #     node_list = os.environ['SLURM_NODELIST']
+        #     assert ngpus_per_node == torch.cuda.device_count(), torch.cuda.device_count()
+        #     num_gpus = torch.cuda.device_count()
+        #     torch.cuda.set_device(proc_id % num_gpus) # if procid id 5 then set_device takes local gpu rank i.e. 1
+        #     addr = subprocess.getoutput('scontrol show hostname {} | head -n 1'.format(node_list))
+        #     print(f"node_list: {node_list}")
+        #     print(f"addr: {addr}")
+        #     print(f"ntasks: {ntasks}")
+        #     print(f"proc_id: {proc_id}")
+        #     addr = 'gra' + os.environ['SLURM_NODELIST'][4:8] if int(os.environ['SLURM_NNODES']) > 1 else os.environ['SLURM_NODELIST']
+        #     os.environ['MASTER_PORT'] = str(args.tcp_port) #29500
+        #     os.environ['MASTER_ADDR'] = '127.0.0.1' #addr #'gra' + os.environ['SLURM_NODELIST'][4:8] #'127.0.0.1'#addr
+        #     addr = os.environ['MASTER_ADDR']
+        #     os.environ['WORLD_SIZE'] = str(ntasks)
+        #     os.environ['RANK'] = str(proc_id) # global rank of GPUS: 0,1,2,3,4,5,6,7,8
+        #     env_dict = {
+        #         key: os.environ[key]
+        #         for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE")
+        #     }
+        #     print(env_dict)
+        #     print("LAUNCHING!")
+        #     dist.init_process_group(backend=args.dist_backend, rank=proc_id, world_size=int(os.environ['WORLD_SIZE']),
+        #                             init_method=f'tcp://{addr}:{args.tcp_port}')
+        #     print("LAUNCHed!")
+        #     args.world_size = dist.get_world_size()
+        #     args.local_rank = str(proc_id % num_gpus) #local rank
+        #     args.rank = dist.get_rank() # global rank
         elif args.launcher == 'slurm':
-            if mp.get_start_method(allow_none=True) is None:
-                mp.set_start_method('spawn')
+            # if mp.get_start_method(allow_none=True) is None:
+            #     mp.set_start_method('spawn')
             proc_id = int(os.environ['SLURM_PROCID']) # global rank of GPUS: 0,1,2,3,4,5,6,7,8
-            ntasks = int(os.environ['SLURM_NNODES']) * ngpus_per_node # total num gpus i.e. world size
-            node_list = os.environ['SLURM_NODELIST']
-            assert ngpus_per_node == torch.cuda.device_count(), torch.cuda.device_count()
+            rank = proc_id
+            # world_size = int(os.environ['SLURM_NTASKS']) # set #SBATCH --ntasks-per-node=M where M is the same value set in #SBATCH --gres=gpu:M
+            local_rank = int(os.environ['SLURM_LOCALID'])
+            #ntasks = int(os.environ['SLURM_NNODES']) * ngpus_per_node # total num gpus i.e. world size
+            #node_list = os.environ['SLURM_NODELIST']
+            #assert ngpus_per_node == torch.cuda.device_count(), torch.cuda.device_count()
             num_gpus = torch.cuda.device_count()
-            torch.cuda.set_device(proc_id % num_gpus) # if procid id 5 then set_device takes local gpu rank i.e. 1
-            addr = subprocess.getoutput('scontrol show hostname {} | head -n 1'.format(node_list))
-            print(f"node_list: {node_list}")
-            print(f"addr: {addr}")
-            print(f"ntasks: {ntasks}")
-            print(f"proc_id: {proc_id}")
-            addr = 'gra' + os.environ['SLURM_NODELIST'][4:8] if int(os.environ['SLURM_NNODES']) > 1 else os.environ['SLURM_NODELIST']
-            os.environ['MASTER_PORT'] = str(args.tcp_port) #29500
-            os.environ['MASTER_ADDR'] = '127.0.0.1' #addr #'gra' + os.environ['SLURM_NODELIST'][4:8] #'127.0.0.1'#addr
-            addr = os.environ['MASTER_ADDR']
-            os.environ['WORLD_SIZE'] = str(ntasks)
-            os.environ['RANK'] = str(proc_id) # global rank of GPUS: 0,1,2,3,4,5,6,7,8
-            env_dict = {
-                key: os.environ[key]
-                for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE")
-            }
-            print(env_dict)
-            print("LAUNCHING!")
-            dist.init_process_group(backend=args.dist_backend, rank=proc_id, world_size=int(os.environ['WORLD_SIZE']),
-                                    init_method=f'tcp://{addr}:{args.tcp_port}')
-            print("LAUNCHed!")
-            args.world_size = dist.get_world_size()
+            torch.cuda.set_device(proc_id % num_gpus) # set local rank: if procid id 5 then set_device takes local gpu rank i.e. 1
+            # addr = subprocess.getoutput('scontrol show hostname {} | head -n 1'.format(node_list))
+            # print(f"node_list: {node_list}")
+            # print(f"addr: {addr}")
+            # print(f"ntasks: {ntasks}")
+            # print(f"proc_id: {proc_id}")
+            # addr = 'gra' + os.environ['SLURM_NODELIST'][4:8] if int(os.environ['SLURM_NNODES']) > 1 else os.environ['SLURM_NODELIST']
+            # os.environ['MASTER_PORT'] = str(args.tcp_port) #29500
+            # os.environ['MASTER_ADDR'] = '127.0.0.1' #addr #'gra' + os.environ['SLURM_NODELIST'][4:8] #'127.0.0.1'#addr
+            # addr = os.environ['MASTER_ADDR']
+            # os.environ['WORLD_SIZE'] = str(ntasks)
+            # os.environ['RANK'] = str(proc_id) # global rank of GPUS: 0,1,2,3,4,5,6,7,8
+            # env_dict = {
+            #     key: os.environ[key]
+            #     for key in ("MASTER_ADDR", "MASTER_PORT", "RANK", "WORLD_SIZE")
+            # }
+            # print(env_dict)
+            print(f"LAUNCHING! rank:{rank}, ws:{args.world_size}, local_rank:{local_rank}, num_gpus_on_this_node: {num_gpus}, dist_url: {args.dist_url}")
+
+            dist.init_process_group(backend=args.dist_backend, rank=rank, world_size=args.world_size,
+                                    init_method=args.dist_url)
+            args.world_size = dist.get_world_size() # total num gpus across all nodes
             args.local_rank = str(proc_id % num_gpus) #local rank
             args.rank = dist.get_rank() # global rank
+            print(f"LAUNCHED! rank:{rank} {dist.get_rank()}, ws:{dist.get_world_size()}, local_rank:{local_rank} {proc_id % num_gpus}, num_gpus_on_this_node: {num_gpus}")
 
         elif args.launcher == 'pytorch':
             # if mp.get_start_method(allow_none=True) is None:

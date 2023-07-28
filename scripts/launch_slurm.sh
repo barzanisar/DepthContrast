@@ -12,6 +12,14 @@
 # Get last element in string and increment by 1
 NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"
 NUM_GPUS=$(($NUM_GPUS + 1))
+SLURM_NTASKS=$((SLURM_NNODES * SLURM_NTASKS_PER_NODE))
+WORLD_SIZE=$((NUM_GPUS * SLURM_NNODES))
+
+echo "NUM GPUS in Node $SLURM_NODEID: $NUM_GPUS"
+echo "Node $SLURM_NODEID says: main node at $MASTER_ADDR:$MASTER_PORT"
+echo "Node $SLURM_NODEID says: NTASKS: $SLURM_NTASKS, WORLD_SIZE=$WORLD_SIZE"
+echo "Node $SLURM_NODEID says: Loading Singularity Env..."
+
 
 # Load Singularity
 module load StdEnv/2020 
@@ -60,8 +68,7 @@ $SING_IMG
 "
 
 TRAIN_CMD=$BASE_CMD
-TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --launcher slurm
---tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $SLURM_NTASKS --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
+TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --launcher slurm --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
 # TRAIN_CMD+="python -m torch.distributed.launch
 # --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
 # /DepthContrast/tools/main_dist.py
@@ -70,7 +77,6 @@ TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --launcher slurm
 # "
 
 echo "Running training"
-echo "Node $SLURM_NODEID says: main node at $MASTER_ADDR:$MASTER_PORT"
 echo "Node $SLURM_NODEID says: Launching python script..."
 
 echo "$TRAIN_CMD"
