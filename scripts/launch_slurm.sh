@@ -71,12 +71,6 @@ $SING_IMG
 
 TRAIN_CMD=$BASE_CMD
 TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --launcher slurm --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
-# TRAIN_CMD+="python -m torch.distributed.launch
-# --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-# /DepthContrast/tools/main_dist.py
-# --launcher pytorch
-# --tcp_port $TCP_PORT --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size 8 --dist-url tcp://$MASTER_ADDR:$TCP_PORT
-# "
 
 echo "Running training"
 echo "Node $SLURM_NODEID says: Launching python script..."

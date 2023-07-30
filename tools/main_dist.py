@@ -19,15 +19,6 @@ from torch.nn.utils import clip_grad_norm_
 import torch.backends.cudnn as cudnn
 import torch.optim
 from third_party.OpenPCDet.pcdet.config import cfg, cfg_from_yaml_file
-
-#from torch.multiprocessing import Pool, Process, set_start_method
-# try:
-#      set_start_method('spawn')
-# except RuntimeError:
-#     print('ERROR: cant spawn')
-#     pass
-
-import torch.multiprocessing as mp
   
 import utils.logger
 from utils import main_utils, wandb_utils
@@ -50,8 +41,6 @@ parser.add_argument('--seed', default=1000, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--local_rank', default=0, type=int,
                     help='local process id i.e. GPU id to use.') #local_rank = 0
-parser.add_argument('--ngpus', default=4, type=int,
-                    help='number of GPUs to use.') #not needed
 parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
@@ -61,7 +50,6 @@ parser.add_argument('--multiprocessing-distributed', action='store_true', defaul
 def main():
     args = parser.parse_args()
     cfg_from_yaml_file(args.cfg, cfg)
-    #cfg = yaml.safe_load(open(args.cfg))
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -74,39 +62,15 @@ def main():
                       'You may see unexpected behavior when restarting '
                       'from checkpoints.')
 
-
     if args.multiprocessing_distributed:
-        assert args.launcher in ['pytorch', 'slurm', 'fair']
-        if args.launcher == 'fair':
-            num_nodes = int(os.environ['SLURM_NNODES'])
-            args.rank = int(os.environ['SLURM_NODEID'])
-            node0 = 'gra' + os.environ['SLURM_NODELIST'][4:8]
-            print("=" * 30 + "   DDP   " + "=" * 30)
-            print(f"node0 : {node0}")
-            print(f"num_nodes : {num_nodes}")
-            args.dist_url = f"tcp://{node0}:1234" #'tcp://127.0.0.1:29500' "tcp://gra1154:29500"
-            ngpus_per_node = args.ngpus
-            args.world_size = ngpus_per_node * num_nodes #total number of gpus
-            mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, cfg))
-        else:
-            args.ngpus = torch.cuda.device_count()  # remove for fair
-            # print("=" * 30 + "   DDP   " + "=" * 30)
-            # print(f"args.ngpus : {args.ngpus}")
-            # print(f"args.local_rank : {args.local_rank}")
-            # print(f"args.launcher : {args.launcher}")
-            main_worker(args.local_rank, args.ngpus, args, cfg)
-    else:
-        args.ngpus = torch.cuda.device_count()
-        # Simply call main_worker function
-        main_worker(args.local_rank, args.ngpus, args, cfg)
+        assert args.launcher in ['pytorch', 'slurm']
+    # Simply call main_worker function
+    main_worker(args, cfg)
 
-def main_worker(gpu, ngpus, args, cfg):
-    # Run on every GPU
-    args.local_rank = gpu
-    ngpus_per_node = ngpus
-    
+def main_worker(args, cfg):
+    # Run on every GPU with args.local_rank
     # Setup environment
-    args = main_utils.initialize_distributed_backend(args, ngpus_per_node) ### Use other method instead
+    args = main_utils.initialize_distributed_backend(args) ### Use other method instead
     logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
     wandb_utils.init(cfg, args, job_type='train')
     # print("=" * 30 + "   DDP   " + "=" * 30)
