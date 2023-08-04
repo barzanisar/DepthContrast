@@ -75,14 +75,14 @@ def initialize_distributed_backend(args):
             ngpus_per_node = torch.cuda.device_count()
             torch.cuda.set_device(proc_id % ngpus_per_node) # set local rank: if procid id 5 then set_device takes local gpu rank i.e. 1
            
-            print(f"LAUNCHING! rank:{rank}, ws:{args.world_size}, local_rank:{local_rank}, num_gpus_on_this_node: {num_gpus}, dist_url: {args.dist_url}")
+            print(f"LAUNCHING! rank:{rank}, ws:{args.world_size}, local_rank:{local_rank}, dist_url: {args.dist_url}")
 
             dist.init_process_group(backend=args.dist_backend, rank=rank, world_size=args.world_size,
                                     init_method=args.dist_url)
             args.world_size = dist.get_world_size() # total num gpus across all nodes
             args.local_rank = str(proc_id % ngpus_per_node) #local rank
             args.rank = dist.get_rank() # global rank
-            print(f"LAUNCHED! rank:{rank} {dist.get_rank()}, ws:{dist.get_world_size()}, local_rank:{local_rank} {proc_id % num_gpus}, num_gpus_on_this_node: {num_gpus}")
+            print(f"LAUNCHED! rank:{rank} {dist.get_rank()}, ws:{dist.get_world_size()}, local_rank:{local_rank}")
 
         elif args.launcher == 'pytorch':
             env_dict = {
@@ -107,7 +107,8 @@ def initialize_distributed_backend(args):
 		        between all processes running on all nodes """
 
             print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
-            dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=rank)
+            dist.init_process_group(backend='nccl')
+            #dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=rank)
             print('From Rank: {}, ==> Process Group Ready!...'.format(rank))
             args.rank = rank
             print(env_dict, f"args.rank: {args.rank}", f"args.world_size: {args.world_size}", f"dist.get_world_size(): {dist.get_world_size()}")
