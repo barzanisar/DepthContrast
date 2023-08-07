@@ -107,9 +107,11 @@ def initialize_distributed_backend(args):
 		        between all processes running on all nodes """
 
             print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
-            dist.init_process_group(backend='nccl')
+            dist.init_process_group(backend='nccl', init_method="env://")
+            #dist.init_process_group(backend='nccl') 
             #dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=rank)
             print('From Rank: {}, ==> Process Group Ready!...'.format(rank))
+            dist.barrier()
             args.rank = rank
             print(env_dict, f"args.rank: {args.rank}", f"args.world_size: {args.world_size}", f"dist.get_world_size(): {dist.get_world_size()}")
 
