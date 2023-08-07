@@ -99,7 +99,7 @@ def initialize_distributed_backend(args):
             #     current process inside a node and is also 0 or 1 in this example."""
 
             local_rank = args.local_rank
-            rank = int(os.environ.get("SLURM_NODEID"))*ngpus_per_node + local_rank
+            rank = int(os.environ.get("SLURM_NODEID", 0))*ngpus_per_node + local_rank
 
             current_device = local_rank
             torch.cuda.set_device(current_device)

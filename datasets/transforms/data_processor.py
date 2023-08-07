@@ -35,22 +35,21 @@ def mask_boxes_outside_range(gt_boxes, point_cloud_range):
 def mask_boxes_with_few_points(points, gt_boxes):
     # Only do this for training, this can happen after dropping patches
     # return mask for selecting valid boxes
-    box_idxs_of_pts = roiaware_pool3d_utils.points_in_boxes_gpu(
-                torch.from_numpy(points[:, 0:3]).unsqueeze(dim=0).float().cuda(),
-                torch.from_numpy(gt_boxes[:, 0:7]).unsqueeze(dim=0).float().cuda()
-            ).long().squeeze(dim=0).cpu().numpy()
+    box_pts_map = roiaware_pool3d_utils.points_in_boxes_cpu(
+        points[:, 0:3],
+        gt_boxes[:, 0:7]) #(num_obj, num points)
     
     num_obj = gt_boxes.shape[0]
-    box_keep_mask = [] #[len(points[box_idxs_of_pts == i]) > 5 for i in range(num_obj)]
+    box_keep_mask = []
+    box_idxs_of_pts=-1 * np.ones(points.shape[0], dtype=int)
 
     for i in range(num_obj):
-        obj_points_mask = box_idxs_of_pts == i
+        obj_points_mask = box_pts_map[i]>0
+        
         if len(points[obj_points_mask]) <= 5:
             box_keep_mask.append(False)
-
-            # remove cluster ids for these points
-            box_idxs_of_pts[obj_points_mask] = -1 
         else:
+            box_idxs_of_pts[obj_points_mask] = i
             box_keep_mask.append(True)
 
     return box_keep_mask, box_idxs_of_pts

@@ -25,6 +25,7 @@ from third_party.OpenPCDet.pcdet.config import cfg, cfg_from_yaml_file
 import utils.logger
 from utils import main_utils, wandb_utils
 
+
 parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training in 3D')
 
 parser.add_argument('--cfg', type=str, default=None, help='specify the config for training')
@@ -137,8 +138,8 @@ def main_worker(args, cfg):
         
         # Train for one epoch
         logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
-        logger.add_line('LR: {}'.format(scheduler.get_lr()))
-        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_lr())
+        logger.add_line('LR: {}'.format(scheduler.get_last_lr()))
+        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_last_lr())
         scheduler.step(epoch)
 
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
