@@ -3,7 +3,7 @@
 wb_extra_tags: ['pointnet', 'waymo']
 resume: false
 linear_probe: false # True for linear probe
-num_workers: 2 # should be same as --cpus-per-task/gpus per node
+num_workers: 4 # should be same as --cpus-per-task/gpus per node
 
 log2tb: false
 log2wb: false
@@ -65,7 +65,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 1
+  num_epochs: 4
   lr:
     name: "cosine"
     base_lr: 0.01 #0.1 for linear_probe #0.12

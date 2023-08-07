@@ -14,6 +14,8 @@ import yaml
 
 import torch
 import torch.nn.parallel
+import torch.distributed as dist
+
 from torch.nn.utils import clip_grad_norm_
 
 import torch.backends.cudnn as cudnn
@@ -123,25 +125,28 @@ def main_worker(args, cfg):
 
     cudnn.benchmark = True
 
-    # ############################ TRAIN #########################################
-    # test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
-    # for epoch in range(start_epoch, end_epoch):
-    #     if (epoch >= cfg['save_ckpt_after_epochs'] and epoch % cfg['ckpt_save_interval']== 0):
-    #         ckp_manager.save(epoch, model=model, filename='checkpoint-ep{}.pth.tar'.format(epoch))
-    #         logger.add_line(f'Saved checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
+    ############################ TRAIN #########################################
+    test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
+    for epoch in range(start_epoch, end_epoch):
+        if (epoch >= cfg['save_ckpt_after_epochs'] and epoch % cfg['ckpt_save_interval']== 0):
+            ckp_manager.save(epoch, model=model, filename='checkpoint-ep{}.pth.tar'.format(epoch))
+            logger.add_line(f'Saved checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
 
-    #     if args.multiprocessing_distributed:
-    #         train_loader.sampler.set_epoch(epoch)
+        if args.multiprocessing_distributed:
+            train_loader.sampler.set_epoch(epoch)
         
-    #     # Train for one epoch
-    #     logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
-    #     logger.add_line('LR: {}'.format(scheduler.get_lr()))
-    #     run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_lr())
-    #     scheduler.step(epoch)
+        # Train for one epoch
+        logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
+        logger.add_line('LR: {}'.format(scheduler.get_lr()))
+        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_lr())
+        scheduler.step(epoch)
 
-    #     if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
-    #         ckp_manager.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
-    #         logger.add_line(f'Saved checkpoint for testing {ckp_manager.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
+        if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
+            ckp_manager.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
+            logger.add_line(f'Saved checkpoint for testing {ckp_manager.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
+
+    if args.multiprocessing_distributed:
+        dist.destroy_process_group()
 
 
 def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter, lr):
