@@ -11,7 +11,7 @@ from lib.LiDAR_snow_sim.tools.snowfall.simulation import augment
 from third_party.OpenPCDet.pcdet.utils import calibration_kitti
 from lib.LiDAR_snow_sim.tools.snowfall.sampling import compute_occupancy, snowfall_rate_to_rainfall_rate
 #from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
-from utils.pcd_preprocess import *
+from utils.pcd_preprocess_old import *
 import time
 import numpy as np
 

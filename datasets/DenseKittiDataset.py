@@ -11,7 +11,7 @@ from datasets.transforms.weather_transforms import *
 from lib.LiDAR_snow_sim.tools.snowfall.sampling import \
     snowfall_rate_to_rainfall_rate
 from utils.data_map import *
-from utils.pcd_preprocess import *
+from utils.pcd_preprocess_old import *
 
 #from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 

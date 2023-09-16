@@ -8,7 +8,7 @@
 
 import torch
 import numpy as np
-from utils.pcd_preprocess import *
+from utils.pcd_preprocess_old import *
 
 def point_moco_collator_seg(batch):
     batch_size = len(batch)

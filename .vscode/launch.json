@@ -92,6 +92,7 @@
             },
             "args": [
                 "--nproc_per_node=1",
+                "--max_restarts=0",
                 "${workspaceFolder}/tools/main_dist.py",
                 "--launcher",
                 "pytorch",

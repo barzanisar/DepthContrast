@@ -28,7 +28,7 @@ class WaymoDataset(DepthContrastDataset):
 
         with open(self.infos_pkl_path, 'rb') as f:
             infos = pickle.load(f) # loads all infos
-            self.infos.extend(infos[:]) # each info is one frame
+            self.infos.extend(infos[:32]) # each info is one frame
 
         self.logger.add_line('Total samples for Waymo dataset: %d' % (len(self.infos))) # total frames
     

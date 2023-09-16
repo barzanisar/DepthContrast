@@ -10,7 +10,7 @@ import os
 
 import numpy as np
 from tqdm import tqdm
-from utils.pcd_preprocess import *
+from utils.pcd_preprocess_old import *
 from pcdet.utils import box_utils, calibration_kitti
 
 
