@@ -66,6 +66,21 @@
         //     ]
         // },
         {
+            "name": "Waymo: cluster",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/cluster_waymo.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--split",
+                "train_short"
+            ]
+        },
+        {
             "name": "Waymo: pretrain",
             "type": "python",
             "request": "launch",

@@ -1,4 +1,4 @@
-# import argparse
+import argparse
 
 import pickle
 from pathlib import Path
@@ -16,6 +16,10 @@ import multiprocessing as mp
 from functools import partial
 from matplotlib.lines import Line2D
 
+parser = argparse.ArgumentParser(description='Cluster Waymo')
+parser.add_argument('--split', type=str, default='train_short', help='specify the split of infos to cluster')
+
+
 # import open3d as o3d
 import os
 import torch
@@ -32,14 +36,15 @@ def inv_pose(pose):
     return pose_inv
 
 class WaymoDataset():
-    def __init__(self):
-        self.root_path = Path('/home/barza/DepthContrast/data/waymo')
+    def __init__(self, split):
+        parent_dir = (Path(__file__) / '../..').resolve() #DepthContrast
+        self.root_path = parent_dir / 'data/waymo'
         self.processed_data_tag='waymo_processed_data_10_short'
-        self.split = 'train_short'
+        self.split = split
         self.data_path = self.root_path / self.processed_data_tag
         self.infos_pkl_path = self.root_path / f'{self.processed_data_tag}_infos_{self.split}.pkl'
-        self.label_root_path = self.root_path / (self.processed_data_tag + '_clustered')
-        self.save_infos_pkl_path = self.root_path / f'{self.processed_data_tag}_infos_{self.split}_approx_boxes.pkl'
+
+        self.save_label_path = parent_dir / 'output' / (self.processed_data_tag + '_clustered')
         self.class_names = ['Vehicle', 'Pedestrian', 'Cyclist']
         self.iou_eval_thresh_list = [0.03, 0.2, 0.5] #0.03, 
         self.eval_metrics = ['iou3d', 'overlap3d', 'overlapbev']
@@ -67,17 +72,17 @@ class WaymoDataset():
         return point_features[:,:4] #only get xyzi
     
     def get_cluster_labels(self, seq_name, sample_idx):
-        label_file = self.label_root_path / seq_name / ('%04d.npy' % sample_idx)
+        label_file = self.save_label_path / seq_name / ('%04d.npy' % sample_idx)
         labels = np.fromfile(label_file, dtype=np.float16)
         return labels
     
     def get_ground_mask(self, seq_name, sample_idx):
-        path = self.label_root_path / seq_name / 'ground' /('%04d.npy' % sample_idx)
+        path = self.save_label_path / seq_name / 'ground' /('%04d.npy' % sample_idx)
         ground_mask = np.fromfile(path, dtype=np.bool_)
         return ground_mask
     
     def get_rejection_tag(self, seq_name, sample_idx):
-        path = self.label_root_path / seq_name / 'rejection_tag' /('%04d.npy' % sample_idx)
+        path = self.save_label_path / seq_name / 'rejection_tag' /('%04d.npy' % sample_idx)
         pt_wise_rejection_tag = np.fromfile(path, dtype=np.uint8)
         return pt_wise_rejection_tag
     
@@ -146,7 +151,7 @@ class WaymoDataset():
         return xyzi_frame_i, pc_lens
     
     def estimate_ground_seq(self, seq_name):
-        save_seq_path = self.label_root_path / seq_name / 'ground'
+        save_seq_path = self.save_label_path / seq_name / 'ground'
         os.makedirs(save_seq_path.__str__(), exist_ok=True)
         infos = self.infos_dict[seq_name]
         non_ground_mask = np.empty((0,1), dtype=bool)
@@ -356,7 +361,7 @@ def fill_in_clusters_with_bbox(labels, pc, show_plots=False):
     return labels
 
 def cluster_in_aggregated(seq_name, dataset, show_plots=False):
-    save_seq_path = dataset.label_root_path / seq_name
+    save_seq_path = dataset.save_label_path / seq_name
     os.makedirs(save_seq_path.__str__(), exist_ok=True)
     infos = dataset.infos_dict[seq_name]
 
@@ -454,7 +459,7 @@ def cluster_in_aggregated(seq_name, dataset, show_plots=False):
         label_this_pc.tofile(save_label_path.__str__())
 
 def cluster_only(seq_name, dataset, num_frames_to_aggr = 3, show_plots=False):
-    save_seq_path = dataset.label_root_path / seq_name
+    save_seq_path = dataset.save_label_path / seq_name
     os.makedirs(save_seq_path.__str__(), exist_ok=True)
     os.makedirs((save_seq_path / 'rejection_tag').__str__(), exist_ok=True)
     print(f'Clustering of sequence: {seq_name} started!')
@@ -547,7 +552,7 @@ def cluster_only(seq_name, dataset, num_frames_to_aggr = 3, show_plots=False):
 
 
 def cluster_tracking(seq_name, dataset, num_frames_to_aggr = 3, initial_guess=False, show_plots=False):
-    save_seq_path = dataset.label_root_path / seq_name
+    save_seq_path = dataset.save_label_path / seq_name
     os.makedirs(save_seq_path.__str__(), exist_ok=True)
     os.makedirs((save_seq_path / 'rejection_tag').__str__(), exist_ok=True)
     print(f'Clustering of sequence: {seq_name} started!')
@@ -734,7 +739,7 @@ def cluster_tracking(seq_name, dataset, num_frames_to_aggr = 3, initial_guess=Fa
             i+=pc_len
 
 def cluster_seq_each_pc(seq_name, dataset, show_plots=False):
-    save_seq_path = dataset.label_root_path / seq_name
+    save_seq_path = dataset.save_label_path / seq_name
     os.makedirs(save_seq_path.__str__(), exist_ok=True)
     os.makedirs((save_seq_path / 'rejection_tag').__str__(), exist_ok=True)
 
@@ -867,7 +872,7 @@ def merge_overlapping_boxes(seq_name, dataset, iou_thresh, method, show_plots=Fa
     aggr_boxes_world_frame = np.zeros((0, 8)) #cxyz, lwh, heading, label
 
     #Load approx boxes
-    approx_boxes_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(approx_boxes_path, 'rb') as f:
         infos = pickle.load(f)
 
@@ -979,7 +984,7 @@ def merge_overlapping_boxes(seq_name, dataset, iou_thresh, method, show_plots=Fa
     if show_plots:
         visualize_pcd_clusters(aggr_pcs_in_world, aggr_labels.reshape(-1,1))
     
-    save_seq_path = dataset.label_root_path / seq_name
+    save_seq_path = dataset.save_label_path / seq_name
     i=0
     aggr_labels = aggr_labels.astype(np.float16)
     for info, pc_len in zip(infos, pc_lens):
@@ -997,7 +1002,7 @@ def merge_overlapping_boxes(seq_name, dataset, iou_thresh, method, show_plots=Fa
 
 def fit_approx_boxes_seq(seq_name, dataset, show_plots=False, method = 'closeness_to_edge'):
     #Load approx boxes
-    approx_boxes_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
 
     try:
         with open(approx_boxes_path, 'rb') as f:
@@ -1049,14 +1054,14 @@ def fit_approx_boxes_seq(seq_name, dataset, show_plots=False, method = 'closenes
                                 color_feature=None, draw_origin=True)
             
     print(f'Fitting boxes Done.')
-    save_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    save_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(save_path, 'wb') as f:
         pickle.dump(infos, f)
 
 def refine_boxes_seq(seq_name, dataset, method, show_plots=False):
     
     #Load approx boxes
-    approx_boxes_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(approx_boxes_path, 'rb') as f:
         infos = pickle.load(f)
     
@@ -1093,7 +1098,7 @@ def refine_boxes_seq(seq_name, dataset, method, show_plots=False):
 
             gt_boxes = np.hstack([gt_boxes, gt_boxes_corners])
             
-            savefig_path = dataset.label_root_path / seq_name/ ('%04d.png' % sample_idx)
+            savefig_path = dataset.save_label_path / seq_name/ ('%04d.png' % sample_idx)
             savefig_path = savefig_path.__str__() #None
             # show_bev_boxes(pc[labels>-1], approx_boxes_this_pc, f'approx_boxes_{method}', \
             #                refined_boxes_this_pc, f'refined_boxes_{method}', gt_boxes, 'gt_boxes',\
@@ -1112,7 +1117,7 @@ def refine_boxes_seq(seq_name, dataset, method, show_plots=False):
         # info['cluster_labels_boxes'] = refined_boxes[ind:ind+num_boxes, -1]
         ind += num_boxes
     
-    save_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    save_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(save_path, 'wb') as f:
         pickle.dump(infos, f)
 
@@ -1219,17 +1224,17 @@ def track(infos, dataset, direction='forward', det_key='approx_boxes'):
     return infos
 
 def track_boxes_seq(seq_name, dataset, method, track_single_occurance_clusters=False):
-    approx_boxes_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(approx_boxes_path, 'rb') as f:
         infos = pickle.load(f) #seq_infos
     
     cluster2frame_id_dict = None
     if track_single_occurance_clusters:
-        path = dataset.label_root_path / seq_name / 'cluster2frame_id_dict.pkl'
+        path = dataset.save_label_path / seq_name / 'cluster2frame_id_dict.pkl'
         with open(path, 'rb') as f:
             cluster2frame_id_dict = pickle.load(f) #seq_infos
     
-    # path = dataset.label_root_path / seq_name / 'max_cluster_id.pkl'
+    # path = dataset.save_label_path / seq_name / 'max_cluster_id.pkl'
     # with open(path, 'rb') as f:
     #     max_cluster_id = pickle.load(f) #seq_infos
 
@@ -1275,7 +1280,7 @@ def get_tracked_label_this_pc(info, dataset):
     return tracking_labels_this_pc
 
 def visualize_tracks(seq_name, dataset):
-    approx_boxes_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(approx_boxes_path, 'rb') as f:
         infos = pickle.load(f) #seq_infos
     
@@ -1288,7 +1293,7 @@ def visualize_tracks(seq_name, dataset):
     visualize_pcd_clusters(xyzi_world[:,:3], tracked_labels_all_pc)
 
 def visualize_tracked_boxes(seq_name, dataset, method):
-    approx_boxes_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(approx_boxes_path, 'rb') as f:
         infos = pickle.load(f) #seq_infos
     
@@ -1378,7 +1383,7 @@ def get_approx_boxes_tracked(info, method):
 
 
 def refine_tracked_boxes(seq_name, dataset, method, show_plots=False):
-    approx_boxes_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(approx_boxes_path, 'rb') as f:
         infos = pickle.load(f) #seq_infos
 
@@ -1400,7 +1405,7 @@ def refine_tracked_boxes(seq_name, dataset, method, show_plots=False):
         info[f'refined_boxes_{method}'] = refined_boxes[ind:ind+num_boxes, :]
         ind += num_boxes
     
-    save_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    save_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(save_path, 'wb') as f:
         pickle.dump(infos, f)
 
@@ -1428,7 +1433,7 @@ def remove_outliers_cluster(xyz, labels):
              
 
 def cluster_seq(seq_name, dataset, show_plots=False):
-    save_seq_path = dataset.label_root_path / seq_name
+    save_seq_path = dataset.save_label_path / seq_name
     os.makedirs(save_seq_path.__str__(), exist_ok=True)
     cluster_files = [] #glob.glob(f'{save_seq_path.__str__()}/*.npy') #[]
     #save_labels_path = save_seq_path / 'all.npy'
@@ -1523,7 +1528,7 @@ def cluster_seq(seq_name, dataset, show_plots=False):
 def cluster_all(dataset, show_plots=False):
     # mp.set_start_method('spawn')
     #Root dir to save labels
-    os.makedirs(dataset.label_root_path.__str__(), exist_ok=True)
+    os.makedirs(dataset.save_label_path.__str__(), exist_ok=True)
     num_workers = mp.cpu_count() - 2
     cluster_single_seq = partial(cluster_seq, dataset=dataset, show_plots=show_plots)
 
@@ -1610,7 +1615,7 @@ def filter_boxes_range_class(gt_boxes, det_boxes, dataset, gt_names, num_points_
     
     return gt_boxes, det_boxes
 def eval_sequence(seq_name, dataset, method, only_close_range=False, only_class_names=False):
-    approx_boxes_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
 
     eval_dict = {}
     for cur_thresh in dataset.iou_eval_thresh_list:
@@ -1742,7 +1747,7 @@ def visualize_aggregate_pcd_clusters_in_frame_i(seq_name, dataset, approx_infos,
     visualize_pcd_clusters(xyzi_last_vehicle[:,:3], labels.reshape((-1,1)))
 
 def visualize_seq(seq_name, dataset, method):
-    approx_boxes_path = dataset.label_root_path / seq_name / 'approx_boxes.pkl'
+    approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
     with open(approx_boxes_path, 'rb') as f:
         approx_infos = pickle.load(f)
 
@@ -1842,7 +1847,8 @@ def run3(seq_name, dataset):
 
 
 def main():
-    dataset = WaymoDataset()
+    args = parser.parse_args()
+    dataset = WaymoDataset(split=args.split)
     num_workers = mp.cpu_count() - 2
     seq_name_list = [seq_name for seq_name in dataset.infos_dict]
 
@@ -1860,8 +1866,7 @@ def main():
         results = list(tqdm(p.imap(run_func, seq_name_list), total=len(seq_name_list)))
 
 
-    # seq_name = 'segment-10023947602400723454_1120_000_1140_000_with_camera_labels' #Bad
-    # run1(seq_name, dataset)
+    # seq_name = 'segment-10023947602400723454_1120_000_1140_000_with_camera_labels' #Ba    run1(seq_name, dataset)
     # run2(seq_name, dataset)
     # run3(seq_name, dataset)
     #visualize_aggregate_pcd_clusters_in_world(seq_name, dataset)
