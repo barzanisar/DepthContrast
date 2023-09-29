@@ -4,7 +4,7 @@
 
 #sbatch --time=00:30:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_short
 
-sbatch --time=01:00:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_0 --processed_data_tag waymo_processed_data_10
-# sbatch --time=00:30:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_1 --processed_data_tag waymo_processed_data_10
-# sbatch --time=00:30:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_2 --processed_data_tag waymo_processed_data_10
-# sbatch --time=00:30:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_3 --processed_data_tag waymo_processed_data_10
+sbatch --time=03:00:00 --array=1-3%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_0 --processed_data_tag waymo_processed_data_10
+sbatch --time=03:00:00 --array=1-3%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_1 --processed_data_tag waymo_processed_data_10
+sbatch --time=03:00:00 --array=1-3%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_2 --processed_data_tag waymo_processed_data_10
+sbatch --time=03:00:00 --array=1-3%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_3 --processed_data_tag waymo_processed_data_10
