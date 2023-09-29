@@ -22,7 +22,7 @@ SPLIT='train_short'
 
 # Additional parameters
 DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
-SING_IMG=/home/$USER/projects/rrg-swasland/singularity/ssl.sif
+SING_IMG=/home/$USER/projects/rrg-swasland/singularity/ssl_cluster_waymo.sif
 
 
 # Usage info
