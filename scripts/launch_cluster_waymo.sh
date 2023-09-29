@@ -12,20 +12,14 @@
 echo "Extracting Waymo data in Node: $SLURM_NODEID, SLURM_TMPDIR: $SLURM_TMPDIR"
 TMP_DATA_DIR=$SLURM_TMPDIR/data
 
-# echo "Unzipping $DATA_DIR/waymo_processed_data_10.zip to $TMP_DATA_DIR"
-# unzip -qq $DATA_DIR/waymo_processed_data_10.zip -d $TMP_DATA_DIR
+echo "Unzipping $DATA_DIR/$PROCESSED_DATA_TAG.zip to $TMP_DATA_DIR"
+unzip -qq $DATA_DIR/$PROCESSED_DATA_TAG.zip -d $TMP_DATA_DIR
 
-# echo "Unzipping $DATA_DIR/Infos/waymo_processed_data_10_infos.zip to $TMP_DATA_DIR"
-# unzip -qq $DATA_DIR/Infos/waymo_processed_data_10_infos.zip -d $TMP_DATA_DIR
+echo "Unzipping $INFOS_DIR/${PROCESSED_DATA_TAG}_infos_train_splits.zip to $TMP_DATA_DIR"
+unzip -qq $INFOS_DIR/${PROCESSED_DATA_TAG}_infos_train_splits.zip -d $TMP_DATA_DIR
 
 # echo "Unzipping $DATA_DIR/Infos/waymo_infos.zip to $TMP_DATA_DIR"
 # unzip -qq $DATA_DIR/Infos/waymo_infos.zip -d $TMP_DATA_DIR
-
-echo "Unzipping $DATA_DIR/waymo_processed_data_10_short.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/waymo_processed_data_10_short.zip -d $TMP_DATA_DIR
-
-echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_infos.zip to $TMP_DATA_DIR"
-unzip -qq $DATA_DIR/waymo_processed_data_10_short_infos.zip -d $TMP_DATA_DIR
 
 # echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip to $TMP_DATA_DIR"
 # unzip -qq $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip -d $TMP_DATA_DIR
@@ -88,7 +82,7 @@ $SING_IMG
 "
 
 TRAIN_CMD=$BASE_CMD
-TRAIN_CMD+="python /DepthContrast/tools/cluster_waymo.py --split $SPLIT"
+TRAIN_CMD+="python /DepthContrast/tools/cluster_waymo.py --split $SPLIT --processed_data_tag $PROCESSED_DATA_TAG"
 
 echo "Running training"
 echo "Node $SLURM_NODEID says: Launching python script..."

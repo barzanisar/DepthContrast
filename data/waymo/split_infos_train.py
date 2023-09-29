@@ -2,8 +2,8 @@ import pickle
 import numpy as np
 
 num_splits = 4
-parent_split = 'train_short' #'train_short'
-processed_data_tag = 'waymo_processed_data_10_short' #'waymo_processed_data_10_short'
+parent_split = 'train' #'train_short'
+processed_data_tag = 'waymo_processed_data_10' #'waymo_processed_data_10_short'
 
 infos_pkl_path = f"/home/barza/DepthContrast/data/waymo/{processed_data_tag}_infos_{parent_split}.pkl"
 with open(infos_pkl_path, 'rb') as f:

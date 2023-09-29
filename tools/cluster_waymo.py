@@ -19,6 +19,7 @@ from matplotlib.lines import Line2D
 parser = argparse.ArgumentParser(description='Cluster Waymo')
 parser.add_argument('--mode', type=str, default='simple_cluster', help='simple_cluster or cluster_tracking (does not work atm)')
 parser.add_argument('--split', type=str, default='train_short', help='specify the split of infos to cluster')
+parser.add_argument('--processed_data_tag', type=str, default='waymo_processed_data_10_short', help='specify the split of infos to cluster')
 
 
 # import open3d as o3d
@@ -30,10 +31,10 @@ from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 np.random.seed(100)
 
 class WaymoDataset():
-    def __init__(self, split):
+    def __init__(self, split, processed_data_tag):
         parent_dir = (Path(__file__) / '../..').resolve() #DepthContrast
         self.root_path = parent_dir / 'data/waymo'
-        self.processed_data_tag='waymo_processed_data_10_short'
+        self.processed_data_tag=processed_data_tag #'waymo_processed_data_10_short'
         self.split = split
         self.data_path = self.root_path / self.processed_data_tag
         self.infos_pkl_path = self.root_path / f'{self.processed_data_tag}_infos_{self.split}.pkl'
@@ -723,7 +724,7 @@ def run3(seq_name, dataset):
 
 def main():
     args = parser.parse_args()
-    dataset = WaymoDataset(split=args.split)
+    dataset = WaymoDataset(split=args.split, processed_data_tag=args.processed_data_tag)
     num_workers = mp.cpu_count() - 2
     seq_name_list = [seq_name for seq_name in dataset.infos_dict]
 

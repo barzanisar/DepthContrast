@@ -18,10 +18,12 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # Default Command line args
 # main.py script parameters
 SPLIT='train_short'
-#TCP_PORT=18888
+PROCESSED_DATA_TAG='waymo_processed_data_10_short'
 
 # Additional parameters
-DATA_DIR=/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
+DATA_DIR=/home/$USER/projects/def-swasland-ab/Datasets/Waymo
+INFOS_DIR=/home/$USER/projects/def-swasland-ab/Datasets/Waymo_10
+
 SING_IMG=/home/$USER/projects/rrg-swasland/singularity/ssl_cluster_waymo.sif
 
 
@@ -31,7 +33,6 @@ echo "
 Usage: sbatch --job-name=JOB_NAME --mail-user=MAIL_USER tools/scripts/${0##*/} [-h]
 cluster_waymo.py parameters
 [--split SPLIT]
-[--tcp_port TCP_PORT]
 "
 }
 
@@ -53,14 +54,14 @@ while :; do
             die 'ERROR: "--split" requires a non-empty option argument.'
         fi
         ;;
-    # -o|--tcp_port)       # Takes an option argument; ensure it has been specified.
-    #     if [ "$2" ]; then
-    #         TCP_PORT=$2
-    #         shift
-    #     else
-    #         die 'ERROR: "--tcp_port" requires a non-empty option argument.'
-    #     fi
-    #     ;;
+    -p|--processed_data_tag)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            PROCESSED_DATA_TAG=$2
+            shift
+        else
+            die 'ERROR: "--processed_data_tag" requires a non-empty option argument.'
+        fi
+        ;;
     # Additional parameters
     -?*)
         printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
@@ -79,11 +80,12 @@ echo "This is job $SLURM_ARRAY_TASK_ID out of $SLURM_ARRAY_TASK_COUNT jobs."
 echo ""
 
 
-# export MASTER_ADDR=$(hostname)
-# export TCP_PORT=$TCP_PORT
 export SPLIT=$SPLIT
 export SING_IMG=$SING_IMG
 export DATA_DIR=$DATA_DIR
+export INFOS_DIR=$INFOS_DIR
+export PROCESSED_DATA_TAG=$PROCESSED_DATA_TAG
+
 
 srun scripts/launch_cluster_waymo.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
 
