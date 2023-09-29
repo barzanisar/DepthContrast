@@ -4,7 +4,7 @@ import open3d as o3d
 import numpy as np
 from utils.cluster_utils import distance_to_plane
 from sklearn.linear_model import RANSACRegressor
-from utils import pypatchworkpp
+from third_party import pypatchworkpp
 
 def get_plane_mask(ptc, plane, offset=0.05, only_range=None):
     mask = distance_to_plane(ptc, plane, directional=True) < offset #plane points mask

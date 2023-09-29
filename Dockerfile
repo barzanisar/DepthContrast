@@ -42,7 +42,8 @@ RUN apt-get install -y --no-install-recommends \
         software-properties-common \
         libsm6 \
         libxext6 \
-        libxrender-dev
+        libxrender-dev \
+        libssl-dev
 
 # ==================================================================
 # python
@@ -65,6 +66,11 @@ RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
 RUN apt-get update && apt-get install -y libgl1
 RUN pip install -U urllib3 requests
 
+RUN apt-get update -y
+RUN apt-get install -y libeigen3-dev
+RUN pip install numpy open3d hdbscan
+
+
 
 # ==================================================================
 # config & cleanup
@@ -74,13 +80,13 @@ RUN ldconfig && \
     apt-get autoremove && \
     rm -rf /var/lib/apt/lists/* /tmp/* ~/*
 
-# Install cmake v3.13.2
+# Install cmake v3.21.3
 RUN apt-get purge -y cmake && \
     mkdir /root/temp && \
     cd /root/temp && \
-    wget https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
-    tar -xzvf cmake-3.13.2.tar.gz && \
-    cd cmake-3.13.2 && \
+    wget https://cmake.org/files/v3.21/cmake-3.21.3.tar.gz && \
+    tar -xzvf cmake-3.21.3.tar.gz && \
+    cd cmake-3.21.3 && \
     bash ./bootstrap && \
     make && \
     make install && \
@@ -96,12 +102,6 @@ RUN cp -r ./boost_1_68_0/boost /usr/include
 RUN rm -rf ./boost_1_68_0
 RUN rm -rf ./boost_1_68_0.tar.gz
 
-## Install spconv v1.1
-#RUN git clone https://github.com/traveller59/spconv.git
-#RUN cd ./spconv && git checkout abf0acf30f5526ea93e687e3f424f62d9cd8313a && git submodule update --init --recursive && SPCONV_FORCE_BUILD_CUDA=1 python setup.py bdist_wheel
-#RUN python -m pip install /root/spconv/dist/spconv-*-cp38-cp38-linux_x86_64.whl && \
-#    rm -rf /root/spconv
-#ENV LD_LIBRARY_PATH="/usr/local/lib/python3.8/dist-packages/spconv:${LD_LIBRARY_PATH}"
 
 # setup environment
 ENV LANG C.UTF-8
@@ -114,6 +114,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPA
 # ==================================================================
 # DepthContrast Framework
 # ------------------------------------------------------------------
+
 WORKDIR /DepthContrast
 COPY third_party third_party
 ENV TORCH_CUDA_ARCH_LIST="Kepler;Kepler+Tesla;Maxwell;Maxwell+Tegra;Pascal;Volta;Turing"
@@ -139,3 +140,20 @@ RUN mkdir checkpoints &&  \
     mkdir utils &&  \
     mkdir output && \
     mkdir lib
+
+
+
+RUN cd && git clone https://github.com/isl-org/Open3D 
+RUN cd /root/Open3D && rm util/install_deps_ubuntu.sh
+RUN cp third_party/patchwork-plusplus/install_deps_ubuntu.sh /root/Open3D/util/install_deps_ubuntu.sh
+WORKDIR /Open3D
+# RUN rm util/install_deps_ubuntu.sh
+# COPY /DepthContrast/third_party/patchwork-plusplus/install_deps_ubuntu.sh util/install_deps_ubuntu.sh
+RUN chmod +x /root/Open3D/util/install_deps_ubuntu.sh
+RUN bash /root/Open3D/util/install_deps_ubuntu.sh
+
+RUN cd /root/Open3D && mkdir build && cd build && cmake .. && make && make install
+
+WORKDIR /DepthContrast
+RUN cd third_party/patchwork-plusplus && mkdir build && cd build && cmake .. && make && make install
+RUN cp third_party/patchwork-plusplus/build/python_wrapper/*.so third_party/

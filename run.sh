@@ -42,13 +42,15 @@ do
     fi
 done
 
+echo "$PCDET_VOLUMES"
+
 docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --runtime=nvidia \
         --net=host \
         --privileged=true \
         --ipc=host \
         --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-        --volume="$XAUTHORITY:/root/.Xauthority:rw" \
+        --volume="$HOME/.Xauthority:/root/.Xauthority:rw" \
         --env="DISPLAY" \
         --env="QT_X11_NO_MITSHM=1" \
         --hostname="inside-DOCKER" \
@@ -70,7 +72,7 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --volume $PROJ_DIR/lib:/DepthContrast/lib \
         $PCDET_VOLUMES \
         --rm \
-        ssl:free_invalid bash
+        ssl:cluster_waymo bash
 
 #--volume $WAYMO_PROCESSED \
 # --volume $DENSE_LIDAR \

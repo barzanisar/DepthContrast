@@ -39,9 +39,9 @@ WORLD_SIZE=$((NUM_GPUS * SLURM_NNODES))
 
 
 echo "NUM GPUS in Node $SLURM_NODEID: $NUM_GPUS"
-echo "Node $SLURM_NODEID says: main node at $MASTER_ADDR:$MASTER_PORT"
-echo "Node $SLURM_NODEID says: WORLD_SIZE=$WORLD_SIZE"
+echo "Node $SLURM_NODEID says: split $SPLIT"
 echo "Node $SLURM_NODEID says: Loading Singularity Env..."
+
 
 # Load Singularity
 module load StdEnv/2020 
