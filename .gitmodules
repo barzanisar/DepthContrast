@@ -1,3 +1,6 @@
 [submodule "third_party/OpenPCDet"]
 	path = third_party/OpenPCDet
 	url = https://github.com/zaiweizhang/OpenPCDet
+[submodule "third_party/patchwork-plusplus"]
+	path = third_party/patchwork-plusplus
+	url = git@github.com:barzanisar/patchwork-plusplus.git
