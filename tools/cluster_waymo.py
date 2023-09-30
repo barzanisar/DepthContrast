@@ -19,7 +19,9 @@ from matplotlib.lines import Line2D
 parser = argparse.ArgumentParser(description='Cluster Waymo')
 parser.add_argument('--mode', type=str, default='simple_cluster', help='simple_cluster or cluster_tracking (does not work atm)')
 parser.add_argument('--split', type=str, default='train_short', help='specify the split of infos to cluster')
-parser.add_argument('--processed_data_tag', type=str, default='waymo_processed_data_10_short', help='specify the split of infos to cluster')
+parser.add_argument('--processed_data_tag', type=str, default='waymo_processed_data_10_short', help='specify the processed data tag')
+parser.add_argument('--save_rejection_tag', action='store_true', default=False, help='if you want to save rejection tags for debugging')
+
 
 
 # import open3d as o3d
@@ -110,7 +112,7 @@ def transform_pc_to_world(xyz, pose_world_from_vehicle):
 
     return xyz
 
-def simple_cluster(seq_name, dataset, show_plots=False):
+def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False):
     save_seq_path = dataset.save_label_path / seq_name
     os.makedirs(save_seq_path.__str__(), exist_ok=True)
     os.makedirs((save_seq_path / 'rejection_tag').__str__(), exist_ok=True)
@@ -143,19 +145,20 @@ def simple_cluster(seq_name, dataset, show_plots=False):
             print(f'After filtering')
             visualize_pcd_clusters(xyzi[:,:3], new_labels.reshape((-1,1)))
 
-        pt_wise_rejection_tag = np.zeros(xyzi.shape[0], dtype=np.uint8) #zero means not rejected
-        for i in np.unique(labels):
-            if i == -1:
-                continue
-            pt_wise_rejection_tag[labels == i] = label_wise_rejection_tag[int(i)]
+        if save_rejection_tag:
+            pt_wise_rejection_tag = np.zeros(xyzi.shape[0], dtype=np.uint8) #zero means not rejected
+            for i in np.unique(labels):
+                if i == -1:
+                    continue
+                pt_wise_rejection_tag[labels == i] = label_wise_rejection_tag[int(i)]
         
-        if show_plots:
-            for key, val in REJECT.items():
-                rejected_labels = np.where(label_wise_rejection_tag == REJECT[key])[0]
-                if len(rejected_labels):
-                    print(f'rejected_labels: {rejected_labels}')
-                    print(f'Showing {rejected_labels.shape[0]} rejected labels due to: {key}')
-                    visualize_selected_labels(xyzi[:,:3], labels.flatten(), rejected_labels)
+            if show_plots:
+                for key, val in REJECT.items():
+                    rejected_labels = np.where(label_wise_rejection_tag == REJECT[key])[0]
+                    if len(rejected_labels):
+                        print(f'rejected_labels: {rejected_labels}')
+                        print(f'Showing {rejected_labels.shape[0]} rejected labels due to: {key}')
+                        visualize_selected_labels(xyzi[:,:3], labels.flatten(), rejected_labels)
         
         labels = remove_outliers_cluster(xyzi[:,:3], new_labels.flatten())
         labels = get_continuous_labels(labels)
@@ -163,15 +166,17 @@ def simple_cluster(seq_name, dataset, show_plots=False):
             print(f'Removed cluster pts far away from main cluster')
             visualize_pcd_clusters(xyzi[:,:3], labels.reshape((-1,1)))
 
-        labels = labels.astype(np.float16)
-        pt_wise_rejection_tag[labels>-1] = 0
-        pt_wise_rejection_tag.astype(np.uint8)
 
-        # Save rejection tag for each pt
-        save_path = save_seq_path / 'rejection_tag'/ ('%04d.npy' % sample_idx)
-        pt_wise_rejection_tag.tofile(save_path.__str__())
+        if save_rejection_tag:
+            pt_wise_rejection_tag[labels>-1] = 0
+            pt_wise_rejection_tag.astype(np.uint8)
+
+            # Save rejection tag for each pt
+            save_path = save_seq_path / 'rejection_tag'/ ('%04d.npy' % sample_idx)
+            pt_wise_rejection_tag.tofile(save_path.__str__())
    
         save_path = save_seq_path / ('%04d.npy' % sample_idx)
+        labels = labels.astype(np.float16)
         labels.tofile(save_path.__str__())
         print(f'Saved sample: {sample_idx}')
 
@@ -703,9 +708,9 @@ def show_bev_boxes(pc, boxes1, label1, boxes2=None, label2=None, boxes3=None, la
         plt.show()
 
 
-def run_simple_cluster(seq_name, dataset, show_plots=False):
+def run_simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False):
     dataset.estimate_ground_seq(seq_name)
-    simple_cluster(seq_name, dataset, show_plots=show_plots)
+    simple_cluster(seq_name, dataset, show_plots=show_plots, save_rejection_tag=save_rejection_tag)
     fit_approx_boxes_seq(seq_name, dataset, method='closeness_to_edge', show_plots=show_plots, simple_cluster=True) #fit using closeness or min max?
 
 def run1(seq_name, dataset):
@@ -733,7 +738,7 @@ def main():
     seq_name_list = [seq_name for seq_name in dataset.infos_dict]
 
     if args.mode == 'simple_cluster':
-        run_func = partial(run_simple_cluster, dataset=dataset)
+        run_func = partial(run_simple_cluster, dataset=dataset, save_rejection_tag=args.save_rejection_tag)
         with mp.Pool(num_workers) as p:
             results = list(tqdm(p.imap(run_func, seq_name_list), total=len(seq_name_list)))
         
