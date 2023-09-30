@@ -121,7 +121,7 @@ class DepthContrastDataset(Dataset):
         if "GT_SAMPLING" in self.cfg:
             data_dict = self.db_sampler(data_dict)
 
-        # remove gt_boxes not in class_names
+        # remove gt_boxes not in class_names  #TODO: approx boxes
         gt_boxes_mask = np.array([n in self.class_names for n in data_dict['gt_names']], dtype=np.bool_)
         data_dict['gt_boxes'] = data_dict['gt_boxes'][gt_boxes_mask]
         data_dict['gt_names'] = data_dict['gt_names'][gt_boxes_mask]
@@ -142,7 +142,6 @@ class DepthContrastDataset(Dataset):
 
         if self.pretraining:
             assert len(data_dict['points']) > 0
-            a = len(data_dict['points'])
 
             #Create different views / augmentation
             data_dict['points_moco'] = np.copy(data_dict["points"])

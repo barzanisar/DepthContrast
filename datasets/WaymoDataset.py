@@ -63,11 +63,11 @@ class WaymoDataset(DepthContrastDataset):
             annos = info['annos']
             annos = drop_info_with_name(annos, name='unknown')
 
-            gt_boxes_lidar = annos['gt_boxes_lidar']
+            gt_boxes_lidar = annos['gt_boxes_lidar'] #TODO: approx boxes
 
             if self.cfg.get('FILTER_EMPTY_BOXES_FOR_TRAIN', False):
                 mask = (annos['num_points_in_gt'] > 0)  # filter empty boxes
-                annos['name'] = annos['name'][mask]
+                annos['name'] = annos['name'][mask]  #TODO: approx boxes
                 gt_boxes_lidar = gt_boxes_lidar[mask]
                 annos['num_points_in_gt'] = annos['num_points_in_gt'][mask]
 
