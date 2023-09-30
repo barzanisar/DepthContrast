@@ -90,12 +90,16 @@ class WaymoDataset():
         for info in infos:
             pc_info = info['point_cloud']
             sample_idx = pc_info['sample_idx']
+            save_path = save_seq_path / ('%04d.npy' % sample_idx)
+            if save_path.exists():
+                print(f'Ground exists for sample idx: {sample_idx}')
+                continue
 
             #points in current vehicle frame
             xyzi = self.get_lidar(seq_name, sample_idx)
             
             ground_mask = estimate_ground(xyzi)
-            save_path = save_seq_path / ('%04d.npy' % sample_idx)
+            
             ground_mask.tofile(save_path)
         
         print('Estimating ground Done!')
