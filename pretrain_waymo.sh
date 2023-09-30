@@ -4,7 +4,8 @@
 
 #sbatch --time=00:30:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_short
 
-sbatch --time=03:00:00 --array=1-3%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_0 --processed_data_tag waymo_processed_data_10
-sbatch --time=03:00:00 --array=1-3%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_1 --processed_data_tag waymo_processed_data_10
-sbatch --time=03:00:00 --array=1-3%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_2 --processed_data_tag waymo_processed_data_10
-sbatch --time=03:00:00 --array=1-3%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_3 --processed_data_tag waymo_processed_data_10
+# needs 1 hr 14 min for each split (199 sequences) of waymo_10% -> should take around 12-13 hours for each 200 seq split of full waymo
+sbatch --time=03:00:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_0 --processed_data_tag waymo_processed_data_10
+sbatch --time=03:00:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_1 --processed_data_tag waymo_processed_data_10
+sbatch --time=03:00:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_2 --processed_data_tag waymo_processed_data_10
+sbatch --time=03:00:00 --array=1-1%1 --job-name=cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_3 --processed_data_tag waymo_processed_data_10
