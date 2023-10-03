@@ -25,7 +25,7 @@ echo "Unzipping $DATA_DIR/waymo_processed_data_10_short.zip to $TMP_DATA_DIR"
 unzip -qq $DATA_DIR/waymo_processed_data_10_short.zip -d $TMP_DATA_DIR
 
 echo "Copying $DATA_DIR/ImageSets to $TMP_DATA_DIR"
-cp $DATA_DIR/ImageSets -d $TMP_DATA_DIR
+cp -r $DATA_DIR/ImageSets -d $TMP_DATA_DIR
 
 # echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_infos.zip to $TMP_DATA_DIR"
 # unzip -qq $DATA_DIR/waymo_processed_data_10_short_infos.zip -d $TMP_DATA_DIR
