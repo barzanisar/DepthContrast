@@ -126,6 +126,7 @@ def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False
             continue
         
         xyzi = dataset.get_lidar(seq_name, sample_idx)
+        num_pts = xyzi.shape[0]
         ground_mask = dataset.get_ground_mask(seq_name, sample_idx)
         
         # Get new labels
@@ -177,6 +178,7 @@ def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False
    
         save_path = save_seq_path / ('%04d.npy' % sample_idx)
         labels = labels.astype(np.float16)
+        assert labels.shape[0] == num_pts, f'Some labels missing for seq: {seq_name}, sample {sample_idx}!'
         labels.tofile(save_path.__str__())
         print(f'Saved sample: {sample_idx}')
 
