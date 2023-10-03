@@ -132,6 +132,7 @@ def main_worker(args, cfg):
     test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
     for epoch in range(start_epoch, end_epoch):
         if (epoch >= cfg['save_ckpt_after_epochs'] and epoch % cfg['ckpt_save_interval']== 0):
+            #Use these checkpoints for object detection
             ckp_manager.save(epoch, model=model, filename='checkpoint-ep{}.pth.tar'.format(epoch))
             logger.add_line(f'Saved checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
 
@@ -145,6 +146,7 @@ def main_worker(args, cfg):
         scheduler.step(epoch)
 
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
+            #resume training from this checkpoint bcz we are saving optimizer and train criterion
             ckp_manager.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
             logger.add_line(f'Saved checkpoint for testing {ckp_manager.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
 
@@ -185,7 +187,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         # aux head loss
         if 'MODEL_AUX_HEAD' in cfg['model']:
             loss += output_dict['loss_aux_head']
-            
+
         loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
 
 

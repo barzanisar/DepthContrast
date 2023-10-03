@@ -203,7 +203,7 @@ def recursive_copy_to_gpu(value, non_blocking=True, max_depth=3, curr_depth=0):
 def prep_environment(args, cfg, linear_probe_dataset=None):
     from torch.utils.tensorboard import SummaryWriter
     
-    phase = 'linear_probe' if cfg.get('linear_probe', False) else 'train'
+    phase = 'linear_probe' if cfg.get('linear_probe', False) else 'pretrain'
     if linear_probe_dataset is not None:
         phase += f'_{linear_probe_dataset}'
     # Prepare loggers (must be configured after initialize_distributed_backend())

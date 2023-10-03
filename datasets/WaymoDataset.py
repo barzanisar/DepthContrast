@@ -21,7 +21,7 @@ class WaymoDataset(DepthContrastDataset):
         self.lidar_data_path = self.data_root_path / cfg.PROCESSED_DATA_TAG
         #self.infos_pkl_path = self.data_root_path / f'{cfg.PROCESSED_DATA_TAG}_infos_{cfg.DATA_SPLIT[self.mode]}.pkl'
         self.split = cfg.DATA_SPLIT[self.mode]
-        self.cluster_root_path = self.root_path / 'output' / f'{cfg.PROCESSED_DATA_TAG}_clustered'
+        self.cluster_root_path = self.root_path / 'output' / 'waymo_processed_data_10_clustered' #f'{cfg.PROCESSED_DATA_TAG}_clustered'
         self.mean_box_sizes = cfg.get('MEAN_SIZES', None)
 
         self.infos = []
