@@ -89,7 +89,7 @@ class WaymoDataset(DepthContrastDataset):
         sequence_name = pc_info['lidar_sequence']
         sample_idx = pc_info['sample_idx']
 
-        #print('frame_id: ', info['frame_id'])
+        print('frame_id: ', info['frame_id'])
 
         points = self.get_lidar(sequence_name, sample_idx)
         pt_cluster_labels = self.get_cluster_labels(sequence_name, sample_idx)
