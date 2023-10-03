@@ -88,11 +88,14 @@ class WaymoDataset(DepthContrastDataset):
         pc_info = info['point_cloud']
         sequence_name = pc_info['lidar_sequence']
         sample_idx = pc_info['sample_idx']
+        frame_id = info['frame_id']
 
-        print('frame_id: ', info['frame_id'])
+        # print('frame_id: ', info['frame_id'])
 
         points = self.get_lidar(sequence_name, sample_idx)
         pt_cluster_labels = self.get_cluster_labels(sequence_name, sample_idx)
+
+        assert points.shape[0] == pt_cluster_labels.shape[0], f'Missing labels for {frame_id}!!!!!!!!'
 
         points = np.hstack([points, pt_cluster_labels.reshape(-1, 1)])
         gt_classes = np.array([self.class_names.index(n) + 1 for n in info['approx_boxes_names']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
