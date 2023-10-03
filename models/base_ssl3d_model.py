@@ -55,54 +55,72 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         self.logger = logger
         self.cluster = cluster
         super().__init__()
-        self.eval_mode = None  # this is just informational
-        self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
+        # self.eval_mode = None  # this is just informational
+        # self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
         self.trunk = self._get_trunk(dataset)
-        self.head = self._get_head(dataset)
+        self.det_head = self._get_head(dataset, key="MODEL_DET_HEAD")
+        self.aux_head = self._get_head(dataset, key="MODEL_AUX_HEAD")
         self.m = 0.999 ### Can be tuned momentum parameter for momentum update
-        self.model_input = model_config["model_input"] #['points', 'points_moco']
+        # self.model_input = model_config["model_input"] #['points', 'points_moco']
         
     def multi_input_with_head_mapping_forward(self, batch_dict):
         output_dict = {}
 
-        outputs_base = self._single_input_forward(batch_dict['input'], 0)
-        outputs_base[0]['batch_dict'].pop('points')
-        output_dict['output_base'] =  outputs_base[0]['batch_dict']
+        outputs, _, _ = self._single_input_forward(batch_dict['input'], 0)
+        outputs['batch_dict'].pop('points')
+        output_dict['output'] =  outputs['batch_dict']
 
-        outputs_moco = self._single_input_forward_MOCO(batch_dict['input_moco'], 1)
-        outputs_moco[0]['batch_dict'].pop('points')
-        output_dict['output_moco'] =  outputs_moco[0]['batch_dict']
+        outputs_moco, _, _ = self._single_input_forward_MOCO(batch_dict['input_moco'], 1)
+        outputs_moco['batch_dict'].pop('points')
+        output_dict['output_moco'] =  outputs_moco['batch_dict']
         
 
-        if 'MODEL_HEAD' in self.config:
-            
-            if self.config['MODEL_HEAD'].get('INPUT_MOCO_FEATS', False):
-                new_batch_dict = self._concat_encoder_outputs(output_dict['output_base'], output_dict['output_moco'])
-                outputs = self.head(new_batch_dict) 
-            else:
-                outputs = self.head(output_dict['output_base'])
+        if 'MODEL_DET_HEAD' or 'MODEL_AUX_HEAD' in self.config:
+            new_batch_dict = self._concat_encoder_outputs(output_dict['output'], output_dict['output_moco'], for_det=self.config.get('MODEL_DET_HEAD', False))
 
+        
+        if 'MODEL_DET_HEAD' in self.config:
+            if self.config['MODEL_DET_HEAD'].get('INPUT_MOCO_FEATS', False):
+                outputs_head, _, _ = self.det_head(new_batch_dict) 
+            else:
+                outputs_head, _, _ = self.det_head(output_dict['output_base'])
             
-            output_dict['loss_head']= outputs[0]['loss']
+            output_dict['loss_det_head']= outputs_head['loss']
+
+
+
+        if 'MODEL_AUX_HEAD' in self.config:
+            outputs_head, _, _ = self.aux_head(new_batch_dict)
+            output_dict['loss_aux_head']= outputs_head['batch_dict']['seg_reg_loss']
+            
 
             #all_outputs.append(loss_dict)
         return output_dict
     
-    def _concat_encoder_outputs(self, output_base_dict, output_moco_dict):
+    def _concat_encoder_outputs(self, output_base_dict, output_moco_dict, for_det):
         all_outputs = []
         new_batch_dict = {}
 
         all_outputs.append(output_base_dict)
         all_outputs.append(output_moco_dict)
-        #points (N, 5), point_features (N, 128), point_coords (N, 4), gt_boxes (B, max gt boxes in a pc, 8)
-        new_batch_dict = {}
-        #new_batch_dict['points'] = torch.cat([output['points'] for output in all_outputs], dim=0)
-        new_batch_dict['point_features'] = torch.cat([output['point_features'] for output in all_outputs], dim=0)
-        with torch.no_grad():
-            all_outputs[1]['point_coords'][:,0] += all_outputs[0]['batch_size']
-        new_batch_dict['point_coords'] = torch.cat([output['point_coords'] for output in all_outputs], dim=0)
-        new_batch_dict['batch_size'] = all_outputs[0]['batch_size'] + all_outputs[1]['batch_size']
 
+
+        if for_det:
+            # All inputs needed only for the detection head
+            new_batch_dict['batch_size'] = all_outputs[0]['batch_size']
+            all_outputs[1]['point_coords'][:,0] += all_outputs[0]['batch_size']
+            new_batch_dict['batch_size'] += all_outputs[1]['batch_size']
+
+            #points (N, 4=xyzi), point_features (N, 128), point_coords (N, 4=bxyz), gt_boxes (B, max gt boxes in a pc, 8)
+            #new_batch_dict['points'] = torch.cat([output['points'] for output in all_outputs], dim=0)
+            new_batch_dict['point_features'] = torch.cat([output['point_features'] for output in all_outputs], dim=0)
+            new_batch_dict['point_coords'] = torch.cat([output['point_coords'] for output in all_outputs], dim=0)
+            new_batch_dict['cluster_ids'] = np.vstack([output['cluster_ids'] for output in all_outputs]) #(bs1+bs1, 20000)
+            new_batch_dict['gt_boxes_cluster_ids'] = [] #(bs+bs, num gt boxes in each pc)
+            for output in all_outputs:
+                new_batch_dict['gt_boxes_cluster_ids'] += output['gt_boxes_cluster_ids'] 
+
+        ###################### gt boxes needed for both detection and aux head ###################
         gt_box_dim = all_outputs[0]['gt_boxes'].shape[-1]
         device = all_outputs[0]['gt_boxes'].device
         max_gt_num = max([output['gt_boxes'].shape[1] for output in all_outputs])
@@ -110,6 +128,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             [new_batch_dict['batch_size'], max_gt_num, gt_box_dim],
             dtype=torch.float32,
             device=device)
+        
+
         batch_idx = 0
         for output in all_outputs:
             bs = output['batch_size']
@@ -118,7 +138,18 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             new_gt_boxes[batch_idx: batch_idx+bs, :num_boxes , :] = gt_boxes
             batch_idx += bs
 
-        new_batch_dict['gt_boxes'] = new_gt_boxes
+        new_batch_dict['gt_boxes'] = new_gt_boxes #(bs+bs, max num gt, 8)
+        
+        ###################### Concat seg feats for Aux head ###################
+        # # To store the map to pretext_head_feats (seg features) to cluster ids
+        # new_batch_dict['common_cluster_ids'] = output_base_dict['common_cluster_ids']
+
+        # Concat cluster features
+        #(num common clusters, 128+128)
+        new_batch_dict['pretext_head_feats'] = torch.cat([output['pretext_head_feats'] for output in all_outputs], dim=1)
+        new_batch_dict['common_cluster_gtbox_idx'] = output_base_dict['common_cluster_gtbox_idx']
+        new_batch_dict['common_cluster_gtbox_idx_moco'] = output_moco_dict['common_cluster_gtbox_idx']
+        
         return new_batch_dict
     def _single_input_forward(self, batch_dict, target):
         
@@ -137,7 +168,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     @torch.no_grad()
     def _batch_shuffle_ddp(self, batch_dict):
         points = batch_dict['points'] #(6, 20k, 4)
-        batch_size_this = batch_dict['batch_size'] # points.shape[0]
+        batch_size_this = points.shape[0] #batch_dict['batch_size'] # 
         #gpu_idx = torch.distributed.get_rank()
         #print(f'Inside shuffle, this pc batch size: {batch_size_this}, gpu_idx: {gpu_idx}')
         # Gather all pcs from all gpus
@@ -274,12 +305,13 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     def forward(self, batch_dict):
         return self.multi_input_with_head_mapping_forward(batch_dict)
 
-    def _get_head(self, dataset):
+    def _get_head(self, dataset, key):
         import models.trunks as models
-        if "MODEL_HEAD" in self.config:
-            return models.build_network(model_cfg=self.config["MODEL_HEAD"], num_class=len(dataset.class_names), dataset=dataset)
+        if key in self.config:
+            return models.build_network(model_cfg=self.config[key], num_class=len(dataset.class_names), dataset=dataset)
         else:
             return None
+    
 
     def _get_trunk(self, dataset):
         import models.trunks as models

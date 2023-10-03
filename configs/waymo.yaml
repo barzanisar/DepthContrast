@@ -22,25 +22,32 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_10_short'
+  PROCESSED_DATA_TAG: 'waymo_processed_data_10'
   DATA_SPLIT: {'train': train_short}
   DATA_PATH: 'data/waymo'
   multiply_i_by_255: True
   BATCHSIZE_PER_REPLICA: 6 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
-  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist']
+  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
+  MEAN_SIZES: [[4.7, 2.1, 1.7],
+                [0.91, 0.86, 1.73],
+                [1.78, 0.84, 1.78],
+                [0.5, 0.5, 1.0],
+                [3, 2, 1.7],
+                [10, 2, 1.7],
+                [20, 20, 1.7]]
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
   Lidar: True
   FOV_POINTS_ONLY: True
-  GT_SAMPLING:
-    USE_ROAD_PLANE: False
-    db_info_path: ['waymo_processed_data_10_short_waymo_dbinfos_train_sampled_1.pkl']
-    filter_by_min_points: ['Vehicle:5', 'Pedestrian:5', 'Cyclist:5']
-    sample_groups: ['Vehicle:15', 'Pedestrian:10', 'Cyclist:10']
-    NUM_POINT_FEATURES: 5 # for gt db objects xyzi,elong
-    remove_extra_width: [0.0, 0.0, 0.0]
-    LIMIT_WHOLE_SCENE: True
+  # GT_SAMPLING:
+  #   USE_ROAD_PLANE: False
+  #   db_info_path: ['waymo_processed_data_10_short_waymo_dbinfos_train_sampled_1.pkl']
+  #   filter_by_min_points: ['Object:5'] #['Vehicle:5', 'Pedestrian:5', 'Cyclist:5']
+  #   sample_groups: ['Object:35'] #['Vehicle:15', 'Pedestrian:10', 'Cyclist:10']
+  #   NUM_POINT_FEATURES: 5 # for gt db objects xyzi,elong
+  #   remove_extra_width: [0.0, 0.0, 0.0]
+  #   LIMIT_WHOLE_SCENE: True
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
     - NAME: random_world_flip
@@ -49,6 +56,14 @@ dataset:
       WORLD_ROT_ANGLE: [-0.78539816, 0.78539816] #-45deg, + 45deg
     - NAME: random_world_scaling
       WORLD_SCALE_RANGE: [0.95, 1.05]
+    - NAME: random_local_translation
+      LOCAL_TRANSLATION_RANGE: [-0.3, 0.3]
+      ALONG_AXIS_LIST: ['x', 'y']
+    - NAME: random_local_rotation
+      LOCAL_ROT_ANGLE: [-0.78539816, 0.78539816]
+    - NAME: random_local_scaling
+      LOCAL_SCALE_RANGE: [0.95, 1.05]
+
     # - NAME: random_cuboid_lidar
     #   npoints: 10000
     # - NAME: random_drop
@@ -98,7 +113,7 @@ model:
       use_mlp: True
       mlp_dim: [128, 128, 128]
 
-  MODEL_HEAD:
+  MODEL_DET_HEAD:
     NAME: PointRCNN
 
     INPUT_MOCO_FEATS: True
@@ -107,7 +122,7 @@ model:
       NAME: PointHeadBox
       CLS_FC: [256, 256]
       REG_FC: [256, 256]
-      CLASS_AGNOSTIC: True
+      CLASS_AGNOSTIC: False
       USE_POINT_FEATURES_BEFORE_FUSION: False
       TARGET_CONFIG:
         GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
@@ -117,7 +132,11 @@ model:
             'mean_size': [
                 [4.7, 2.1, 1.7],
                 [0.91, 0.86, 1.73],
-                [1.78, 0.84, 1.78]
+                [1.78, 0.84, 1.78],
+                [0.5, 0.5, 1.0],
+                [3, 2, 2],
+                [10, 2, 2.5],
+                [20, 20, 2.5]
             ]
           }
 
@@ -128,6 +147,22 @@ model:
             'point_box_weight': 1.0,
             'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
         }
+    
+  MODEL_AUX_HEAD:
+    NAME: PointRCNN
+    
+    PRETEXT_HEAD: 
+      NAME: RegHead
+      REG_FC: [256, 256]
+      # - NAME: ScaleRegHead
+      #   REG_FC: [256, 256]
+      LOSS_CONFIG:
+        LOSS_REG: WeightedSmoothL1Loss
+        LOSS_WEIGHTS: {
+            'seg_reg_weight': 1.0,
+            'code_weights': [1.0, 1.0]
+        }
+
 
     # ROI_HEAD:
     #   NAME: PointRCNNHead

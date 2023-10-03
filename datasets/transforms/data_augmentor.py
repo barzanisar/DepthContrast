@@ -2,7 +2,7 @@ from functools import partial
 
 import numpy as np
 from third_party.OpenPCDet.pcdet.utils import common_utils
-from . import augmentor_utils
+from third_party.OpenPCDet.pcdet.datasets.augmentor import augmentor_utils
 
 def check_aspect2D(crop_range, aspect_min):
     xy_aspect = np.min(crop_range[:2])/np.max(crop_range[:2])
@@ -116,14 +116,63 @@ class DataAugmentor(object):
         data_dict['points'] = points
         return data_dict
     
-    def forward(self, points, gt_boxes):
+    def random_local_translation(self, data_dict=None, config=None):
+        """
+        Please check the correctness of it before using.
+        """
+        if data_dict is None:
+            return partial(self.random_local_translation, config=config)
+        offset_range = config['LOCAL_TRANSLATION_RANGE']
+        gt_boxes, points = data_dict['gt_boxes'], data_dict['points']
+        for cur_axis in config['ALONG_AXIS_LIST']:
+            assert cur_axis in ['x', 'y', 'z']
+            gt_boxes, points = getattr(augmentor_utils, 'random_local_translation_along_%s' % cur_axis)(
+                gt_boxes, points, offset_range, data_dict['gt_box_cluster_ids']
+            )
+        
+        data_dict['gt_boxes'] = gt_boxes
+        data_dict['points'] = points
+        return data_dict
+    
+    def random_local_rotation(self, data_dict=None, config=None):
+        """
+        Please check the correctness of it before using.
+        """
+        if data_dict is None:
+            return partial(self.random_local_rotation, config=config)
+        rot_range = config['LOCAL_ROT_ANGLE']
+        if not isinstance(rot_range, list):
+            rot_range = [-rot_range, rot_range]
+        gt_boxes, points = augmentor_utils.local_rotation(
+            data_dict['gt_boxes'], data_dict['points'], rot_range, data_dict['gt_box_cluster_ids']
+        )
+        
+        data_dict['gt_boxes'] = gt_boxes
+        data_dict['points'] = points
+        return data_dict
+    
+    def random_local_scaling(self, data_dict=None, config=None):
+        """
+        Please check the correctness of it before using.
+        """
+        if data_dict is None:
+            return partial(self.random_local_scaling, config=config)
+        gt_boxes, points = augmentor_utils.local_scaling(
+            data_dict['gt_boxes'], data_dict['points'], config['LOCAL_SCALE_RANGE'], data_dict['gt_box_cluster_ids']
+        )
+        
+        data_dict['gt_boxes'] = gt_boxes
+        data_dict['points'] = points
+        return data_dict
+    
+    def forward(self, points, gt_boxes, gt_box_cluster_ids=None):
         """
         Args:
                 points: (N, 3 + C_in)
                 gt_boxes: optional, (N, 7) [x, y, z, dx, dy, dz, heading]
         Returns:
         """
-        data_dict = {'points': points, 'gt_boxes': gt_boxes}
+        data_dict = {'points': points, 'gt_boxes': gt_boxes, 'gt_box_cluster_ids': gt_box_cluster_ids}
         for cur_augmentor in self.data_augmentor_queue:
             data_dict = cur_augmentor(data_dict=data_dict)
         

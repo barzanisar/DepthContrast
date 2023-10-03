@@ -97,8 +97,10 @@ def main_worker(args, cfg):
         # Only sync bn for detection head layers and not backbone 3d for shuffle bn to work
         # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model) 
         # TODO: This is a dirty way of doing it
-        if 'MODEL_HEAD' in cfg['model']:
-            model.head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.head)
+        if 'MODEL_DET_HEAD' in cfg['model']:
+            model.det_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.det_head)
+        if 'MODEL_AUX_HEAD' in cfg['model']:
+            model.aux_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.aux_head)
 
     model, args = main_utils.distribute_model_to_cuda(model, args) #, find_unused_params=CLUSTER
 
@@ -162,7 +164,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     model.train(phase == 'train')
     # ['points', 'points_moco']
     end = time.time()
-    device = args.local_rank if args.local_rank is not None else 0
+    # device = args.local_rank if args.local_rank is not None else 0
     for i, sample in enumerate(loader):
         # measure data loading time
         data_time.update(time.time() - end) # Time to load one batch
@@ -173,10 +175,17 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             with torch.no_grad():
                 output_dict = model(sample)
 
+         # contrastive loss
+        loss = criterion(output_dict['output'], output_dict['output_moco'])
+
+        # detection loss
+        if 'MODEL_DET_HEAD' in cfg['model']:
+            loss += output_dict['loss_det_head']
         
-        loss = criterion(output_dict['output_base'], output_dict['output_moco']) # contrastive loss
-        if 'MODEL_HEAD' in cfg['model']:
-            loss += output_dict['loss_head']  # detection loss
+        # aux head loss
+        if 'MODEL_AUX_HEAD' in cfg['model']:
+            loss += output_dict['loss_aux_head']
+            
         loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
 
 

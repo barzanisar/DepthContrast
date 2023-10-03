@@ -18,41 +18,43 @@ def mask_boxes_outside_range(gt_boxes, point_cloud_range):
     )
     return keep_mask
 
-# def remove_points_in_gt_boxes(points, gt_boxes):
-#     # TODO: check for empty gt_boxes
-#     box_idxs_of_pts = roiaware_pool3d_utils.points_in_boxes_gpu(
-#                 torch.from_numpy(points[:, 0:3]).unsqueeze(dim=0).float().cuda(),
-#                 torch.from_numpy(gt_boxes[:, 0:7]).unsqueeze(dim=0).float().cuda()
-#             ).long().squeeze(dim=0).cpu().numpy()
-#     num_obj = gt_boxes.shape[0]
-
-#     keep_mask = np.ones(len(points), dtype=np.bool_)
-#     for i in range(num_obj):
-#         keep_mask[box_idxs_of_pts == i] = False
-    
-#     return points[keep_mask]
     
 def mask_boxes_with_few_points(points, gt_boxes):
     # Only do this for training, this can happen after dropping patches
     # return mask for selecting valid boxes
-    box_pts_map = roiaware_pool3d_utils.points_in_boxes_cpu(
-        points[:, 0:3],
-        gt_boxes[:, 0:7]) #(num_obj, num points)
+    num_gt_boxes = gt_boxes.shape[0]
+    box_keep_mask = np.ones(num_gt_boxes, dtype=bool)
+    for i in range(num_gt_boxes):
+        box_label = gt_boxes[i][-1]
+        pts_this_box_mask = points[:,-1] == box_label
+        num_pts_this_box = pts_this_box_mask.sum()
+        if num_pts_this_box <=5:
+            box_keep_mask[i] = False
+
+            #Set pt labels to -1 i.e. background if fewer than 5 pts
+            points[pts_this_box_mask,-1] = -1
     
-    num_obj = gt_boxes.shape[0]
-    box_keep_mask = []
-    box_idxs_of_pts=-1 * np.ones(points.shape[0], dtype=int)
+    return points, gt_boxes[box_keep_mask] 
 
-    for i in range(num_obj):
-        obj_points_mask = box_pts_map[i]>0
+
+    # box_pts_map = roiaware_pool3d_utils.points_in_boxes_cpu(
+    #     points[:, 0:3],
+    #     gt_boxes[:, 0:7]) #(num_obj, num points)
+    
+    # num_obj = gt_boxes.shape[0]
+    # box_keep_mask = []
+    # box_idxs_of_pts=-1 * np.ones(points.shape[0], dtype=int)
+
+    # for i in range(num_obj):
+    #     obj_points_mask = box_pts_map[i]>0
         
-        if len(points[obj_points_mask]) <= 5:
-            box_keep_mask.append(False)
-        else:
-            box_idxs_of_pts[obj_points_mask] = i
-            box_keep_mask.append(True)
+    #     if len(points[obj_points_mask]) <= 5:
+    #         box_keep_mask.append(False)
+    #     else:
+    #         box_idxs_of_pts[obj_points_mask] = i
+    #         box_keep_mask.append(True)
 
-    return box_keep_mask, box_idxs_of_pts
+    # return box_keep_mask, box_idxs_of_pts
 
 def shuffle_points(points):
         shuffle_idx = np.random.permutation(points.shape[0])

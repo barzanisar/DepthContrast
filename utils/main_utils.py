@@ -144,7 +144,7 @@ def write_ply_color(points, colors, out_filename):
 
 def load_data_to_gpu(batch_dict):
     for key, val in batch_dict.items():
-        if key in ['frame_id', 'metadata', 'calib', 'gt_boxes_idx', 'box_ids_of_pts']:
+        if key in ['frame_id', 'metadata', 'calib', 'cluster_ids', 'common_cluster_ids', 'gt_boxes_cluster_ids', 'common_cluster_gtbox_idx']:
             continue
         # elif key in ['images']:
         #     batch_dict[key] = kornia.image_to_tensor(val).float().cuda().contiguous()
