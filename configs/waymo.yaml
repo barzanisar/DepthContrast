@@ -22,7 +22,7 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_10_short'
+  PROCESSED_DATA_TAG: 'waymo_processed_data_10' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train_short}
   DATA_PATH: 'data/waymo'
   multiply_i_by_255: True

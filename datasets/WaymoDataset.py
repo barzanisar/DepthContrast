@@ -18,10 +18,10 @@ class WaymoDataset(DepthContrastDataset):
     def __init__(self, cfg, cluster, linear_probe=False, mode='train', logger=None):
         super().__init__(cfg, linear_probe=linear_probe, mode=mode, logger=logger)
         self.data_root_path =  self.root_path / cfg["DATA_PATH"]
-        self.lidar_data_path = self.data_root_path / cfg.PROCESSED_DATA_TAG
+        self.lidar_data_path = self.data_root_path / cfg.PROCESSED_DATA_TAG 
         #self.infos_pkl_path = self.data_root_path / f'{cfg.PROCESSED_DATA_TAG}_infos_{cfg.DATA_SPLIT[self.mode]}.pkl'
         self.split = cfg.DATA_SPLIT[self.mode]
-        self.cluster_root_path = self.root_path / 'output' / 'waymo_processed_data_10_clustered' #f'{cfg.PROCESSED_DATA_TAG}_clustered'
+        self.cluster_root_path = self.root_path / 'output' / f'{cfg.PROCESSED_DATA_TAG}_clustered'
         self.mean_box_sizes = cfg.get('MEAN_SIZES', None)
 
         self.infos = []

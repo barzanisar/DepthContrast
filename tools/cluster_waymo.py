@@ -42,10 +42,6 @@ class WaymoDataset():
         self.infos_pkl_path = self.root_path / f'{self.processed_data_tag}_infos_{self.split}.pkl'
 
         self.save_label_path = parent_dir / 'output' / (self.processed_data_tag + '_clustered')
-        self.class_names = ['Vehicle', 'Pedestrian', 'Cyclist']
-        self.iou_eval_thresh_list = [0.03, 0.2, 0.5] #0.03, 
-        self.eval_metrics = ['iou3d', 'overlap3d', 'overlapbev']
-
 
         self.infos_dict = {} # seq_name: [frame infos]
         self.include_waymo_data() # read tfrecords in sample_seq_list and then find its pkl in waymo_processed_data_10 and include the pkl infos in waymo infos
@@ -88,7 +84,6 @@ class WaymoDataset():
         save_seq_path = self.save_label_path / seq_name / 'ground'
         os.makedirs(save_seq_path.__str__(), exist_ok=True)
         infos = self.infos_dict[seq_name]
-        non_ground_mask = np.empty((0,1), dtype=bool)
         for info in infos:
             pc_info = info['point_cloud']
             sample_idx = pc_info['sample_idx']
@@ -131,6 +126,7 @@ def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False
         
         # Get new labels
         labels = cluster(xyzi[:,:3], np.logical_not(ground_mask), eps=0.2)
+        assert labels.shape[0] == num_pts, f'After Clustering: Some labels missing for seq: {seq_name}, sample {sample_idx}!'
         print(f'1st Step Clustering Done. Labels found: {np.unique(labels).shape[0]}')
         if show_plots:
             visualize_pcd_clusters(xyzi[:,:3], labels.reshape((-1,1)))
@@ -142,6 +138,8 @@ def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False
                                     min_height_for_highest_point=0.5,
                                     ground_mask = ground_mask)
         
+        assert new_labels.shape[0] == num_pts, f'After filtering: Some labels missing for seq: {seq_name}, sample {sample_idx}!'
+
         if show_plots:
             print(f'After filtering')
             visualize_pcd_clusters(xyzi[:,:3], new_labels.reshape((-1,1)))
@@ -162,7 +160,11 @@ def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False
                         visualize_selected_labels(xyzi[:,:3], labels.flatten(), rejected_labels)
         
         labels = remove_outliers_cluster(xyzi[:,:3], new_labels.flatten())
+        assert labels.shape[0] == num_pts, f'After remove outliers: Some labels missing for seq: {seq_name}, sample {sample_idx}!'
+
         labels = get_continuous_labels(labels)
+        assert labels.shape[0] == num_pts, f'After Continuous Labels: Some labels missing for seq: {seq_name}, sample {sample_idx}!'
+
         if show_plots:
             print(f'Removed cluster pts far away from main cluster')
             visualize_pcd_clusters(xyzi[:,:3], labels.reshape((-1,1)))
