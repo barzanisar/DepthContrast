@@ -12,6 +12,7 @@ import pprint
 import numpy as np
 import torch
 from torch import nn
+from third_party.OpenPCDet.pcdet.ops.iou3d_nms import iou3d_nms_utils
 
 # utils
 @torch.no_grad()
@@ -49,11 +50,14 @@ class NCELossMoco(nn.Module):
         self.cluster = cluster
 
         self.K = int(config["NUM_NEGATIVES"])
-        self.dim = int(config["EMBEDDING_DIM"])
+        self.dim = int(config["EMBEDDING_DIM"]) 
+        if self.cluster:
+            self.dim += 3
         self.T = float(config["TEMPERATURE"])
 
         self.register_buffer("queue", torch.randn(self.dim, self.K)) # queue of dc (either pointnet or vox) based negative key embeddings
-        self.queue = nn.functional.normalize(self.queue, dim=0)
+        self.queue[:int(config["EMBEDDING_DIM"]), :] = nn.functional.normalize(self.queue[:int(config["EMBEDDING_DIM"]), :], dim=0)
+        self.queue[int(config["EMBEDDING_DIM"]):, :] = -1 * torch.ones((3,  self.K))
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
         
         # cross-entropy loss. Also called InfoNCE
@@ -142,40 +146,46 @@ class NCELossMoco(nn.Module):
         # batch_size = output_dict['batch_size'] #2
         output_0 = output_dict['pretext_head_feats'] #query features (N=num common clusters , 128)
         output_1 = output_dict_moco['pretext_head_feats'] #key_features = moco features (N=num common clusters, 128)
-
-        # if self.cluster:
-        #     box_ids_of_pts_0 = output_dict['box_ids_of_pts'] # (2, 20000)
-        #     box_ids_of_pts_1 = output_dict_moco['box_ids_of_pts']
-            
-        #     # Select corresponding object features across views
-        #     mask_0 = []
-        #     mask_1 = []
-        #     for pc_idx in range(batch_size):
-        #         # common_obj_ids = list(set(output_dict['gt_boxes_idx'][pc_idx]) & set(output_dict_moco['gt_boxes_idx'][pc_idx]))
-        #         # mask_0.append(np.in1d(output_dict['gt_boxes_idx'][pc_idx], output_dict_moco['gt_boxes_idx'][pc_idx], assume_unique=True))
-        #         # mask_1.append(np.in1d(output_dict_moco['gt_boxes_idx'][pc_idx], output_dict['gt_boxes_idx'][pc_idx], assume_unique=True))
-        #         cluster_labels_this_pc_0 = np.unique(box_ids_of_pts_0[pc_idx])[1:] # [-1, 3, 4, 8, ...] -> [3, 4, 8, ...]
-        #         cluster_labels_this_pc_1 = np.unique(box_ids_of_pts_1[pc_idx])[1:] # [-1, 2, 5, 8, 6] -> [2, 5, 8, 6]
-
-        #         mask_0.append(np.in1d(cluster_labels_this_pc_0, cluster_labels_this_pc_1, assume_unique=True))
-        #         mask_1.append(np.in1d(cluster_labels_this_pc_1, cluster_labels_this_pc_0, assume_unique=True))
-
-        #     output_0 = output_0[np.concatenate(np.array(mask_0))] # (N=num common clusters, C=128)
-        #     output_1 = output_1[np.concatenate(np.array(mask_1))] # (N=num common clusters, C=128)
-            
-        #     # if no common obj, return 0 loss
-        #     if output_0.numel() == 0:
-        #         return 0
+        feature_dim = output_0.shape[1]
             
         # assert output_0.shape == output_1.shape
         normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query embeddings 
         normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key embeddings
 
+        #TODO: class balanced contrastive loss
+        if self.cluster:
+            batch_size = output_dict['gt_boxes'].shape[0]
+            #dxdydz = torch.cat([output_dict['gt_boxes'][k, output_dict['common_cluster_gtbox_idx'][k], 3:6]  for k in range(batch_size)]) #(N,3)
+            dxdydz = torch.cat([output_dict_moco['gt_boxes'][k, output_dict_moco['common_cluster_gtbox_idx'][k],3:6]  for k in range(batch_size)])
+
+            # Define l= max(dx,dy), w = min(dx,dy)
+            l = torch.max(dxdydz[:,:2], dim=-1)[0].view(-1,1)
+            w = torch.min(dxdydz[:,:2], dim=-1)[0].view(-1,1)
+            h = dxdydz[:, -1].view(-1,1)
+
+            if self.queue[-1,-1] > 0: # last element of queue has been filled with the dims
+                l_neg = self.queue[-3,:].view(1, -1)
+                w_neg = self.queue[-2,:].view(1, -1)
+                h_neg = self.queue[-1,:].view(1, -1)
+
+                vol = (l*w*h).view(-1, 1) # Nx1
+                vol_neg = (l_neg * w_neg * h_neg).view(1, -1) # 1xK
+                overlap_vol = torch.min(l, l_neg) *  torch.min(w, w_neg) * torch.min(h, h_neg) # NxK
+                iou3d = overlap_vol / torch.clamp(vol + vol_neg - overlap_vol, min=1e-6) # NxK
+
         # positive logits: Nx1 = batch size of positive examples
         l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1)
         
         # negative logits: NxK
-        l_neg = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()])
+        l_neg = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()[:feature_dim,:]])
+
+        if self.cluster and self.queue[-1,-1] > 0:
+            neg_w =  (1-iou3d) #if high iou, similar sizes -> low weight
+
+            # # Another option remove neg examples from denominator if iou3d of positive and neg samples > 0.7
+            # neg_w[neg_w<0.3] = 0
+            l_neg = l_neg * neg_w
+
         
         # logits: Nx(1+K) i.e. N examples or clusters and K+1 class scores
         logits = torch.cat([l_pos, l_neg], dim=1)
@@ -195,7 +205,8 @@ class NCELossMoco(nn.Module):
         
 
         if self.cluster:
-            self._dequeue_and_enqueue_cluster(normalized_output2)
+            keys = torch.cat([normalized_output2, l,w,h], dim=1)
+            self._dequeue_and_enqueue_cluster(keys)
         else:
             self._dequeue_and_enqueue_pcd(normalized_output2)
 
