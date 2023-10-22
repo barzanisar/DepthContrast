@@ -55,13 +55,10 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         self.logger = logger
         self.cluster = cluster
         super().__init__()
-        # self.eval_mode = None  # this is just informational
-        # self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
         self.trunk = self._get_trunk(dataset)
         self.det_head = self._get_head(dataset, key="MODEL_DET_HEAD")
         self.aux_head = self._get_head(dataset, key="MODEL_AUX_HEAD")
         self.m = 0.999 ### Can be tuned momentum parameter for momentum update
-        # self.model_input = model_config["model_input"] #['points', 'points_moco']
         
     def multi_input_with_head_mapping_forward(self, batch_dict):
         output_dict = {}

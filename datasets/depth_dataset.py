@@ -72,10 +72,10 @@ class DepthContrastDataset(Dataset):
         self.voxel_size = None
         self.depth_downsample_factor = None 
         if ("Lidar" in cfg) and cfg["VOX"]:
-            self.voxel_size = [0.05, 0.05, 0.1] #[0.1, 0.1, 0.15]
+            self.voxel_size = [0.1, 0.1, 0.15] #[0.05, 0.05, 0.1]
 
             self.MAX_POINTS_PER_VOXEL = 5
-            self.MAX_NUMBER_OF_VOXELS = 16000 #80000
+            self.MAX_NUMBER_OF_VOXELS = 150000 #80000
             if SPCONV_VER == 1:
                 self.voxel_generator = VoxelGenerator(
                     voxel_size=self.voxel_size,
@@ -87,7 +87,7 @@ class DepthContrastDataset(Dataset):
                 self.voxel_generator = VoxelGenerator(
                     vsize_xyz=self.voxel_size,
                     coors_range_xyz=self.point_cloud_range,
-                    num_point_features = 4,
+                    num_point_features = 5,
                     max_num_points_per_voxel=self.MAX_POINTS_PER_VOXEL,
                     max_num_voxels=self.MAX_NUMBER_OF_VOXELS
                 )
@@ -238,12 +238,12 @@ class DepthContrastDataset(Dataset):
             V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7], color_feature='intensity')
         # if vox then transform points to voxels else save points as tensor
         if cfg["VOX"]:
-            vox_dict = self.toVox(data_dict["points"])
-            data_dict["data"] = vox_dict
+            vox_dict = self.toVox(data_dict["points"]) # xyzil=clusterlabel 
+            data_dict["vox"] = vox_dict
 
             if self.pretraining:
                 vox_dict = self.toVox(data_dict["points_moco"])
-                data_dict["data_moco"] = vox_dict
+                data_dict["vox_moco"] = vox_dict
         # else:
         #     #transform to tensor
         #     data_dict['data'] = data_dict.pop('points')

@@ -77,11 +77,13 @@
             },
             "args": [
                 "--split",
-                "train_short"
+                "train",
+                "--processed_data_tag",
+                "waymo_processed_data_10"
             ]
         },
         {
-            "name": "Waymo: pretrain",
+            "name": "Waymo: pretrain point",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/tools/main_dist.py",
@@ -92,7 +94,22 @@
             },
             "args": [
                 "--cfg",
-                "configs/waymo.yaml"
+                "configs/waymo_pointrcnn.yaml"
+            ]
+        },
+        {
+            "name": "Waymo: pretrain vox",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/main_dist.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/waymo_centerpoint.yaml"
             ]
         },
         {
