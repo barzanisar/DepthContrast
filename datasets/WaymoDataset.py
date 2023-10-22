@@ -29,7 +29,10 @@ class WaymoDataset(DepthContrastDataset):
         
         if self.mean_box_sizes is not None:
             self.mean_box_sizes = np.array(self.mean_box_sizes)
-            self.add_pseudo_classes()
+            self.class_size_cnts = self.add_pseudo_classes()
+            self.logger.add_line('Pseudo Class Counts:')
+            for i, cls in enumerate(self.class_names):
+                self.logger.add_line(f'{cls}: {self.class_size_cnts[i]}')
 
     def include_waymo_data(self):
         self.logger.add_line('Loading Waymo dataset')
@@ -53,16 +56,25 @@ class WaymoDataset(DepthContrastDataset):
         self.logger.add_line('Total skipped sequences due to missing info pkls %s' % num_skipped_infos)
     
     def add_pseudo_classes(self):
-
+        class_size_cnts=np.zeros(len(self.class_names))
         for info in self.infos:
             gt_boxes = info['approx_boxes_closeness_to_edge']
             
             lwh = gt_boxes[:, 3:6]
+            l = np.max(lwh[:,:2], axis=1)
+            w = np.min(lwh[:,:2], axis=1)
+            lwh[:,0] = l
+            lwh[:,1] = w
+            
             dist = (((self.mean_box_sizes.reshape(1, -1, 3) - \
             lwh.reshape(-1, 1, 3)) ** 2).sum(axis=2))  # N=boxes x M=mean sizes 
             idx_matched_mean_sizes = dist.argmin(axis=1) # N gt boxes
             gt_names = np.array(self.class_names)[idx_matched_mean_sizes]
             info['approx_boxes_names'] = gt_names
+            unique_idx, counts = np.unique(idx_matched_mean_sizes, return_counts=True)
+            class_size_cnts[unique_idx] += counts
+        
+        return class_size_cnts
 
 
 
@@ -70,7 +82,7 @@ class WaymoDataset(DepthContrastDataset):
         lidar_file = self.lidar_data_path / sequence_name / ('%04d.npy' % sample_idx)
         point_features = np.load(lidar_file)  # (N, 7): [x, y, z, intensity, elongation, NLZ_flag]
 
-        points_all = point_features[:, 0:5] #points_all: x,y,z,i,elongation
+        points_all = point_features[:, 0:4] #points_all: x,y,z,i, skip elongation
         points_all[:, 3] = np.tanh(points_all[:, 3]) * 255.0  #TODO:
         return points_all #only get xyzi
 
@@ -97,7 +109,7 @@ class WaymoDataset(DepthContrastDataset):
 
         assert points.shape[0] == pt_cluster_labels.shape[0], f'Missing labels for {frame_id}!!!!!!!!'
 
-        points = np.hstack([points, pt_cluster_labels.reshape(-1, 1)])
+        points = np.hstack([points, pt_cluster_labels.reshape(-1, 1)]) #xyzi
         gt_classes = np.array([self.class_names.index(n) + 1 for n in info['approx_boxes_names']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
 
         #append class id as 8th entry in gt boxes and cluster label as 9th
