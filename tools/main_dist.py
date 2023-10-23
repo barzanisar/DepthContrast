@@ -84,7 +84,8 @@ def main_worker(args, cfg):
     
     CLUSTER = False
     if 'PRETEXT_HEAD'in cfg['model']['MODEL_BASE']:
-        CLUSTER = cfg['model']['MODEL_BASE']['PRETEXT_HEAD']['NAME'] == 'SegHead'
+        pretext_head_name = cfg['model']['MODEL_BASE']['PRETEXT_HEAD']['NAME']
+        CLUSTER = pretext_head_name in ['SegHead', 'SegVoxHead']
     
     # Define dataloaders
     train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], CLUSTER, args.multiprocessing_distributed, logger)  
@@ -94,7 +95,7 @@ def main_worker(args, cfg):
     if args.multiprocessing_distributed:
         logger.add_line('='*30 + 'Sync Batch Normalization' + '='*30)
         
-        # Only sync bn for detection head layers and not backbone 3d for shuffle bn to work
+        # Only sync bn for detection head layers and not backbone 3d and 2d for shuffle bn to work
         # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model) 
         # TODO: This is a dirty way of doing it
         if 'MODEL_DET_HEAD' in cfg['model']:
@@ -168,6 +169,8 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     end = time.time()
     # device = args.local_rank if args.local_rank is not None else 0
     for i, sample in enumerate(loader):
+        torch.cuda.empty_cache()
+
         # measure data loading time
         data_time.update(time.time() - end) # Time to load one batch
 

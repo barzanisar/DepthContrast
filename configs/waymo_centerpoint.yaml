@@ -1,12 +1,12 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
 # python tools/main_dist.py --cfg configs/waymo.yaml
 wb_extra_tags: ['pointnet', 'waymo']
-resume: true
+resume: false
 linear_probe: false # True for linear probe
 num_workers: 4 # should be same as --cpus-per-task/gpus per node
 
 log2tb: false
-log2wb: true
+log2wb: false
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
@@ -26,20 +26,21 @@ dataset:
   DATA_SPLIT: {'train': train_short}
   DATA_PATH: 'data/waymo'
   multiply_i_by_255: True
-  BATCHSIZE_PER_REPLICA: 6 #Change to 14, if input moco feats is false, use 8
-  POINT_CLOUD_RANGE:  [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
-  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
+  BATCHSIZE_PER_REPLICA: 3 #Change to 14, if input moco feats is false, use 8
+  POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] 
+  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
                 [0.91, 0.86, 1.73],
                 [1.78, 0.84, 1.78],
                 [0.5, 0.5, 1.0],
-                [3, 2, 1.7],
-                [10, 2, 1.7],
+                [3, 2, 1.5],
+                [10, 2.5, 1.7],
+                [20, 2.5, 1.7],
                 [20, 20, 1.7]]
   LABEL_TYPE: objects #sample_index, objects, class_names
   DATA_TYPE: points
   Lidar: True
-  FOV_POINTS_ONLY: True
+  #FOV_POINTS_ONLY: True
   # GT_SAMPLING:
   #   USE_ROAD_PLANE: False
   #   db_info_path: ['waymo_processed_data_10_short_waymo_dbinfos_train_sampled_1.pkl']
@@ -70,9 +71,9 @@ dataset:
 
   SAMPLE_NUM_POINTS: 20000
   
-  VOX: False
+  VOX: True
 
-  COLLATE_FUNCTION: "point_moco_collator"
+  COLLATE_FUNCTION: "vox_moco_collator"
   DROP_LAST: True
 
 optimizer:
@@ -80,7 +81,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 4
+  num_epochs: 16
   lr:
     name: "cosine"
     base_lr: 0.01 #0.1 for linear_probe #0.12
@@ -90,78 +91,91 @@ model:
   model_dir: "checkpoints/pointnet/waymo"
   model_input: ["points", "points_moco"]
   Lidar: True
-  VOX: False
+  VOX: True
   linear_probe_dim: [128, 2]
 
   MODEL_BASE:
-    NAME: PointRCNN
+    NAME: CenterPoint
+
+    VFE:
+      NAME: MeanVFE
 
     BACKBONE_3D:
-      NAME: PointNet2MSG
-      SA_CONFIG:
-        NPOINTS: [4096, 1024, 256, 64]
-        RADIUS: [[0.1, 0.5], [0.5, 1.0], [1.0, 2.0], [2.0, 4.0]]
-        NSAMPLE: [[16, 32], [16, 32], [16, 32], [16, 32]]
-        MLPS: [[[16, 16, 32], [32, 32, 64]],
-                [[64, 64, 128], [64, 96, 128]],
-                [[128, 196, 256], [128, 196, 256]],
-                [[256, 256, 512], [256, 384, 512]]]
-      FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
+      NAME: VoxelResBackBone8x
+
+    MAP_TO_BEV:
+      NAME: HeightCompression
+      NUM_BEV_FEATURES: 256
+
+    BACKBONE_2D:
+      NAME: BaseBEVBackbone
+
+      LAYER_NUMS: [5, 5]
+      LAYER_STRIDES: [1, 2]
+      NUM_FILTERS: [128, 256]
+      UPSAMPLE_STRIDES: [1, 2]
+      NUM_UPSAMPLE_FILTERS: [256, 256]
+
 
     PRETEXT_HEAD: 
-      NAME: SegHead
+      NAME: SegVoxHead
+      num_keypts: 20000 # num keypts to sample from fg pts in a pc
       use_mlp: True
-      mlp_dim: [128, 128, 128]
+      mlp_dim: [768, 128, 128]
 
   MODEL_DET_HEAD:
-    NAME: PointRCNN
+    NAME: CenterPoint
 
     INPUT_MOCO_FEATS: True
 
-    POINT_HEAD:
-      NAME: PointHeadBox
-      CLS_FC: [256, 256]
-      REG_FC: [256, 256]
-      CLASS_AGNOSTIC: False
-      USE_POINT_FEATURES_BEFORE_FUSION: False
-      TARGET_CONFIG:
-        GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
-        BOX_CODER: PointResidualCoder
-        BOX_CODER_CONFIG: {
-            'use_mean_size': True,
-            'mean_size': [
-                [4.7, 2.1, 1.7],
-                [0.91, 0.86, 1.73],
-                [1.78, 0.84, 1.78],
-                [0.5, 0.5, 1.0],
-                [3, 2, 2],
-                [10, 2, 2.5],
-                [20, 20, 2.5]
-            ]
+    DENSE_HEAD:
+      NAME: CenterHead
+      CLASS_AGNOSTIC: True
+      INPUT_FEATURES: 512
+
+      CLASS_NAMES_EACH_HEAD: [
+          ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig']
+      ]
+
+      SHARED_CONV_CHANNEL: 64
+      USE_BIAS_BEFORE_NORM: True
+      NUM_HM_CONV: 2
+      SEPARATE_HEAD_CFG:
+          HEAD_ORDER: ['center', 'center_z', 'dim', 'rot']
+          HEAD_DICT: {
+              'center': {'out_channels': 2, 'num_conv': 2},
+              'center_z': {'out_channels': 1, 'num_conv': 2},
+              'dim': {'out_channels': 3, 'num_conv': 2},
+              'rot': {'out_channels': 2, 'num_conv': 2},
           }
 
+      TARGET_ASSIGNER_CONFIG:
+          FEATURE_MAP_STRIDE: 8
+          NUM_MAX_OBJS: 500
+          GAUSSIAN_OVERLAP: 0.1
+          MIN_RADIUS: 2
+
       LOSS_CONFIG:
-        LOSS_REG: WeightedSmoothL1Loss
-        LOSS_WEIGHTS: {
-            'point_cls_weight': 1.0,
-            'point_box_weight': 1.0,
-            'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-        }
+          LOSS_WEIGHTS: {
+              'cls_weight': 1.0,
+              'loc_weight': 2.0,
+              'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+          }
     
-  MODEL_AUX_HEAD:
-    NAME: PointRCNN
+  # MODEL_AUX_HEAD:
+  #   NAME: CenterPoint
     
-    PRETEXT_HEAD: 
-      NAME: RegHead
-      REG_FC: [256, 256]
-      # - NAME: ScaleRegHead
-      #   REG_FC: [256, 256]
-      LOSS_CONFIG:
-        LOSS_REG: WeightedSmoothL1Loss
-        LOSS_WEIGHTS: {
-            'seg_reg_weight': 1.0,
-            'code_weights': [1.0, 1.0]
-        }
+  #   PRETEXT_HEAD: 
+  #     NAME: RegHead
+  #     REG_FC: [256, 256]
+  #     # - NAME: ScaleRegHead
+  #     #   REG_FC: [256, 256]
+  #     LOSS_CONFIG:
+  #       LOSS_REG: WeightedSmoothL1Loss
+  #       LOSS_WEIGHTS: {
+  #           'seg_reg_weight': 1.0,
+  #           'code_weights': [1.0, 1.0]
+  #       }
 
 loss:
   args:

@@ -113,7 +113,7 @@
             ]
         },
         {
-            "name": "Waymo: pretrain-dist",
+            "name": "Waymo: pretrain-dist-vox",
             "type": "python",
             "request": "launch",
             "module": "torch.distributed.launch",
@@ -130,7 +130,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo.yaml"
+                "configs/waymo_centerpoint.yaml"
             ]
         },
         {

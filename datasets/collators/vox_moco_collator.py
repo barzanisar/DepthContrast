@@ -32,12 +32,14 @@ def vox_moco_collator(batch):
 
     # TODO: should these pts and cluster ids be the ones taken from voxels?
     points = [x["points"][:,:4] for x in batch] #select xyzi # 8 elems (num pts each pc, 4)
-    cluster_ids = [x["vox"]["voxels"][:,:,-1] for x in batch] # 8 elems (num pts each pc,)
+    #cluster_ids = [x["vox"]["voxels"][:,:,-1] for x in batch] # 8 elems (num pts each pc,)
+    cluster_ids = [x["points"][:,-1] for x in batch] # (8, 20K)
     gt_boxes_cluster_ids = [x["gt_boxes_cluster_ids"] for x in batch]
     
 
     points_moco =  [x["points_moco"][:,:4] for x in batch]
-    cluster_ids_moco = [x["vox_moco"]["voxels"][:,:,-1] for x in batch]
+    #cluster_ids_moco = [x["vox_moco"]["voxels"][:,:,-1] for x in batch]
+    cluster_ids_moco = [x["points_moco"][:,-1] for x in batch]
     gt_boxes_moco_cluster_ids = [x["gt_boxes_moco_cluster_ids"] for x in batch]
     
     common_cluster_ids = []

@@ -72,7 +72,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         output_dict['output_moco'] =  outputs_moco['batch_dict']
         
 
-        if 'MODEL_DET_HEAD' or 'MODEL_AUX_HEAD' in self.config:
+        if 'MODEL_DET_HEAD' in self.config or 'MODEL_AUX_HEAD' in self.config:
             new_batch_dict = self._concat_encoder_outputs(output_dict['output'], output_dict['output_moco'], for_det=self.config.get('MODEL_DET_HEAD', False))
 
         
@@ -161,6 +161,88 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         """
         for param_q, param_k in zip(self.trunk[target-1].parameters(), self.trunk[target].parameters()):
             param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
+    
+    @torch.no_grad()
+    def _batch_shuffle_ddp_vox(self, batch_dict):
+        # Each pc has diff num voxels
+        num_voxels_batch = []
+        batch_size_this = batch_dict['batch_size']
+        for bidx in range(batch_size_this):
+            b_mask = batch_dict['voxel_coords'][:,0] == bidx
+            num_voxels_batch.append(b_mask.sum())
+        
+        all_size = concat_all_gather(torch.tensor(num_voxels_batch).cuda())
+        max_size = torch.max(all_size) #max num voxels in any pc
+
+        shuffle_voxels=[]
+        shuffle_voxel_num_points=[]
+        shuffle_voxel_coords=[]
+
+        for bidx in range(batch_size_this):
+            num_vox_this_pc = num_voxels_batch[bidx]
+            b_mask = batch_dict['voxel_coords'][:,0] == bidx
+
+            shuffle_voxels.append(torch.ones((max_size, batch_dict['voxels'].shape[-2], batch_dict['voxels'].shape[-1])).cuda())
+            shuffle_voxels[bidx][:num_vox_this_pc] =  batch_dict['voxels'][b_mask]
+            
+            shuffle_voxel_num_points.append(torch.ones((max_size,)).cuda())
+            shuffle_voxel_num_points[bidx][:num_vox_this_pc] =  batch_dict['voxel_num_points'][b_mask]
+
+            shuffle_voxel_coords.append(torch.ones((max_size, batch_dict['voxel_coords'].shape[-1])).cuda())
+            shuffle_voxel_coords[bidx][:num_vox_this_pc] =  batch_dict['voxel_coords'][b_mask]
+
+        shuffle_voxels = torch.stack(shuffle_voxels)
+        shuffle_voxel_num_points = torch.stack(shuffle_voxel_num_points)
+        shuffle_voxel_coords = torch.stack(shuffle_voxel_coords)
+
+        # gather all the batches
+        voxels_gather = concat_all_gather(shuffle_voxels) # if 2 gpus [6x2=12, max_voxels, 5, 4]
+        voxel_num_points_gather = concat_all_gather(shuffle_voxel_num_points) # if 2 gpus [6x2=12, max_voxels]
+        voxel_coords_gather = concat_all_gather(shuffle_voxel_coords) # if 2 gpus [6x2=12, max_voxels, 4]
+
+
+        batch_size_all = voxels_gather.shape[0] # 12 if 2 gpus bcz bs=6 is per gpu
+
+        num_gpus = batch_size_all // batch_size_this # 12/6=2
+
+        # random shuffle index
+        idx_shuffle = torch.randperm(batch_size_all).cuda() # shuffled pc id [5,3,7,15,0,2,  1,9,8,...]
+
+        # broadcast to all gpus
+        torch.distributed.broadcast(idx_shuffle, src=0) # so that all gpus have this same idx_shuffle
+
+        # index for restoring
+        idx_unshuffle = torch.argsort(idx_shuffle) # index of shuffled pc id [4,6,5,1,.,0,....]
+
+        # shuffled index for this gpu
+        gpu_idx = torch.distributed.get_rank()
+        idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx] #(num_gpus, bs per gpu=6) ->[[5,3,7,15,0,2],[1,9,8, ...]] -> choose gpu_idx'th row of pc ids for this gpu e.g. gpu 0 will get [5,3,7,15,0,2,1,9]
+
+        voxels_this = []
+        voxel_num_points_this=[]
+        voxel_coords_this = []
+
+        # after shuffling we get only the actual information of each tensor
+        # :actual_size is the information, actual_size:biggest_size are just ones (ignore)
+        for idx in range(len(idx_this)):
+            pc_idx = idx_this[idx]
+            num_vox_this_pc = all_size[idx_this[idx]]
+            voxels_this.append(voxels_gather[pc_idx][:num_vox_this_pc]) #(num voxels for pc idx, 5,4)
+            voxel_num_points_this.append(voxel_num_points_gather[pc_idx][:num_vox_this_pc]) #(num voxels for pc idx,)
+            voxel_coords = voxel_coords_gather[pc_idx][:num_vox_this_pc]
+            voxel_coords[:,0] = idx #change b_id in vox coords to new bid
+            voxel_coords_this.append(voxel_coords) #(num voxels for pc idx, 4=bid, zyx)
+
+
+        batch_dict['voxels'] = torch.cat(voxels_this, dim=0)
+        batch_dict['voxel_num_points'] = torch.cat(voxel_num_points_this, dim=0)
+        batch_dict['voxel_coords'] = torch.cat(voxel_coords_this, dim=0)
+        batch_dict['batch_size'] = len(idx_this)
+        batch_dict['idx_unshuffle'] = idx_unshuffle
+
+        
+        return batch_dict
+    
 
     @torch.no_grad()
     def _batch_shuffle_ddp(self, batch_dict):
@@ -169,13 +251,13 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         #gpu_idx = torch.distributed.get_rank()
         #print(f'Inside shuffle, this pc batch size: {batch_size_this}, gpu_idx: {gpu_idx}')
         # Gather all pcs from all gpus
-        pcs_gather = torch.from_numpy(points).float().cuda() # (6, 20k, 4) 
+        #pcs_gather = torch.from_numpy(points).float().cuda() # (6, 20k, 4) 
         #print(f'Inside shuffle, this pc: {pcs_gather.shape}, {pcs_gather.device}')
-        all_pcs = concat_all_gather(pcs_gather) # (batch_size_all=24, 20000, 4)
+        pcs_gather = concat_all_gather(points) # (batch_size_all=24, 20000, 4)
         #print(f'Inside shuffle, all pcs: {all_pcs.shape}, {all_pcs.device}, {pcs_gather.device}')
 
 
-        batch_size_all = all_pcs.shape[0]
+        batch_size_all = pcs_gather.shape[0]
         num_gpus = batch_size_all // batch_size_this
         #print(f'Inside shuffle, num_gpus: {num_gpus}, {all_pcs.device}')
 
@@ -203,7 +285,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
 
         # Return new pcs for this gpu
-        new_pcs_this = all_pcs[idx_this] #(6, 20000, 4) 
+        new_pcs_this = pcs_gather[idx_this] #(6, 20000, 4) 
         #print(f'Inside shuffle, new_pcs_this: {new_pcs_this.shape}, {new_pcs_this.device}')
         
         batch_dict['batch_size'] = new_pcs_this.shape[0]
@@ -285,13 +367,18 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         with torch.no_grad():
             self._momentum_update_key(target)  # update the key encoder
             #shuffle for making use of BN
+            main_utils.load_data_to_gpu(batch_dict)
+
             if torch.distributed.is_initialized():
                 #if "vox" not in input_key: 
-                batch_dict = self._batch_shuffle_ddp(batch_dict)
+                if self.config['VOX']:
+                    batch_dict = self._batch_shuffle_ddp_vox(batch_dict)
+                else:
+                    batch_dict = self._batch_shuffle_ddp(batch_dict)
                 
             # Copy to GPU
             #print("Before loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
-            main_utils.load_data_to_gpu(batch_dict)
+            #main_utils.load_data_to_gpu(batch_dict)
             #print("After loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
 
             output = self.trunk[target](batch_dict)
