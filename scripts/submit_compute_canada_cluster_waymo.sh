@@ -17,14 +17,14 @@ die() { echo "$*" 1>&2 ; exit 1; }
 
 # Default Command line args
 # main.py script parameters
-SPLIT='train_short'
-PROCESSED_DATA_TAG='waymo_processed_data_10_short'
+SPLIT='train'
+PROCESSED_DATA_TAG='waymo_processed_data_v_1_2_0'
 
 # Additional parameters
-DATA_DIR=/home/$USER/projects/def-swasland-ab/Datasets/Waymo
-INFOS_DIR=/home/$USER/projects/def-swasland-ab/Datasets/Waymo_10
+DATA_DIR=/home/$USER/scratch/Datasets/Waymo
+INFOS_DIR=/home/$USER/scratch/Datasets/Waymo
 
-SING_IMG=/home/$USER/projects/rrg-swasland/singularity/ssl_cluster_waymo.sif
+SING_IMG=/home/$USER/scratch/singularity/ssl_cluster_waymo.sif
 
 
 # Usage info

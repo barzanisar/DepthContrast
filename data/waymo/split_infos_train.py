@@ -1,9 +1,13 @@
 import pickle
 import numpy as np
 
-num_splits = 4
-parent_split = 'train' #'train_short'
-processed_data_tag = 'waymo_processed_data_10' #'waymo_processed_data_10_short'
+import os
+
+num_splits = 8
+parent_split = 'val' #'train_short'
+processed_data_tag = 'waymo_processed_data_v_1_2_0' #'waymo_processed_data_10_short'
+save_dir = '/home/barza/DepthContrast/data/waymo/cluster_info_splits'
+os.makedirs(save_dir, exist_ok=True)
 
 infos_pkl_path = f"/home/barza/DepthContrast/data/waymo/{processed_data_tag}_infos_{parent_split}.pkl"
 with open(infos_pkl_path, 'rb') as f:
@@ -34,7 +38,7 @@ for i, seq_in_this_split in enumerate(seq_split_list):
     for seq in seq_in_this_split:
         split_infos += infos_dict[seq]
     
-    path = f"/home/barza/DepthContrast/data/waymo/{processed_data_tag}_infos_{parent_split}_{i}.pkl"
+    path = f"{save_dir}/{processed_data_tag}_infos_{parent_split}_{i}.pkl"
     with open(path, 'wb') as f:
         pickle.dump(split_infos, f) # loads all infos
     

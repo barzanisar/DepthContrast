@@ -36,12 +36,10 @@ class WaymoDataset():
     def __init__(self, split, processed_data_tag):
         parent_dir = (Path(__file__) / '../..').resolve() #DepthContrast
         self.root_path = parent_dir / 'data/waymo'
-        self.processed_data_tag=processed_data_tag #'waymo_processed_data_10_short'
-        self.split = split
-        self.data_path = self.root_path / self.processed_data_tag
-        self.infos_pkl_path = self.root_path / f'{self.processed_data_tag}_infos_{self.split}.pkl'
+        self.data_path = self.root_path / processed_data_tag
+        self.infos_pkl_path = self.root_path / 'cluster_info_splits' /f'{processed_data_tag}_infos_{split}.pkl'
 
-        self.save_label_path = parent_dir / 'output' / (self.processed_data_tag + '_clustered')
+        self.save_label_path = parent_dir / 'data/waymo' / (processed_data_tag + '_clustered')
 
         self.infos_dict = {} # seq_name: [frame infos]
         self.include_waymo_data() # read tfrecords in sample_seq_list and then find its pkl in waymo_processed_data_10 and include the pkl infos in waymo infos
@@ -738,7 +736,7 @@ def run3(seq_name, dataset):
 def main():
     args = parser.parse_args()
     dataset = WaymoDataset(split=args.split, processed_data_tag=args.processed_data_tag)
-    num_workers = mp.cpu_count() - 2
+    num_workers = mp.cpu_count() - 1
     seq_name_list = [seq_name for seq_name in dataset.infos_dict]
 
     if args.mode == 'simple_cluster':
