@@ -98,6 +98,27 @@
             ]
         },
         {
+            "name": "Waymo: pretrain-dist-pts",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--nproc_per_node=1",
+                "--max_restarts=0",
+                "${workspaceFolder}/tools/main_dist.py",
+                "--launcher",
+                "pytorch",
+                "--multiprocessing-distributed",
+                "--cfg",
+                "configs/waymo_pointrcnn.yaml"
+            ]
+        },
+        {
             "name": "Waymo: pretrain vox",
             "type": "python",
             "request": "launch",

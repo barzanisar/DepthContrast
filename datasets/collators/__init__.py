@@ -6,25 +6,26 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-from datasets.collators.point_moco_collator import point_moco_collator
-from datasets.collators.point_moco_collator_seg import point_moco_collator_seg
-from datasets.collators.point_moco_collator_linear_probe import point_moco_collator_linear_probe
-try:
-    from datasets.collators.vox_moco_collator import vox_moco_collator
-    from datasets.collators.point_vox_moco_collator import point_vox_moco_collator
-except:
-    #print ("Cannot import minkowski engine. Try spconv next")
-    from datasets.collators.point_vox_moco_lidar_collator import point_vox_moco_collator
+# from datasets.collators.point_moco_collator import point_moco_collator
+# from datasets.collators.point_moco_collator_seg import point_moco_collator_seg
+# from datasets.collators.point_moco_collator_linear_probe import point_moco_collator_linear_probe
+from datasets.collators.moco_collator import moco_collator
+
+# try:
+#     from datasets.collators.point_vox_moco_collator import point_vox_moco_collator
+# except:
+#     #print ("Cannot import minkowski engine. Try spconv next")
+#     from datasets.collators.point_vox_moco_lidar_collator import point_vox_moco_collator
 from torch.utils.data.dataloader import default_collate
 
 
 COLLATORS_MAP = {
     "default": default_collate,
-    "point_moco_collator": point_moco_collator,
-    "point_vox_moco_collator": point_vox_moco_collator,
-    "vox_moco_collator": vox_moco_collator,
-    "point_moco_collator_seg": point_moco_collator_seg,
-    "point_moco_collator_linear_probe": point_moco_collator_linear_probe
+    # "point_moco_collator": point_moco_collator,
+    # "point_vox_moco_collator": point_vox_moco_collator,
+    "moco_collator": moco_collator,
+    # "point_moco_collator_seg": point_moco_collator_seg,
+    # "point_moco_collator_linear_probe": point_moco_collator_linear_probe
 }
 
 

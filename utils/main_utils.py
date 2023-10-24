@@ -144,8 +144,10 @@ def write_ply_color(points, colors, out_filename):
 
 def load_data_to_gpu(batch_dict):
     for key, val in batch_dict.items():
-        if isinstance(val, list) and key in ['points']:
-            batch_dict[key] = [torch.from_numpy(x).float().cuda(non_blocking=True) for x in val]
+        # if isinstance(val, list) and key in ['points']:
+        #     batch_dict[key] = [torch.from_numpy(x).float().cuda(non_blocking=True) for x in val]
+        if key in ['cluster_ids']:
+            continue
 
         if isinstance(val, np.ndarray):
             batch_dict[key] = torch.from_numpy(val).float().cuda(non_blocking=True)

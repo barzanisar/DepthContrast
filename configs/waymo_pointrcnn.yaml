@@ -73,7 +73,7 @@ dataset:
   
   VOX: False
 
-  COLLATE_FUNCTION: "point_moco_collator"
+  COLLATE_FUNCTION: "moco_collator"
   DROP_LAST: True
 
 optimizer:
