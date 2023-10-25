@@ -166,7 +166,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         num_pts_batch = np.unique(points[:,0].cpu().numpy(), return_counts=True)[1]
         all_size = concat_all_gather(torch.tensor(num_pts_batch).cuda())
         max_size = torch.max(all_size) #max num voxels in any pc
-        points_gather = self.gather_feats(batch_indices=points[:,0], 
+        points_gather = gather_feats(batch_indices=points[:,0], 
                                         feats_or_coords=points, 
                                         batch_size_this=batch_size_this, 
                                         num_vox_or_pts_batch=num_pts_batch, 
@@ -191,7 +191,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx] #(num_gpus=4, batch_size_this=2)
 
         batch_dict['batch_size'] = len(idx_this)
-        batch_dict['points'] = self.get_feats_this(idx_this, all_size, points_gather, is_ind=True) # (N1+..Nbs, bxyzi)
+        batch_dict['points'] = get_feats_this(idx_this, all_size, points_gather, is_ind=True) # (N1+..Nbs, bxyzi)
         batch_dict['idx_unshuffle'] = idx_unshuffle
 
         if self.config['VOX']:
@@ -238,17 +238,17 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         all_size = concat_all_gather(torch.tensor(num_voxels_batch).cuda())
         max_size = torch.max(all_size) #max num voxels in any pc
 
-        voxel_coords_gather = self.gather_feats(batch_indices=voxel_coords[:,0], 
+        voxel_coords_gather = gather_feats(batch_indices=voxel_coords[:,0], 
                                         feats_or_coords=voxel_coords, 
                                         batch_size_this=batch_size_this, 
                                         num_vox_or_pts_batch=num_voxels_batch, 
                                         max_num_vox_or_pts=max_size)
-        voxels_gather = self.gather_feats(batch_indices=voxel_coords[:,0], 
+        voxels_gather = gather_feats(batch_indices=voxel_coords[:,0], 
                                         feats_or_coords=voxels, 
                                         batch_size_this=batch_size_this, 
                                         num_vox_or_pts_batch=num_voxels_batch, 
                                         max_num_vox_or_pts=max_size)
-        voxel_num_points_gather = self.gather_feats(batch_indices=voxel_coords[:,0], 
+        voxel_num_points_gather = gather_feats(batch_indices=voxel_coords[:,0], 
                                         feats_or_coords=voxel_num_points, 
                                         batch_size_this=batch_size_this, 
                                         num_vox_or_pts_batch=num_voxels_batch, 
@@ -271,9 +271,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         gpu_idx = torch.distributed.get_rank()
         idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx] #(num_gpus, bs per gpu=6) ->[[5,3,7,15,0,2],[1,9,8, ...]] -> choose gpu_idx'th row of pc ids for this gpu e.g. gpu 0 will get [5,3,7,15,0,2,1,9]
 
-        batch_dict['voxels'] = self.get_feats_this(idx_this, all_size, voxels_gather)
-        batch_dict['voxel_num_points'] = self.get_feats_this(idx_this, all_size, voxel_num_points_gather)
-        batch_dict['voxel_coords'] = self.get_feats_this(idx_this, all_size, voxel_coords_gather, is_ind=True)
+        batch_dict['voxels'] = get_feats_this(idx_this, all_size, voxels_gather)
+        batch_dict['voxel_num_points'] = get_feats_this(idx_this, all_size, voxel_num_points_gather)
+        batch_dict['voxel_coords'] = get_feats_this(idx_this, all_size, voxel_coords_gather, is_ind=True)
         batch_dict['batch_size'] = len(idx_this)
         batch_dict['idx_unshuffle'] = idx_unshuffle
 
@@ -289,7 +289,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         num_pts_batch = np.unique(points[:,0].cpu().numpy(), return_counts=True)[1]
         all_size = concat_all_gather(torch.tensor(num_pts_batch).cuda())
         max_size = torch.max(all_size) #max num voxels in any pc
-        points_gather = self.gather_feats(batch_indices=points[:,0], 
+        points_gather = gather_feats(batch_indices=points[:,0], 
                                         feats_or_coords=points, 
                                         batch_size_this=batch_size_this, 
                                         num_vox_or_pts_batch=num_pts_batch, 
@@ -318,7 +318,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
         
         batch_dict['batch_size'] = len(idx_this)
-        batch_dict['points'] = self.get_feats_this(idx_this, all_size, points_gather, is_ind=True) # (N1+..Nbs, bxyzi)
+        batch_dict['points'] = get_feats_this(idx_this, all_size, points_gather, is_ind=True) # (N1+..Nbs, bxyzi)
         batch_dict['idx_unshuffle'] = idx_unshuffle
 
         return batch_dict

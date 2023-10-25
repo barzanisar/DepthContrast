@@ -53,14 +53,14 @@ class WaymoDataset(DepthContrastDataset):
 
         self.infos.extend(waymo_infos[:])
         self.logger.add_line('Total skipped sequences due to missing info pkls %s' % num_skipped_infos)
-        self.logger.info('Total samples(frames) for Waymo dataset: %d' % (len(waymo_infos)))
+        self.logger.add_line('Total samples(frames) for Waymo dataset: %d' % (len(waymo_infos)))
 
         if self.frame_sampling_interval > 1:
             sampled_waymo_infos = []
             for k in range(0, len(self.infos), self.frame_sampling_interval):
                 sampled_waymo_infos.append(self.infos[k])
             self.infos = sampled_waymo_infos
-            self.logger.info('Total sampled samples(frames) for Waymo dataset: %d' % len(self.infos))
+            self.logger.add_line('Total sampled samples(frames) for Waymo dataset: %d' % len(self.infos))
 
 
         #self.infos = self.infos[:32] # each info is one frame

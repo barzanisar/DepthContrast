@@ -71,14 +71,14 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 16
+  num_epochs: 3
   lr:
     name: "cosine"
     base_lr: 0.01 #0.1 for linear_probe #0.12
 
 model:
-  name: "pretrain_on_waymo_short_clustered"
-  model_dir: "checkpoints/pointnet/waymo"
+  name: "pretrain"
+  model_dir: "checkpoints/centerpoint/waymo"
   VOX: True
   linear_probe_dim: [128, 2]
 
