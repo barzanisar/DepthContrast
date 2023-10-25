@@ -13,3 +13,5 @@ scp -r /home/barza/DepthContrast/data/waymo/cluster_info_splits nisarbar@narval.
 
 4. On DepthContrast folder in computecanada: bash pretrain_waymo.sh 
 
+
+Pretraining
