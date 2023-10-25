@@ -133,7 +133,7 @@ def main_worker(args, cfg):
         if (epoch >= cfg['save_ckpt_after_epochs'] and epoch % cfg['ckpt_save_interval']== 0):
             #Use these checkpoints for object detection
             ckp_manager.save(epoch, model=model, filename='checkpoint-ep{}.pth.tar'.format(epoch))
-            logger.add_line(f'Saved checkpoint checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
+            logger.add_line(f'Saved checkpoint for finetuning checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
 
         if args.multiprocessing_distributed:
             train_loader.sampler.set_epoch(epoch)
@@ -147,7 +147,7 @@ def main_worker(args, cfg):
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
             #resume training from this checkpoint bcz we are saving optimizer and train criterion
             ckp_manager.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
-            logger.add_line(f'Saved checkpoint for testing {ckp_manager.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
+            logger.add_line(f'Saved checkpoint for resuming {ckp_manager.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
 
     if args.multiprocessing_distributed:
         dist.destroy_process_group()

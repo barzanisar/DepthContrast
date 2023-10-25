@@ -189,6 +189,7 @@ class DepthContrastDataset(Dataset):
             data_dict['gt_boxes_moco_cluster_ids'] = data_dict['gt_boxes_moco'][:,-1]
             data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][:, :8]
 
+        return data_dict
     def __getitem__(self, idx):
         """
         To support a custom dataset, implement this function to load the raw data (and labels)

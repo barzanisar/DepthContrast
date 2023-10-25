@@ -1,7 +1,7 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
 # python tools/main_dist.py --cfg configs/waymo.yaml
 wb_extra_tags: ['pointnet', 'waymo']
-resume: false
+resume: true
 linear_probe: false
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
@@ -70,7 +70,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 3
+  num_epochs: 10
   lr:
     name: "cosine"
     base_lr: 0.01 #0.1 for linear_probe #0.12
