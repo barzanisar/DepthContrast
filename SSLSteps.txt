@@ -1,0 +1,15 @@
+Clustering:
+
+1. Split train and val sequences for faster parallel clustering:
+
+Run this /home/barza/DepthContrast/data/waymo/split_infos_train.py 
+for (split='train', num_splits=16) and (split='val', num_splits=8)
+
+2. Copy data/waymo/cluster_info_splits to computecanada scratch/Datasets/Waymo/:
+
+scp -r /home/barza/DepthContrast/data/waymo/cluster_info_splits nisarbar@narval.computecanada.ca:/home/nisarbar/scratch/Datasets/Waymo/
+
+3. edit pretrain_waymo.sh 
+
+4. On DepthContrast folder in computecanada: bash pretrain_waymo.sh 
+

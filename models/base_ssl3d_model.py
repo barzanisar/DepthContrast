@@ -22,6 +22,7 @@ except:
 import numpy as np
 
 from utils import main_utils
+from third_party.OpenPCDet.pcdet.models.pretext_heads.gather_utils import *
 
 def parameter_description(model):
     desc = ''
@@ -31,18 +32,6 @@ def parameter_description(model):
             ' x '.join([str(s) for s in p.size()]), str(np.prod(p.size())))
     return desc
 
-@torch.no_grad()
-def concat_all_gather(tensor):
-    """
-    Performs all_gather operation on the provided tensors.
-    *** Warning ***: torch.distributed.all_gather has no gradient.
-    """
-    tensors_gather = [torch.ones_like(tensor)
-                      for _ in range(torch.distributed.get_world_size())]
-    torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
-
-    output = torch.cat(tensors_gather, dim=0)
-    return output
 
 class BaseSSLMultiInputOutputModel(nn.Module):
     def __init__(self, model_config, cluster, dataset, logger, linear_probe=False):
@@ -170,42 +159,6 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
     
     @torch.no_grad()
-    def gather_feats(self, batch_indices, feats_or_coords, batch_size_this, num_vox_or_pts_batch, max_num_vox_or_pts):
-        shuffle_feats=[]
-        shuffle_feats_shape = list(feats_or_coords.size())
-        shuffle_feats_shape[0] = max_num_vox_or_pts.item()
-
-        for bidx in range(batch_size_this):
-            num_vox_this_pc = num_vox_or_pts_batch[bidx]
-            b_mask = batch_indices == bidx
-
-            shuffle_feats.append(torch.ones(shuffle_feats_shape).cuda())
-            shuffle_feats[bidx][:num_vox_this_pc] =  feats_or_coords[b_mask]
-
-
-        shuffle_feats = torch.stack(shuffle_feats) #(bs_this, max num vox, C)
-        feats_gather = concat_all_gather(shuffle_feats)
-
-        return feats_gather
-    
-    @torch.no_grad()
-    def get_feats_this(self, idx_this, all_size, gather_feats, is_ind=False):
-        feats_this_batch = []
-
-        # after shuffling we get only the actual information of each tensor
-        # :actual_size is the information, actual_size:biggest_size are just ones (ignore)
-        for idx in range(len(idx_this)):
-            pc_idx = idx_this[idx]
-            num_vox_this_pc = all_size[idx_this[idx]]
-            feats_this_pc = gather_feats[pc_idx][:num_vox_this_pc]
-            if is_ind:
-                feats_this_pc[:,0] = idx #change b_id in vox coords to new bid
-            feats_this_batch.append(feats_this_pc) #(num voxels for pc idx, 4=bid, zyx)
-        
-        feats_this_batch = torch.cat(feats_this_batch, dim=0)
-        return feats_this_batch
-    
-    @torch.no_grad()
     def _batch_shuffle_ddp(self, batch_dict):
         batch_size_this = batch_dict['batch_size']
         
@@ -251,24 +204,24 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             all_size = concat_all_gather(torch.tensor(num_voxels_batch).cuda())
             max_size = torch.max(all_size) #max num voxels in any pc
 
-            voxel_coords_gather = self.gather_feats(batch_indices=voxel_coords[:,0], 
+            voxel_coords_gather = gather_feats(batch_indices=voxel_coords[:,0], 
                                             feats_or_coords=voxel_coords, 
                                             batch_size_this=batch_size_this, 
                                             num_vox_or_pts_batch=num_voxels_batch, 
                                             max_num_vox_or_pts=max_size)
-            voxels_gather = self.gather_feats(batch_indices=voxel_coords[:,0], 
+            voxels_gather = gather_feats(batch_indices=voxel_coords[:,0], 
                                             feats_or_coords=voxels, 
                                             batch_size_this=batch_size_this, 
                                             num_vox_or_pts_batch=num_voxels_batch, 
                                             max_num_vox_or_pts=max_size)
-            voxel_num_points_gather = self.gather_feats(batch_indices=voxel_coords[:,0], 
+            voxel_num_points_gather = gather_feats(batch_indices=voxel_coords[:,0], 
                                             feats_or_coords=voxel_num_points, 
                                             batch_size_this=batch_size_this, 
                                             num_vox_or_pts_batch=num_voxels_batch, 
                                             max_num_vox_or_pts=max_size)
-            batch_dict['voxels'] = self.get_feats_this(idx_this, all_size, voxels_gather)
-            batch_dict['voxel_num_points'] = self.get_feats_this(idx_this, all_size, voxel_num_points_gather)
-            batch_dict['voxel_coords'] = self.get_feats_this(idx_this, all_size, voxel_coords_gather, is_ind=True)
+            batch_dict['voxels'] = get_feats_this(idx_this, all_size, voxels_gather)
+            batch_dict['voxel_num_points'] = get_feats_this(idx_this, all_size, voxel_num_points_gather)
+            batch_dict['voxel_coords'] = get_feats_this(idx_this, all_size, voxel_coords_gather, is_ind=True)
 
         return batch_dict
 

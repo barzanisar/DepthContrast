@@ -96,8 +96,6 @@ def main_worker(args, cfg):
         logger.add_line('='*30 + 'Sync Batch Normalization' + '='*30)
         
         # Only sync bn for detection head layers and not backbone 3d and 2d for shuffle bn to work
-        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model) 
-        # TODO: This is a dirty way of doing it
         if 'MODEL_DET_HEAD' in cfg['model']:
             model.det_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.det_head)
         if 'MODEL_AUX_HEAD' in cfg['model']:
@@ -165,9 +163,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
     # switch to train mode
     model.train(phase == 'train')
-    # ['points', 'points_moco']
     end = time.time()
-    # device = args.local_rank if args.local_rank is not None else 0
     for i, sample in enumerate(loader):
         torch.cuda.empty_cache()
 
@@ -175,7 +171,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         data_time.update(time.time() - end) # Time to load one batch
 
         if phase == 'train':
-            output_dict = model(sample) #list: query encoder's = embedding[0] size = (8, 128) -> we want (B, num voxel, 128), key encoder = emb[1] = (8,128)
+            output_dict = model(sample)
         else:
             with torch.no_grad():
                 output_dict = model(sample)
@@ -200,22 +196,14 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             loss.backward()
             clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
-            # for name, param in model.named_parameters():
-            #     if param.requires_grad:
-            #         if param.grad is not None:
-            #             print(name, f' {param.grad.shape}')
-            #         else:
-            #             print(name, f' is None')
 
-        is_nan = torch.stack([torch.isnan(p).any() for p in model.parameters()]).any()
-        assert not is_nan
 
         # measure elapsed time
         batch_time.update(time.time() - end) # This is printed as Time # Time to train one batch
         end = time.time()
 
         # print to terminal and tensorboard
-        step = epoch * len(loader) + i #sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
+        step = epoch * len(loader) + i #step:total iters, sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
         if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
             progress.display(i+1)
             
@@ -230,11 +218,13 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         progress.synchronize_meters(args.local_rank)
         progress.display(len(loader)*args.world_size)
 
-    metrics_dict = {'epoch': epoch, 'lr': lr}
     if tb_writter is not None:
         for meter in progress.meters:
             tb_writter.add_scalar('{}-epoch/{}'.format(phase, meter.name), meter.avg, epoch)
-            metrics_dict[meter.name +'-epoch'] = meter.avg
+    
+    metrics_dict = {'epoch': epoch, 'lr': lr}
+    for meter in progress.meters:
+        metrics_dict[meter.name +'-epoch'] = meter.avg
     
     wandb_utils.log(cfg, args, metrics_dict, epoch)
 
