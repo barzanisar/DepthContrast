@@ -116,7 +116,12 @@ def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False
         sample_idx = pc_info['sample_idx']
         save_path = save_seq_path / ('%04d.npy' % sample_idx)
         if save_path.exists():
-            continue
+            try:
+                num_lbls = np.load(save_path).shape[0]
+                if num_lbls:
+                    continue
+            except:
+                pass
         
         xyzi = dataset.get_lidar(seq_name, sample_idx)
         num_pts = xyzi.shape[0]
@@ -508,14 +513,23 @@ def fit_approx_boxes_seq(seq_name, dataset, show_plots=False, method = 'closenes
     approx_boxes_path = dataset.save_label_path / seq_name / 'approx_boxes.pkl'
 
     if simple_cluster and approx_boxes_path.exists():
-        print(f'{seq_name} already clustered and bboxes fitted.')
-        return
+        try:
+            with open(approx_boxes_path, 'rb') as f:
+                infos = pickle.load(f)
+            if len(infos):
+                print(f'{seq_name} already clustered and bboxes fitted.')
+                return
+        except:
+            pass
 
-    try:
-        with open(approx_boxes_path, 'rb') as f:
-            infos = pickle.load(f)
-    except:
+    if simple_cluster:
         infos= dataset.infos_dict[seq_name]
+    else:
+        try:
+            with open(approx_boxes_path, 'rb') as f:
+                infos = pickle.load(f)
+        except:
+            infos= dataset.infos_dict[seq_name]
 
     print(f'Fitting boxes for sequence: {seq_name}')
     for i, info in enumerate(infos):
