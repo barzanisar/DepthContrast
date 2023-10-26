@@ -21,8 +21,8 @@ CFG_FILE=configs/waymo.yaml
 TCP_PORT=18888
 
 # Additional parameters
-DATA_DIR=/home/$USER/scratch/Waymo/Waymo_short #/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
-SING_IMG=/home/$USER/projects/rrg-swasland/singularity/ssl.sif
+DATA_DIR=/home/$USER/scratch/Datasets/Waymo #/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
+SING_IMG=/home/$USER/scratch/singularity/ssl.sif
 
 
 # Usage info
