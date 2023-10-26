@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --wait-all-nodes=1
 #SBATCH --nodes=2
-#SBATCH --gres=gpu:t4:4                     # Request 4 GPUs
+#SBATCH --gres=gpu:a100:4                     # Request 4 GPUs
 #SBATCH --ntasks=2 
 #SBATCH --ntasks-per-node=1                 # Number of gpus per node
 #SBATCH --time=01:00:00
