@@ -1,4 +1,5 @@
-spconv-cu111
+spconv==2.1.21
+spconv-cu111==2.1.21
 setuptools==59.5.0
 open3d
 tensorboard
