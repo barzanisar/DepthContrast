@@ -117,8 +117,8 @@ def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False
         save_path = save_seq_path / ('%04d.npy' % sample_idx)
         if save_path.exists():
             try:
-                num_lbls = np.load(save_path).shape[0]
-                if num_lbls:
+                labels = dataset.get_cluster_labels(seq_name, sample_idx)
+                if labels.shape[0]:
                     continue
             except:
                 pass
@@ -535,25 +535,49 @@ def fit_approx_boxes_seq(seq_name, dataset, show_plots=False, method = 'closenes
     for i, info in enumerate(infos):
         pc_info = info['point_cloud']
         sample_idx = pc_info['sample_idx']
+        gt_boxes = info['annos']['gt_boxes_lidar']
+        classes=['Vehicle', 'Pedestrian', 'Cyclist']
+        used_gt_boxes_mask =[name in classes for name in info['annos']['name']]
+
 
         #points in current vehicle frame
         pc = dataset.get_lidar(seq_name, sample_idx)
         labels = dataset.get_cluster_labels(seq_name, sample_idx)
 
-        approx_boxes_this_pc = np.empty((0, 18)) #cxyz, lwh, heading, bev_corners.flatten(), frame_info_idx, num_points in this box, label
+        point_indices = roiaware_pool3d_utils.points_in_boxes_cpu(torch.from_numpy(pc[:, 0:3]), torch.from_numpy(gt_boxes[:, 0:7])).numpy()  # (nboxes, npoints)
+        gt_pts_mask = point_indices[used_gt_boxes_mask].sum(axis=0) > 0
+        box_idx_of_pts = -1 * np.ones(pc.shape[0])
+        #gt_labels_of_pts = -1 * np.ones(pc.shape[0])
+        for i in range(gt_boxes.shape[0]):
+            gt_class = info['annos']['name'][i]
+            if gt_class in classes:
+                box_idx_of_pts[point_indices[i]>0] = i
+                #gt_labels_of_pts[point_indices[i]>0] = classes.index(gt_class) #0:Vehicle, 1:Ped, 2, Cyclist
+
+        approx_boxes_this_pc = np.empty((0, 19)) #cxyz, lwh, heading, bev_corners.flatten(), frame_info_idx, num_points in this box,  cooresponding gt_box_indx, cluster_label,
         for label in np.unique(labels):
             if label == -1:
                 continue
-            cluster_pc = pc[labels==label, :]
+            cluster_pts_mask = labels==label
+            cluster_pc = pc[cluster_pts_mask, :]
             assert cluster_pc.shape[0] >= 10
-            
+
             box, corners, _ = fit_box(cluster_pc, fit_method=method)
             full_box = np.zeros((1, approx_boxes_this_pc.shape[-1]))
             full_box[0,:7] = box
             full_box[0,7:15] = corners.flatten()
             full_box[0,15] = i # info index
             full_box[0,16] = cluster_pc.shape[0] # num_points
-            full_box[0,17] = label
+            
+            full_box[0,17] = -1  # num_points
+            if gt_pts_mask[cluster_pts_mask].sum() > 0:
+                gt_box_idxs, cnts = np.unique(box_idx_of_pts[cluster_pts_mask], return_counts=True)
+                if gt_box_idxs[0] == -1:
+                    gt_box_idxs = gt_box_idxs[1:]
+                    cnts = cnts[1:]
+                full_box[0,17] = gt_box_idxs[cnts.argmax()]
+            full_box[0,18] = label
+
             approx_boxes_this_pc = np.vstack([approx_boxes_this_pc, full_box])
             # [cxy[0], cxy[1], cz, l, w, h, rz, corner0_x, corner0_y, ..., corner3_x, corner3_y,
             # info index, num cluster pts, label]
@@ -562,11 +586,11 @@ def fit_approx_boxes_seq(seq_name, dataset, show_plots=False, method = 'closenes
         # Fitting boxes done for this pc
         #assert np.unique(labels).shape[0] - 1 == approx_boxes_this_pc.shape[0]
         info[f'approx_boxes_{method}'] = approx_boxes_this_pc.astype(np.float32)
+        info['approx_boxes_overlaps_gt_box'] = approx_boxes_this_pc[:, -2] >= 0 # true if corresponding gt box idx is found
         info['cluster_labels_boxes'] = approx_boxes_this_pc[:, -1]
 
 
         if show_plots:
-            gt_boxes = info['annos']['gt_boxes_lidar']
             show_bev_boxes(pc[labels>-1], approx_boxes_this_pc, 'unrefined_approx_boxes')
             V.draw_scenes(pc, gt_boxes=gt_boxes, 
                                 ref_boxes=approx_boxes_this_pc[:,:7], ref_labels=None, ref_scores=None, 
@@ -670,11 +694,11 @@ def remove_outliers_cluster(xyz, labels):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(cluster_pc)
 
-        # set as background if point in cluster has less than 2 neighbors within 0.4 m distance
+        # set as background if point in cluster has less than 1 neighbor within 0.4 m distance
         tree = o3d.geometry.KDTreeFlann(pcd)
         for i in range(cluster_pc.shape[0]):
             [_, idx, _] = tree.search_radius_vector_3d(cluster_pc[i], 0.4)
-            if len(idx) < 2:
+            if len(idx) < 1:
                 cluster_labels[i] = -1
         
         if (cluster_labels > -1).sum() < 10:
