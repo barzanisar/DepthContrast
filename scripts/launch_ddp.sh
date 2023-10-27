@@ -33,7 +33,7 @@
 # # echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip to $TMP_DATA_DIR"
 # # unzip -qq $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip -d $TMP_DATA_DIR
 
-echo "Done extracting Waymo data"
+# echo "Done extracting Waymo data"
 
 # Get last element in string and increment by 1
 NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"

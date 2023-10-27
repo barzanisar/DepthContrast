@@ -31,7 +31,7 @@ parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training i
 parser.add_argument('--cfg', type=str, default=None, help='specify the config for training')
 parser.add_argument('--quiet', action='store_true')
 parser.add_argument('--world-size', default=-1, type=int,
-                    help='number of nodes for distributed training') #remove, ws is total no. of gpus, NOT nodes!
+                    help='total number of gpus for distributed training') #remove, ws is total no. of gpus, NOT nodes!
 parser.add_argument('--rank', default=-1, type=int,
                     help='node rank for distributed training') #remove
 parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm', 'fair'], default='none')
