@@ -1,12 +1,12 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
 # python tools/main_dist.py --cfg configs/waymo.yaml
 wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
-resume: true
+resume: false
 linear_probe: false
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
-log2wb: true
+log2wb: false
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
@@ -14,7 +14,7 @@ ckpt_save_interval: 1 #save only models to finetune for object detection
 save_ckpt_after_epochs: 0
 
 WANDB:
-  ENABLED: True 
+  ENABLED: False 
   PROJECT: SSL3dObject
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None

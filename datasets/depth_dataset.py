@@ -88,12 +88,16 @@ class DepthContrastDataset(Dataset):
     def toVox(self, points):
         if SPCONV_VER==1:
             voxel_output = self.voxel_generator.generate(points)
+            print(f'spconv version 1, len pts {len(points)} !!!!!!!!!!!!!!!')
         else:
             voxel_output = self.voxel_generator(torch.from_numpy(points).contiguous())
+            print(f'spconv version 2, len pts {len(points)} !!!!!!!!!!!!!!!')
         if isinstance(voxel_output, dict):
-            voxels, coordinates, num_points = \
-                                                voxel_output['voxels'], voxel_output['coordinates'], voxel_output['num_points_per_voxel']
+            voxels, coordinates, num_points = voxel_output['voxels'], voxel_output['coordinates'], voxel_output['num_points_per_voxel']
         else:
+            print(f'len of voxel_output: {len(voxel_output)}')
+            for i in range(len(voxel_output)):
+                print(f'shape {i}: {voxel_output[i].shape}')
             voxels, coordinates, num_points = voxel_output
 
         data_dict = {}
@@ -133,16 +137,20 @@ class DepthContrastDataset(Dataset):
             #reappend the gt class indexes and cluster ids
             data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx, gt_cluster_ids])
             data_dict["gt_boxes_moco"] = np.hstack([data_dict["gt_boxes_moco"], gt_classes_idx, gt_cluster_ids])
-
-            for cluster_id in np.unique(data_dict['points'][:,-1]):
+            
+            cluster_ids, cnts = np.unique(data_dict['points'][:,-1], return_counts=True)
+            for cluster_id, cnt in zip(cluster_ids, cnts):
                 if cluster_id == -1:
                     continue
-                assert cluster_id in data_dict['gt_boxes'][:,-1]
+                frame_id = data_dict['frame_id']
+                assert cluster_id in data_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
 
-            for cluster_id in np.unique(data_dict['points_moco'][:,-1]):
+            cluster_ids, cnts = np.unique(data_dict['points_moco'][:,-1], return_counts=True)
+            for cluster_id, cnt in zip(cluster_ids, cnts):
                 if cluster_id == -1:
                     continue
-                assert cluster_id in data_dict['gt_boxes_moco'][:,-1]
+                frame_id = data_dict['frame_id']
+                assert cluster_id in data_dict['gt_boxes_moco'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
         
         if PLOT:
             # After augmenting both views

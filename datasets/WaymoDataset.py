@@ -128,8 +128,15 @@ class WaymoDataset(DepthContrastDataset):
         
         input_dict = {
             'points': points,
-            'gt_boxes':  gt_boxes
+            'gt_boxes':  gt_boxes,
+            'frame_id': frame_id
             }
+        cluster_ids, cnts = np.unique(input_dict['points'][:,-1], return_counts=True)
+        for cluster_id, cnt in zip(cluster_ids, cnts):
+            if cluster_id == -1:
+                continue
+            frame_id = input_dict['frame_id']
+            assert cluster_id in input_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
 
         data_dict = self.prepare_data(data_dict=input_dict)
 
