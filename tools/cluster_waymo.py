@@ -677,7 +677,10 @@ def remove_outliers_cluster(xyz, labels):
             if len(idx) < 2:
                 cluster_labels[i] = -1
         
-        labels[cluster_indices] = cluster_labels
+        if (cluster_labels > -1).sum() < 10:
+            labels[cluster_indices] = -1
+        else:
+            labels[cluster_indices] = cluster_labels
     
     return labels
              
