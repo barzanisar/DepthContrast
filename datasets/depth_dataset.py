@@ -88,17 +88,15 @@ class DepthContrastDataset(Dataset):
     def toVox(self, points):
         if SPCONV_VER==1:
             voxel_output = self.voxel_generator.generate(points)
-            print(f'spconv version 1, len pts {len(points)} !!!!!!!!!!!!!!!')
         else:
             voxel_output = self.voxel_generator(torch.from_numpy(points).contiguous())
-            print(f'spconv version 2, len pts {len(points)} !!!!!!!!!!!!!!!')
         if isinstance(voxel_output, dict):
             voxels, coordinates, num_points = voxel_output['voxels'], voxel_output['coordinates'], voxel_output['num_points_per_voxel']
         else:
-            print(f'len of voxel_output: {len(voxel_output)}')
-            for i in range(len(voxel_output)):
-                print(f'shape {i}: {voxel_output[i].shape}')
-            voxels, coordinates, num_points = voxel_output
+            try:
+                voxels, coordinates, num_points = voxel_output
+            except: 
+                voxels, coordinates, num_points, pc_voxel_id = voxel_output 
 
         data_dict = {}
         data_dict['voxels'] = voxels #dim =(num_voxels, max_points_per_voxel=5, coords+feats = 3+1=4), gives xyzi value for each point in each voxel, if num points in voxel < 5, fill in zeros
