@@ -545,8 +545,8 @@ def fit_approx_boxes_seq(seq_name, dataset, show_plots=False, method = 'closenes
             if label == -1:
                 continue
             cluster_pc = pc[labels==label, :]
-            if cluster_pc.shape[0] < 10:
-                continue
+            assert cluster_pc.shape[0] >= 10
+            
             box, corners, _ = fit_box(cluster_pc, fit_method=method)
             full_box = np.zeros((1, approx_boxes_this_pc.shape[-1]))
             full_box[0,:7] = box
