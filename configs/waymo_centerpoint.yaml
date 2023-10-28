@@ -22,12 +22,12 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_10' #'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train_short}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: 2 #50% waymo
+  FRAME_SAMPLING_INTERVAL: 3 #1/3rd of waymo
   multiply_i_by_255: True
-  BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
+  BATCHSIZE_PER_REPLICA: 14 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] 
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
