@@ -22,8 +22,8 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_10' #'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train_short}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: 3 #1/3rd of waymo
   multiply_i_by_255: True
