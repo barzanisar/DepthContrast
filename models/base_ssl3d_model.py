@@ -90,11 +90,11 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
         all_outputs.append(output_base_dict)
         all_outputs.append(output_moco_dict)
+        new_batch_dict['batch_size'] = all_outputs[1]['batch_size'] + all_outputs[0]['batch_size']
 
 
         if for_det:
             # All inputs needed only for the detection head
-            new_batch_dict['batch_size'] = all_outputs[1]['batch_size'] + all_outputs[0]['batch_size']
             #new_batch_dict['points'] = torch.cat([output['points'] for output in all_outputs], dim=0)
 
             if self.config['VOX']:

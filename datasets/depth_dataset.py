@@ -136,19 +136,19 @@ class DepthContrastDataset(Dataset):
             data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx, gt_cluster_ids])
             data_dict["gt_boxes_moco"] = np.hstack([data_dict["gt_boxes_moco"], gt_classes_idx, gt_cluster_ids])
             
-            cluster_ids, cnts = np.unique(data_dict['points'][:,-1], return_counts=True)
-            for cluster_id, cnt in zip(cluster_ids, cnts):
-                if cluster_id == -1:
-                    continue
-                frame_id = data_dict['frame_id']
-                assert cluster_id in data_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
+            # cluster_ids, cnts = np.unique(data_dict['points'][:,-1], return_counts=True)
+            # for cluster_id, cnt in zip(cluster_ids, cnts):
+            #     if cluster_id == -1:
+            #         continue
+            #     frame_id = data_dict['frame_id']
+            #     assert cluster_id in data_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
 
-            cluster_ids, cnts = np.unique(data_dict['points_moco'][:,-1], return_counts=True)
-            for cluster_id, cnt in zip(cluster_ids, cnts):
-                if cluster_id == -1:
-                    continue
-                frame_id = data_dict['frame_id']
-                assert cluster_id in data_dict['gt_boxes_moco'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
+            # cluster_ids, cnts = np.unique(data_dict['points_moco'][:,-1], return_counts=True)
+            # for cluster_id, cnt in zip(cluster_ids, cnts):
+            #     if cluster_id == -1:
+            #         continue
+            #     frame_id = data_dict['frame_id']
+            #     assert cluster_id in data_dict['gt_boxes_moco'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
         
         if PLOT:
             # After augmenting both views

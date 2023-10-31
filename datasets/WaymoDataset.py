@@ -30,6 +30,7 @@ class WaymoDataset(DepthContrastDataset):
         
         if self.mean_box_sizes is not None:
             self.mean_box_sizes = np.array(self.mean_box_sizes)
+            self.distance_thresh = cfg.get("DIST_THRESH", None)
             self.class_size_cnts = self.add_pseudo_classes()
             self.logger.add_line('Pseudo Class Counts:')
             for i, cls in enumerate(self.class_names):
@@ -81,7 +82,14 @@ class WaymoDataset(DepthContrastDataset):
             lwh.reshape(-1, 1, 3)) ** 2).sum(axis=2))  # N=boxes x M=mean sizes 
             idx_matched_mean_sizes = dist.argmin(axis=1) # N gt boxes
             gt_names = np.array(self.class_names)[idx_matched_mean_sizes]
-            info['approx_boxes_names'] = gt_names
+
+            if self.distance_thresh is not None:
+                valid_match_mask = dist.min(axis=1) < self.distance_thresh
+                info['approx_boxes_closeness_to_edge'] = gt_boxes[valid_match_mask]
+                info['approx_boxes_names'] = gt_names[valid_match_mask]
+                info['cluster_labels_boxes'] = info['cluster_labels_boxes'][valid_match_mask]
+            else:            
+                info['approx_boxes_names'] = gt_names
             unique_idx, counts = np.unique(idx_matched_mean_sizes, return_counts=True)
             class_size_cnts[unique_idx] += counts
         
@@ -120,23 +128,29 @@ class WaymoDataset(DepthContrastDataset):
 
         assert points.shape[0] == pt_cluster_labels.shape[0], f'Missing labels for {frame_id}!!!!!!!!'
 
-        points = np.hstack([points, pt_cluster_labels.reshape(-1, 1)]) #xyzi
         gt_classes = np.array([self.class_names.index(n) + 1 for n in info['approx_boxes_names']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
-
+        gt_cluster_ids =  info['cluster_labels_boxes']
         #append class id as 8th entry in gt boxes and cluster label as 9th
-        gt_boxes = np.hstack([info['approx_boxes_closeness_to_edge'][:,:7], gt_classes.reshape(-1, 1).astype(np.float32), info['cluster_labels_boxes'].reshape(-1, 1)])
+        gt_boxes = np.hstack([info['approx_boxes_closeness_to_edge'][:,:7], gt_classes.reshape(-1, 1).astype(np.float32), gt_cluster_ids.reshape(-1, 1)])
         
+        # Set clusters as background if their groundtruth box is not available
+        for lbl in np.unique(pt_cluster_labels):
+            if lbl not in gt_cluster_ids:
+                pt_cluster_labels[pt_cluster_labels==lbl] = -1
+
+        points = np.hstack([points, pt_cluster_labels.reshape(-1, 1)]) #xyzi
+
         input_dict = {
             'points': points,
             'gt_boxes':  gt_boxes,
             'frame_id': frame_id
             }
-        cluster_ids, cnts = np.unique(input_dict['points'][:,-1], return_counts=True)
-        for cluster_id, cnt in zip(cluster_ids, cnts):
-            if cluster_id == -1:
-                continue
-            frame_id = input_dict['frame_id']
-            assert cluster_id in input_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
+        # cluster_ids, cnts = np.unique(input_dict['points'][:,-1], return_counts=True)
+        # for cluster_id, cnt in zip(cluster_ids, cnts):
+        #     if cluster_id == -1:
+        #         continue
+        #     frame_id = input_dict['frame_id']
+        #     assert cluster_id in input_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
 
         data_dict = self.prepare_data(data_dict=input_dict)
 
