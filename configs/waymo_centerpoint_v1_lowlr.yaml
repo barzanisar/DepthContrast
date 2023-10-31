@@ -22,21 +22,19 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #'waymo_processed_data_10' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: 3 #1/3rd of waymo
   BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] 
-  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
+  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium'] #['Vehicle', 'Pedestrian', 'Cyclist']
+  DIST_THRESH: 2.5
   MEAN_SIZES: [[4.7, 2.1, 1.7],
                 [0.91, 0.86, 1.73],
                 [1.78, 0.84, 1.78],
                 [0.5, 0.5, 1.0],
-                [3, 2, 1.5],
-                [10, 2.5, 1.7],
-                [20, 2.5, 1.7],
-                [20, 20, 1.7]]
+                [3, 2, 1.5]]
   
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
@@ -73,10 +71,10 @@ optimizer:
   num_epochs: 100
   lr:
     name: "cosine"
-    base_lr: 0.012 #0.1 for linear_probe #0.12
+    base_lr: 0.003 #0.1 for linear_probe #0.12
 
 model:
-  name: "pretrain_for_3d_obj_det_3node"
+  name: "pretrain_centerpoint_v1_lowlr"
   model_dir: "checkpoints/centerpoint/waymo"
   VOX: True
   linear_probe_dim: [128, 2]
@@ -113,7 +111,7 @@ model:
   MODEL_DET_HEAD:
     NAME: CenterPoint
 
-    INPUT_MOCO_FEATS: True
+    INPUT_MOCO_FEATS: False
 
     DENSE_HEAD:
       NAME: CenterHead
@@ -121,7 +119,7 @@ model:
       INPUT_FEATURES: 512
 
       CLASS_NAMES_EACH_HEAD: [
-          ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig']
+          ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium']
       ]
 
       SHARED_CONV_CHANNEL: 64
@@ -147,8 +145,8 @@ model:
               'cls_weight': 1.0,
               'loc_weight': 2.0,
               'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-              'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5],
-              'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
+              'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0],
+              'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0]
           }
     
   MODEL_AUX_HEAD:
