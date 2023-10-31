@@ -76,7 +76,7 @@ optimizer:
     base_lr: 0.012 #0.1 for linear_probe #0.12
 
 model:
-  name: "pretrain_for_3d_obj_det"
+  name: "pretrain_waymo_centerpoint"
   model_dir: "checkpoints/centerpoint/waymo"
   VOX: True
   linear_probe_dim: [128, 2]
@@ -113,7 +113,7 @@ model:
   MODEL_DET_HEAD:
     NAME: CenterPoint
 
-    INPUT_MOCO_FEATS: True
+    INPUT_MOCO_FEATS: False
 
     DENSE_HEAD:
       NAME: CenterHead
