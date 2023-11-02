@@ -194,7 +194,11 @@ class DepthContrastDataset(Dataset):
         if self.pretraining:
             data_dict['gt_boxes_moco_cluster_ids'] = data_dict['gt_boxes_moco'][:,-1]
             data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][:, :8]
-
+        
+        # Assert that points contain fg points
+        assert (data_dict["points"][:,-1] > -1).sum() > 0
+        if self.pretraining:
+            assert (data_dict["points_moco"][:,-1] > -1).sum() > 0
         return data_dict
     def __getitem__(self, idx):
         """

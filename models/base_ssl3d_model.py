@@ -332,7 +332,11 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             main_utils.load_data_to_gpu(batch_dict)
 
             if torch.distributed.is_initialized():
-                batch_dict = self._batch_shuffle_ddp(batch_dict)
+                if self.config['VOX']:
+                    batch_dict = self._batch_shuffle_ddp_vox(batch_dict)
+                else:
+                    batch_dict = self._batch_shuffle_ddp_pts(batch_dict)
+
                 
             # Copy to GPU
             #print("Before loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
