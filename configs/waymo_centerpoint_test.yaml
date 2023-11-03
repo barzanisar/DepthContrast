@@ -1,12 +1,12 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
 # python tools/main_dist.py --cfg configs/waymo.yaml
 wb_extra_tags: ['centerpoint', 'waymo', 'pretrain_object_detection']
-resume: true
+resume: false
 linear_probe: false
 num_workers: 4 # should be same as  (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
-log2wb: true
+log2wb: false
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
@@ -14,7 +14,7 @@ ckpt_save_interval: 1 #save only models to finetune for object detection
 save_ckpt_after_epochs: 0
 
 WANDB:
-  ENABLED: True 
+  ENABLED: False 
   PROJECT: SSL3dObject
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
@@ -22,19 +22,21 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #'waymo_processed_data_10' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_10' #'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train_short}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: 4 #1/4th of waymo
-  BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
+  BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] 
-  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium'] #['Vehicle', 'Pedestrian', 'Cyclist']
-  DIST_THRESH: 2.5
+  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
                 [0.91, 0.86, 1.73],
                 [1.78, 0.84, 1.78],
                 [0.5, 0.5, 1.0],
-                [3, 2, 1.5]]
+                [3, 2, 1.5],
+                [10, 2.5, 1.7],
+                [20, 2.5, 1.7],
+                [20, 20, 1.7]]
   
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
@@ -68,13 +70,13 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 50
+  num_epochs: 100
   lr:
     name: "cosine"
     base_lr: 0.012 #0.1 for linear_probe #0.12
 
 model:
-  name: "pretrain_centerpoint_v1"
+  name: "pretrain_centerpoint"
   model_dir: "checkpoints/centerpoint/waymo"
   VOX: True
   linear_probe_dim: [128, 2]
@@ -119,7 +121,7 @@ model:
       INPUT_FEATURES: 512
 
       CLASS_NAMES_EACH_HEAD: [
-          ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium']
+          ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig']
       ]
 
       SHARED_CONV_CHANNEL: 64
@@ -145,8 +147,8 @@ model:
               'cls_weight': 1.0,
               'loc_weight': 2.0,
               'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-              'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0],
-              'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0]
+              'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5],
+              'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
           }
     
   MODEL_AUX_HEAD:

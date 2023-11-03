@@ -28,15 +28,11 @@ dataset:
   FRAME_SAMPLING_INTERVAL: 4 # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 16 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
-  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
-  MEAN_SIZES: [[4.7, 2.1, 1.7],
-                [0.91, 0.86, 1.73],
-                [1.78, 0.84, 1.78],
-                [0.5, 0.5, 1.0],
-                [3, 2, 1.5],
-                [10, 2.5, 1.7],
-                [20, 2.5, 1.7],
-                [20, 20, 1.7]]
+  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist']
+  DIST_THRESH: 2.5
+  MEAN_SIZES: [[3, 2, 1.5],
+                [0.5, 0.5, 1.5],
+                [1, 0.5, 1.5]]
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
     - NAME: random_world_flip
@@ -75,7 +71,7 @@ optimizer:
     base_lr: 0.012 #0.1 for linear_probe #0.12
 
 model:
-  name: "pretrain_pointrcnn"
+  name: "pretrain_pointrcnn_v1"
   model_dir: "checkpoints/pointrcnn/waymo"
   VOX: False
   linear_probe_dim: [128, 2]
@@ -117,14 +113,9 @@ model:
         BOX_CODER_CONFIG: {
             'use_mean_size': True,
             'mean_size': [
-                [4.7, 2.1, 1.7],
-                [0.91, 0.86, 1.73],
-                [1.78, 0.84, 1.78],
-                [0.5, 0.5, 1.0],
                 [3, 2, 1.5],
-                [10, 2.5, 1.7],
-                [20, 2.5, 1.7],
-                [20, 20, 1.7]
+                [0.5, 0.5, 1.5],
+                [1, 0.5, 1.5]
             ]
           }
 
@@ -134,8 +125,8 @@ model:
             'point_cls_weight': 1.0,
             'point_box_weight': 1.0,
             'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-            'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
-            'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
+            'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0], 
+            'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0]
         }
     
     ROI_HEAD:

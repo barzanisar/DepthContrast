@@ -43,15 +43,15 @@ class AverageMeter(object):
         self.count = 0
 
     def update(self, val, n=1):
-        self.val = val
+        self.val = val #current loss per pc
         if self.window_size > 0:
             self.q.append((val, n))
             self.count = sum([n for v, n in self.q])
             self.sum = sum([v * n for v, n in self.q])
         else:
-            self.sum += val * n
+            self.sum += val * n # n=batchsize per gpu
             self.count += n
-        self.avg = self.sum / self.count
+        self.avg = self.sum / self.count # avg loss per pc so far
 
     def __str__(self):
         fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'

@@ -158,8 +158,27 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     logger.add_line('\n{}: Epoch {}'.format(phase, epoch))
     batch_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Process Time', ':6.3f', window_size=100)
     data_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Load Time', ':6.3f', window_size=100)
-    loss_meter = metrics_utils.AverageMeter(f'{phase}-Loss', ':.3e')
-    progress = utils.logger.ProgressMeter(len(loader), [batch_time, data_time, loss_meter], phase=phase, epoch=epoch, logger=logger, tb_writter=tb_writter)
+    loss_meter = metrics_utils.AverageMeter(f'{phase}-Total Loss', ':.3e') # total loss
+    det_cls_loss_meter = metrics_utils.AverageMeter(f'det_cls_loss', ':.3e')
+    det_reg_loss_meter = metrics_utils.AverageMeter(f'det_reg_loss', ':.3e')
+    det_cls_rcnn_loss_meter = metrics_utils.AverageMeter(f'det_cls_rcnn_loss', ':.3e')
+    det_reg_rcnn_loss_meter = metrics_utils.AverageMeter(f'det_reg_rcnn_loss', ':.3e')
+    aux_rot_loss_meter = metrics_utils.AverageMeter(f'aux_rot_loss', ':.3e')
+    aux_scale_loss_meter = metrics_utils.AverageMeter(f'aux_scale_loss', ':.3e')
+    nce_loss_meter = metrics_utils.AverageMeter(f'nce_loss', ':.3e')
+
+    list_of_meters = [batch_time, data_time, loss_meter, nce_loss_meter]
+    
+    if 'MODEL_DET_HEAD' in cfg.model:
+        list_of_meters += [det_cls_loss_meter, det_reg_loss_meter]
+        if 'ROI_HEAD' in cfg.model.MODEL_DET_HEAD:
+            list_of_meters += [det_cls_rcnn_loss_meter, det_reg_rcnn_loss_meter]
+
+    if 'MODEL_AUX_HEAD' in cfg.model:
+        list_of_meters += [aux_rot_loss_meter, aux_scale_loss_meter]
+
+    list_of_meters_to_display = [batch_time.name, data_time.name, loss_meter.name]
+    progress = utils.logger.ProgressMeter(len(loader), list_of_meters, phase=phase, meters_to_display=list_of_meters_to_display, epoch=epoch, logger=logger, tb_writter=tb_writter)
 
     # switch to train mode
     model.train(phase == 'train')
@@ -178,18 +197,27 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
          # contrastive loss
         loss = criterion(output_dict['output'], output_dict['output_moco'])
+        nce_loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+
 
         # detection loss
         if 'MODEL_DET_HEAD' in cfg['model']:
             loss += output_dict['loss_det_head']
+            det_cls_loss_meter.update(output_dict['loss_det_cls'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+            det_reg_loss_meter.update(output_dict['loss_det_reg'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+            if 'ROI_HEAD' in cfg.model:
+                det_cls_rcnn_loss_meter.update(output_dict['loss_det_cls_rcnn'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+                det_reg_rcnn_loss_meter.update(output_dict['loss_det_reg_rcnn'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+
         
         # aux head loss
         if 'MODEL_AUX_HEAD' in cfg['model']:
             loss += output_dict['loss_aux_head']
+            aux_rot_loss_meter.update(output_dict['loss_aux_head_rot'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+            aux_scale_loss_meter.update(output_dict['loss_aux_head_scale'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
 
         loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
-
-
+       
         # compute gradient and do SGD step during training
         if phase == 'train':
             optimizer.zero_grad()

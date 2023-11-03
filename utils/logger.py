@@ -41,7 +41,7 @@ class Logger(object):
 
 
 class ProgressMeter(object):
-    def __init__(self, num_batches, meters, phase, epoch=None, logger=None, tb_writter=None):
+    def __init__(self, num_batches, meters, phase, meters_to_display, epoch=None, logger=None, tb_writter=None):
         self.batches_per_epoch = num_batches
         self.batch_fmtstr = self._get_batch_fmtstr(epoch, num_batches)
         self.meters = meters
@@ -49,12 +49,13 @@ class ProgressMeter(object):
         self.epoch = epoch
         self.logger = logger
         self.tb_writter = tb_writter
+        self.meters_to_display = meters_to_display
 
     def display(self, batch):
         step = self.epoch * self.batches_per_epoch + batch
         date = str(datetime.datetime.now())
         entries = ['{} | {} {}'.format(date, self.phase, self.batch_fmtstr.format(batch))]
-        entries += [str(meter) for meter in self.meters]
+        entries += [str(meter) for meter in self.meters if meter.name in self.meters_to_display]
         if self.logger is None:
             print('\t'.join(entries))
         else:

@@ -68,20 +68,27 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         
         if 'MODEL_DET_HEAD' in self.config:
             if self.config['MODEL_DET_HEAD'].get('INPUT_MOCO_FEATS', False):
-                outputs_head, _, _ = self.det_head(new_batch_dict) 
+                outputs_head, tb_dict, _ = self.det_head(new_batch_dict) 
             else:
-                outputs_head, _, _ = self.det_head(output_dict['output'])
+                outputs_head, tb_dict, _ = self.det_head(output_dict['output'])
             
             output_dict['loss_det_head']= outputs_head['loss']
-
+            if self.config['VOX']:
+                output_dict['loss_det_cls'] = tb_dict.get('hm_loss_head_0', 0)
+                output_dict['loss_det_reg'] = tb_dict.get('loc_loss_head_0', 0)
+            else:
+                output_dict['loss_det_cls'] = tb_dict.get('point_loss_cls', 0) #TODO
+                output_dict['loss_det_reg'] = tb_dict.get('point_loss_box', 0)
+                output_dict['loss_det_cls_rcnn'] = tb_dict.get('rcnn_loss_cls', 0) #TODO
+                output_dict['loss_det_reg_rcnn'] = tb_dict.get('rcnn_loss_reg', 0)
 
 
         if 'MODEL_AUX_HEAD' in self.config:
             outputs_head, _, _ = self.aux_head(new_batch_dict)
             output_dict['loss_aux_head']= outputs_head['batch_dict']['seg_reg_loss']
-            
+            output_dict['loss_aux_head_rot']= outputs_head['batch_dict']['seg_reg_loss_rot']
+            output_dict['loss_aux_head_scale']= outputs_head['batch_dict']['seg_reg_loss_scale']
 
-            #all_outputs.append(loss_dict)
         return output_dict
     
     def _concat_encoder_outputs(self, output_base_dict, output_moco_dict, for_det):
