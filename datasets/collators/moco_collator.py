@@ -60,14 +60,20 @@ def moco_collator(batch):
 
     common_cluster_gtbox_idx=[]
     common_cluster_gtbox_moco_idx=[]
+    unscaled_lwhz = [x["unscaled_lwhz_cluster_id"] for x in batch]
+    common_unscaled_lwhz = []
     for i in range(batch_size):
         common_box_idx = np.where(np.isin(gt_boxes_cluster_ids[i], common_cluster_ids[i]))[0]
         common_box_idx_moco = np.where(np.isin(gt_boxes_moco_cluster_ids[i], common_cluster_ids[i]))[0]
         assert (gt_boxes_cluster_ids[i][common_box_idx] - gt_boxes_moco_cluster_ids[i][common_box_idx_moco]).sum() == 0
         assert (gt_boxes_cluster_ids[i][common_box_idx] - common_cluster_ids[i]).sum() == 0
+        assert (gt_boxes_cluster_ids[i][common_box_idx] - unscaled_lwhz[i][common_box_idx, -1]).sum() == 0
         common_cluster_gtbox_idx.append(common_box_idx)
         common_cluster_gtbox_moco_idx.append(common_box_idx_moco)
-        
+        common_unscaled_lwhz.append(unscaled_lwhz[i][common_box_idx, :-1]) #exclude cluster id 
+
+    common_unscaled_lwhz = np.concatenate(common_unscaled_lwhz, axis=0)
+
     # make gt boxes in shape (batch size, max gt box len, 8) (xyz, lwh, rz, class label)
     max_gt = max([len(x['gt_boxes']) for x in batch])
     batch_gt_boxes3d = np.zeros((batch_size, max_gt, batch[0]['gt_boxes'].shape[-1]), dtype=np.float32) # (batch size = 2, max_gt_boxes in a pc in this batch = 67, 8)
@@ -88,6 +94,7 @@ def moco_collator(batch):
                      'gt_boxes_cluster_ids': gt_boxes_cluster_ids, 
                     'common_cluster_ids': common_cluster_ids, 
                     'common_cluster_gtbox_idx': common_cluster_gtbox_idx,
+                    'common_unscaled_lwhz': common_unscaled_lwhz,
                      'batch_size': batch_size},
                     
                     'input_moco': 

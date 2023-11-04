@@ -125,6 +125,8 @@ class DepthContrastDataset(Dataset):
             data_dict['gt_boxes_moco'] = np.copy(data_dict["gt_boxes"])
             gt_classes_idx = data_dict["gt_boxes"][:,-2].reshape(-1,1)
             gt_cluster_ids = data_dict["gt_boxes"][:,-1].reshape(-1,1)
+            data_dict['unscaled_lwhz_cluster_id'] = np.hstack([data_dict["gt_boxes"][:,3:6], data_dict["gt_boxes"][:,2].reshape(-1,1), gt_cluster_ids])
+
             
             # transform data_dict points and gt_boxes #TODO: check if augmentor assumes and returns 7 dim gt boxes
             data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7], gt_box_cluster_ids=gt_cluster_ids)
@@ -199,6 +201,11 @@ class DepthContrastDataset(Dataset):
         assert (data_dict["points"][:,-1] > -1).sum() > 0
         if self.pretraining:
             assert (data_dict["points_moco"][:,-1] > -1).sum() > 0
+
+        #get box indices of gt_boxes remaining after augmentation and then keep only those unscaled lwhz
+        box_idx=np.where(np.isin(data_dict['unscaled_lwhz_cluster_id'][:,-1], data_dict['gt_boxes_cluster_ids']))[0]
+        data_dict['unscaled_lwhz_cluster_id'] = data_dict['unscaled_lwhz_cluster_id'][box_idx]
+        
         return data_dict
     def __getitem__(self, idx):
         """

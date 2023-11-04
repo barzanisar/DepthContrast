@@ -52,12 +52,12 @@ class NCELossMoco(nn.Module):
         self.K = int(config["NUM_NEGATIVES"])
         self.dim = int(config["EMBEDDING_DIM"]) 
         if self.cluster:
-            self.dim += 3
+            self.dim += 4 #lwhz
         self.T = float(config["TEMPERATURE"])
 
         self.register_buffer("queue", torch.randn(self.dim, self.K)) # queue of dc (either pointnet or vox) based negative key embeddings
         self.queue[:int(config["EMBEDDING_DIM"]), :] = nn.functional.normalize(self.queue[:int(config["EMBEDDING_DIM"]), :], dim=0)
-        self.queue[int(config["EMBEDDING_DIM"]):, :] = -1 * torch.ones((3,  self.K))
+        self.queue[int(config["EMBEDDING_DIM"]):, :] = -1 * torch.ones((4,  self.K))
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
         
         # cross-entropy loss. Also called InfoNCE
@@ -144,6 +144,7 @@ class NCELossMoco(nn.Module):
     def forward(self, output_dict, output_dict_moco):
         
         # batch_size = output_dict['batch_size'] #2
+        common_unscaled_lwhz = output_dict['common_unscaled_lwhz']
         output_0 = output_dict['pretext_head_feats'] #query features (N=num common clusters , 128)
         output_1 = output_dict_moco['pretext_head_feats'] #key_features = moco features (N=num common clusters, 128)
         feature_dim = output_0.shape[1]
@@ -156,21 +157,31 @@ class NCELossMoco(nn.Module):
         if self.cluster:
             batch_size = output_dict['gt_boxes'].shape[0]
             #dxdydz = torch.cat([output_dict['gt_boxes'][k, output_dict['common_cluster_gtbox_idx'][k], 3:6]  for k in range(batch_size)]) #(N,3)
-            dxdydz = torch.cat([output_dict_moco['gt_boxes'][k, output_dict_moco['common_cluster_gtbox_idx'][k],3:6]  for k in range(batch_size)])
-
+            #dxdydz = torch.cat([output_dict_moco['gt_boxes'][k, output_dict_moco['common_cluster_gtbox_idx'][k],3:6]  for k in range(batch_size)])
             # Define l= max(dx,dy), w = min(dx,dy)
-            l = torch.max(dxdydz[:,:2], dim=-1)[0].view(-1,1)
-            w = torch.min(dxdydz[:,:2], dim=-1)[0].view(-1,1)
-            h = dxdydz[:, -1].view(-1,1)
+            l = torch.max(common_unscaled_lwhz[:,:2], dim=-1)[0].view(-1,1)
+            w = torch.min(common_unscaled_lwhz[:,:2], dim=-1)[0].view(-1,1)
+            h = common_unscaled_lwhz[:, 2].view(-1,1)
+            z =  common_unscaled_lwhz[:, 3].view(-1,1)
 
             if self.queue[-1,-1] > 0: # last element of queue has been filled with the dims
-                l_neg = self.queue[-3,:].view(1, -1)
-                w_neg = self.queue[-2,:].view(1, -1)
-                h_neg = self.queue[-1,:].view(1, -1)
+                l_neg = self.queue[-4,:].view(1, -1)
+                w_neg = self.queue[-3,:].view(1, -1)
+                h_neg = self.queue[-2,:].view(1, -1)
+                z_neg = self.queue[-1,:].view(1, -1)
+
+                # height overlap
+                boxes_pos_height_max = (z + h / 2).view(-1, 1)
+                boxes_pos_height_min = (z - h / 2).view(-1, 1)
+                boxes_neg_height_max = (z_neg + h_neg / 2).view(1, -1)
+                boxes_neg_height_min = (z_neg - h_neg / 2).view(1, -1)
+                max_of_min = torch.max(boxes_pos_height_min, boxes_neg_height_min)
+                min_of_max = torch.min(boxes_pos_height_max, boxes_neg_height_max)
+                overlaps_h = torch.clamp(min_of_max - max_of_min, min=0) # torch.min(h, h_neg)
 
                 vol = (l*w*h).view(-1, 1) # Nx1
                 vol_neg = (l_neg * w_neg * h_neg).view(1, -1) # 1xK
-                overlap_vol = torch.min(l, l_neg) *  torch.min(w, w_neg) * torch.min(h, h_neg) # NxK
+                overlap_vol = torch.min(l, l_neg) *  torch.min(w, w_neg) * overlaps_h # NxK
                 iou3d = overlap_vol / torch.clamp(vol + vol_neg - overlap_vol, min=1e-6) # NxK
 
         # positive logits: Nx1 = batch size of positive examples
@@ -205,7 +216,7 @@ class NCELossMoco(nn.Module):
         
 
         if self.cluster:
-            keys = torch.cat([normalized_output2, l,w,h], dim=1)
+            keys = torch.cat([normalized_output2, l,w,h,z], dim=1)
             self._dequeue_and_enqueue_cluster(keys)
         else:
             self._dequeue_and_enqueue_pcd(normalized_output2)
