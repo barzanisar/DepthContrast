@@ -275,7 +275,7 @@ class PubTracker(object):
       track_boxes[:,3:6] = np.array([det['lwh'] for det in self.tracks], np.float32)
       #track_boxes[:,-1] = np.array([det['heading'] for det in self.tracks], np.float32)
 
-      iou3d,_,_ = iou3d_nms_utils.boxes_iou3d_gpu(torch.from_numpy(det_boxes).float().cuda(), 
+      iou3d = iou3d_nms_utils.boxes_iou3d_gpu(torch.from_numpy(det_boxes).float().cuda(), 
                                       torch.from_numpy(track_boxes).float().cuda())
       
       iou3d = iou3d.cpu().numpy()
