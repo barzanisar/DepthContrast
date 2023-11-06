@@ -65,7 +65,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 50
+  num_epochs: 20
   lr:
     name: "cosine"
     base_lr: 0.012 #0.1 for linear_probe #0.12
@@ -193,20 +193,20 @@ model:
               'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
           }
     
-  MODEL_AUX_HEAD:
-    NAME: PointRCNN
+  # MODEL_AUX_HEAD:
+  #   NAME: PointRCNN
     
-    PRETEXT_HEAD: 
-      NAME: RegHead
-      REG_FC: [256, 256]
-      # - NAME: ScaleRegHead
-      #   REG_FC: [256, 256]
-      LOSS_CONFIG:
-        LOSS_REG: WeightedSmoothL1Loss
-        LOSS_WEIGHTS: {
-            'seg_reg_weight': 1.0,
-            'code_weights': [1.0, 1.0]
-        }
+  #   PRETEXT_HEAD: 
+  #     NAME: RegHead
+  #     REG_FC: [256, 256]
+  #     # - NAME: ScaleRegHead
+  #     #   REG_FC: [256, 256]
+  #     LOSS_CONFIG:
+  #       LOSS_REG: WeightedSmoothL1Loss
+  #       LOSS_WEIGHTS: {
+  #           'seg_reg_weight': 1.0,
+  #           'code_weights': [1.0, 1.0]
+  #       }
 
 loss:
   args:

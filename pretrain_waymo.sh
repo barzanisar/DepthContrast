@@ -1,8 +1,8 @@
 sbatch --time=01:00:00 --nodes=3 --ntasks=3 --array=1-1%1 --job-name=pretrain_pointrcnn scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19664 --cfg_file configs/waymo_pointrcnn.yaml
-sbatch --time=01:00:00 --nodes=3 --ntasks=3 --array=1-1%1 --job-name=pretrain_pointrcnn scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19664 --cfg_file configs/waymo_pointrcnn_v1.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-1%1 --job-name=pretrain_centerpoint scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19667 --cfg_file configs/waymo_centerpoint.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-1%1 --job-name=pretrain_centerpoint_v1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19668 --cfg_file configs/waymo_centerpoint_v1.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-1%1 --job-name=pretrain_centerpoint_v1_lowlr scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19669 --cfg_file configs/waymo_centerpoint_v1_lowlr.yaml
+sbatch --time=01:00:00 --nodes=3 --ntasks=3 --array=1-1%1 --job-name=pretrain_pointrcnn_v1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19664 --cfg_file configs/waymo_pointrcnn_v1.yaml
+sbatch --time=04:00:00 --nodes=2 --ntasks=2 --array=1-5%1 --job-name=pretrain_centerpoint scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19667 --cfg_file configs/waymo_centerpoint.yaml
+sbatch --time=04:00:00 --nodes=2 --ntasks=2 --array=1-5%1 --job-name=pretrain_centerpoint_v1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19668 --cfg_file configs/waymo_centerpoint_v1.yaml
+sbatch --time=04:00:00 --nodes=2 --ntasks=2 --array=1-5%1 --job-name=pretrain_centerpoint_v1_lowlr scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19669 --cfg_file configs/waymo_centerpoint_v1_lowlr.yaml
 
 # needs 1 hr 14 min for each split (199 sequences) of waymo_10% -> should take around 12-13 hours for each 200 seq split of full waymo
 # check if --processed_data_tag waymo_processed_data_v_1_2_0 in /home/barza/DepthContrast/scripts/submit_compute_canada_cluster_waymo.sh
