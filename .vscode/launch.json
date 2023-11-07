@@ -115,11 +115,11 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_pointrcnn.yaml"
+                "configs/waymo_pointrcnn_v1_test.yaml"
             ]
         },
         {
-            "name": "Waymo: pretrain vox",
+            "name": "Waymo: pretrain vox v1",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/tools/main_dist.py",
@@ -151,7 +151,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_centerpoint.yaml"
+                "configs/waymo_centerpoint_test.yaml"
             ]
         },
         {
