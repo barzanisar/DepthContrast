@@ -15,12 +15,14 @@ def drop_info_with_name(info, name):
 
 
 class WaymoDataset(DepthContrastDataset):
-    def __init__(self, cfg, cluster, linear_probe=False, mode='train', logger=None):
-        super().__init__(cfg, linear_probe=linear_probe, mode=mode, logger=logger)
+    def __init__(self, cfg, pretraining=True, mode='train', logger=None):
+        super().__init__(cfg, pretraining=pretraining, mode=mode, logger=logger)
         self.data_root_path =  self.root_path / cfg["DATA_PATH"] #root_path: DepthContrast, DATA_PATH: 'data/waymo'
         self.lidar_data_path = self.data_root_path / cfg.PROCESSED_DATA_TAG 
+        self.cluster_root_path = self.data_root_path / f'{cfg.PROCESSED_DATA_TAG}_clustered'
+        self.seglabels_root_path = self.data_root_path/ f'{cfg.PROCESSED_DATA_TAG}_seglabels'
         self.split = cfg.DATA_SPLIT[self.mode]
-        self.cluster_root_path = self.root_path / cfg["DATA_PATH"] / f'{cfg.PROCESSED_DATA_TAG}_clustered'
+
         self.mean_box_sizes = cfg.get('MEAN_SIZES', None)
         self.frame_sampling_interval= cfg["FRAME_SAMPLING_INTERVAL"]
 
@@ -28,7 +30,7 @@ class WaymoDataset(DepthContrastDataset):
         # read tfrecords in sample_seq_list and then find its pkl in waymo_processed_data_10 and include the pkl infos in waymo infos
         self.include_waymo_data() 
         
-        if self.mean_box_sizes is not None:
+        if self.pretraining and self.mean_box_sizes is not None:
             self.mean_box_sizes = np.array(self.mean_box_sizes)
             self.distance_thresh = cfg.get("DIST_THRESH", None)
             self.class_size_cnts = self.add_pseudo_classes()
@@ -44,7 +46,11 @@ class WaymoDataset(DepthContrastDataset):
         waymo_infos=[]
         num_skipped_infos=0
         for seq_name in seq_list:
-            seq_info_path = self.cluster_root_path / seq_name /  'approx_boxes.pkl' #('%s.pkl' % seq_name)
+            if self.pretraining:
+                seq_info_path = self.cluster_root_path / seq_name /  'approx_boxes.pkl' #('%s.pkl' % seq_name)
+            else:
+                seq_info_path = self.seglabels_root_path / seq_name /  ('%s.pkl' % seq_name)
+
             if not seq_info_path.exists():
                 num_skipped_infos += 1
                 continue
@@ -110,11 +116,55 @@ class WaymoDataset(DepthContrastDataset):
         labels = np.fromfile(label_file, dtype=np.float16)
         return labels
 
+    def get_seglabels(self, sequence_name, sample_idx):
+        label_file = self.seglabels_root_path / sequence_name / ('%04d.npy' % sample_idx)
+        labels = np.fromfile(label_file, dtype=np.float16)
+        return labels
+
     
     def __len__(self):
         return len(self.infos)
     
-    def __getitem__(self, index):
+    def get_item_downstream(self, index):
+        info = copy.deepcopy(self.infos[index])
+        pc_info = info['point_cloud']
+        sequence_name = pc_info['lidar_sequence']
+        sample_idx = pc_info['sample_idx']
+        frame_id = info['frame_id']
+
+        # print('frame_id: ', info['frame_id'])
+
+        points = self.get_lidar(sequence_name, sample_idx)
+        pt_seg_labels = self.get_seglabels(sequence_name, sample_idx)
+        assert points.shape[0] == pt_seg_labels.shape[0], f'Missing labels for {frame_id}!!!!!!!!'
+        points = np.hstack([points, pt_seg_labels.reshape(-1, 1)]) #xyzi
+
+
+        annos = info['annos']
+        annos = drop_info_with_name(annos, name='unknown') #filter unknown boxes
+        mask = (annos['num_points_in_gt'] > 0)  # filter empty boxes
+        annos['name'] = annos['name'][mask]
+        annos['gt_boxes_lidar'] = annos['gt_boxes_lidar'][mask]
+        annos['num_points_in_gt'] = annos['num_points_in_gt'][mask]
+
+
+        gt_classes = np.array([self.class_names.index(n) + 1 for n in annos['name']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
+        
+        #append class id as 8th entry in gt boxes 
+        gt_boxes = np.hstack([info['approx_boxes_closeness_to_edge'][:,:7], gt_classes.reshape(-1, 1).astype(np.float32)])
+        
+
+        input_dict = {
+            'points': points,
+            'gt_boxes':  gt_boxes,
+            'frame_id': frame_id
+            }
+
+        data_dict = self.prepare_data(data_dict=input_dict)
+
+        return data_dict
+
+    def get_item_pretrain(self, index):
         info = copy.deepcopy(self.infos[index])
         pc_info = info['point_cloud']
         sequence_name = pc_info['lidar_sequence']
@@ -153,5 +203,13 @@ class WaymoDataset(DepthContrastDataset):
         #     assert cluster_id in input_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
 
         data_dict = self.prepare_data(data_dict=input_dict)
+
+        return data_dict
+
+    def __getitem__(self, index):
+        if self.pretraining:
+            data_dict = self.get_item_pretrain(index)
+        else:
+            data_dict = self.get_item_downstream(index)
 
         return data_dict

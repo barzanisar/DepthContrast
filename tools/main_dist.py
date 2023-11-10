@@ -75,7 +75,7 @@ def main_worker(args, cfg):
     # Setup environment
     args = main_utils.initialize_distributed_backend(args) ### Use other method instead
     logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
-    wandb_utils.init(cfg, args, job_type='train')
+    wandb_utils.init(cfg, args, job_type='pretrain')
     # print("=" * 30 + "   DDP   " + "=" * 30)
     # print(f"world_size: {args.world_size}")
     # print(f"local_rank: {args.local_rank}")
@@ -88,7 +88,7 @@ def main_worker(args, cfg):
         CLUSTER = pretext_head_name in ['SegHead', 'SegVoxHead']
     
     # Define dataloaders
-    train_loader = main_utils.build_dataloaders(cfg['dataset'], cfg['num_workers'], CLUSTER, args.multiprocessing_distributed, logger)  
+    train_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=True, mode='train', logger=logger)  
 
     # Define model
     model = main_utils.build_model(cfg['model'], CLUSTER, train_loader.dataset, logger)
@@ -141,6 +141,7 @@ def main_worker(args, cfg):
         # Train for one epoch
         logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
         logger.add_line('LR: {}'.format(scheduler.get_last_lr()))
+
         run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_last_lr())
         scheduler.step(epoch)
 

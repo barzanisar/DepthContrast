@@ -18,9 +18,9 @@ __all__ = {"DenseKittiDataset": DenseKittiDataset,
            "WaymoDataset": WaymoDataset}
 
 
-def build_dataset(cfg, cluster, linear_probe, mode, logger=None):
+def build_dataset(cfg, pretraining, mode, logger=None):
     # TODO: Turn DATASET_NAMES in cfg from list to normal. Take first dataset for now
-    dataset = __all__[cfg["DATASET_NAMES"][0]](cfg, cluster, linear_probe, mode, logger)
+    dataset = __all__[cfg["DATASET_NAMES"][0]](cfg, pretraining, mode, logger)
     return dataset
 
 def print_sampler_config(data_sampler):
@@ -42,7 +42,6 @@ def print_sampler_config(data_sampler):
 def get_loader(dataset, dataset_config, num_dataloader_workers, pin_memory):
     data_sampler = None
     if torch.distributed.is_available() and torch.distributed.is_initialized():
-        assert torch.distributed.is_initialized(), "Torch distributed isn't initalized"
         data_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
         logging.info("Created the Distributed Sampler....")
         print_sampler_config(data_sampler)

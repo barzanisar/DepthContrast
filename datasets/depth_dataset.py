@@ -44,10 +44,9 @@ class Namespace:
 class DepthContrastDataset(Dataset):
     """Base Self Supervised Learning Dataset Class."""
 
-    def __init__(self, cfg, linear_probe = False, mode='train', logger=None):
+    def __init__(self, cfg, pretraining = True, mode='train', logger=None):
         self.mode = mode
-        self.linear_probe = linear_probe
-        self.pretraining = self.mode == 'train' and not self.linear_probe
+        self.pretraining = pretraining
         self.logger = logger
         self.cfg = cfg
         self.root_path = (Path(__file__) / '../..').resolve()  # DepthContrast
@@ -104,12 +103,46 @@ class DepthContrastDataset(Dataset):
         data_dict['voxel_num_points'] = num_points # dim = num_voxels, gives num points in each voxel
         return data_dict
     
+    def prepare_data_downstream(self, data_dict):
+        #points: xyzi, seglabel
+        #gt_boxes: xyz, dx, dy, dz, rz, class_lbl_idx i.e. 1 for vehicle etc
+        cfg = self.cfg
+
+        #remove points outside range
+        data_dict['points'] = data_processor.mask_points_outside_range(data_dict['points'], self.point_cloud_range)
+
+        # transform data_dict points and gt_boxes #TODO: check if augmentor assumes and returns 7 dim gt boxes
+        if self.mode == 'train':
+            gt_classes_idx = data_dict["gt_boxes"][:,-1].reshape(-1,1)
+            data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7])
+            #Reappend class_idx
+            data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx])
+        if not cfg["VOX"]:
+            data_dict['points'] = data_processor.sample_points(data_dict['points'], self.cfg["SAMPLE_NUM_POINTS"] )
+
+        if self.mode == 'train':
+            data_dict['points'] = data_processor.shuffle_points(data_dict['points'])
+        
+        # # for per point fg,bg prediction
+        # if self.mode == 'train':
+        #     # If augmentor removes a patch with gt box, remove its gt box and label its points as -1
+        #     data_dict['points'], data_dict['gt_boxes'] = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
+
+        if cfg["VOX"]:
+            vox_dict = self.toVox(data_dict["points"]) # xyzil=clusterlabel 
+            data_dict["vox"] = vox_dict
+
+
+
+
+
+        return data_dict
     def prepare_data(self, data_dict):
         
         PLOT= False
         cfg = self.cfg
 
-        # remove points and boxes outside range
+        # remove points outside range
         data_dict['points'] = data_processor.mask_points_outside_range(data_dict['points'], self.point_cloud_range)
     
 

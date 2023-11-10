@@ -14,6 +14,8 @@ import torch.distributed as dist
 import datetime
 import collections.abc as container_abcs
 from utils.logger import Logger
+import glob
+from pathlib import Path
 
 from datasets import build_dataset, get_loader
 
@@ -193,18 +195,44 @@ def recursive_copy_to_gpu(value, non_blocking=True, max_depth=3, curr_depth=0):
 
         raise AttributeError("Value must have .cuda attr or be a Seq / Map iterable")
 
-def prep_environment(args, cfg, linear_probe_dataset=None):
+def get_ckpts_to_eval(cfg, logger, eval_list_dir):
+    checkpoints_to_eval = []
+    model_dir = Path(cfg['model']['model_dir']) / cfg['model']['name']
+    pretrained_ckpt_dir = model_dir / 'pretrain'
+    assert os.path.isdir(pretrained_ckpt_dir) 
+    assert os.path.isdir(eval_list_dir) 
+    
+    # evaluated ckpt record
+    ckpt_record_file = Path(eval_list_dir) / 'eval_list.txt'
+    with open(ckpt_record_file, 'a'):
+        pass
+    if cfg['load_pretrained_checkpoint'] == 'all':
+        ckpt_list = glob.glob(os.path.join(pretrained_ckpt_dir, 'checkpoint*.pth.tar'))
+        ckpt_list.sort(key=os.path.getmtime)
+        evaluated_ckpt_list = [x.strip() for x in open(ckpt_record_file, 'r').readlines()]
+        if len(evaluated_ckpt_list) == 0:
+            checkpoints_to_eval = [x.split('/')[-1] for x in ckpt_list]
+        else:
+            for cur_ckpt in ckpt_list:
+                cur_ckpt_name = cur_ckpt.split('/')[-1]
+                if cur_ckpt_name not in evaluated_ckpt_list:
+                    checkpoints_to_eval.append(cur_ckpt_name)
+    else:
+        checkpoints_to_eval.append(cfg['load_pretrained_checkpoint'])
+    
+    logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
+    logger.add_line(f'{checkpoints_to_eval}')
+    return checkpoints_to_eval, ckpt_record_file
+
+def prep_environment(args, cfg, phase='pretrain'):
     from torch.utils.tensorboard import SummaryWriter
     
-    phase = 'linear_probe' if cfg.get('linear_probe', False) else 'pretrain'
-    if linear_probe_dataset is not None:
-        phase += f'_{linear_probe_dataset}'
     # Prepare loggers (must be configured after initialize_distributed_backend())
     model_dir = '{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], phase)
     
     
     if args.rank == 0:
-        if cfg['linear_probe']:
+        if phase != 'pretrain':
             assert os.path.isdir(model_dir.split(f'/{phase}')[0])
         prep_output_folder(model_dir)
 
@@ -281,36 +309,16 @@ def distribute_model_to_cuda(models, args, find_unused_params=False):
     return models, args
 
 
-def build_dataloaders_train_val(cfg, num_workers, cluster, distributed, logger, linear_probe=False):
-    train_loader = build_dataloader(cfg, num_workers, cluster, distributed, linear_probe=linear_probe, mode = 'train', logger=logger)
-    logger.add_line("\n"+"="*30+"   Train data   "+"="*30)
-    logger.add_line(str(train_loader.dataset))
-
-    val_loader = build_dataloader(cfg, num_workers, False, distributed, linear_probe=linear_probe, mode = 'val', logger=logger)
-    logger.add_line("\n"+"="*30+"   Val data   "+"="*30)
-    logger.add_line(str(val_loader.dataset))
-    return train_loader, val_loader
-
-def build_dataloaders(cfg, num_workers, cluster, distributed, logger, linear_probe=False):
-    train_loader = build_dataloader(cfg, num_workers, cluster, distributed, linear_probe=linear_probe, mode = 'train', logger=logger)
-    logger.add_line("\n"+"="*30+"   Train data   "+"="*30)
-    logger.add_line(str(train_loader.dataset))
-    return train_loader
-
-
-def build_dataloader(config, num_workers, cluster, distributed, linear_probe=False, mode='train', logger=None):
-    import torch.utils.data as data
-    import torch.utils.data.distributed
-    import datasets
-
-    datasets, data_and_label_keys = {}, {}
-    datasets = build_dataset(config, cluster, linear_probe, mode, logger)
-
+def build_dataloader(config, num_workers, pretraining=True, mode='train', logger=None):
+    datasets = build_dataset(config, pretraining, mode, logger)
+    logger.add_line("\n"+"="*30+f"   {mode} data   "+"="*30)
+    logger.add_line(str(datasets.dataset))
+    
     loader = get_loader(
         dataset=datasets,
         dataset_config=config,
         num_dataloader_workers=num_workers,
-        pin_memory=False,### Questionable
+        pin_memory=True ### Questionable
     )
     return loader
 
@@ -437,5 +445,22 @@ def prep_output_folder(model_dir):
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
 
+def undersample_bk_class(output, y_gt):
+        background_points_mask = y_gt == 0
+        obj_points_mask = y_gt > 0
+
+
+        bk_y_gt = y_gt[background_points_mask]
+        bk_output = output[background_points_mask]
+
+        perm = torch.randperm(bk_y_gt.size(0))
+        idx = perm[:obj_points_mask.sum().item()]
+        downsampled_bk_y_gt = bk_y_gt[idx]
+        downsampled_bk_output = bk_output[idx]
+
+        new_y_gt = torch.cat((downsampled_bk_y_gt, y_gt[obj_points_mask]))
+        new_output = torch.cat((downsampled_bk_output, output[obj_points_mask]))
+
+        return new_output, new_y_gt
 
 
