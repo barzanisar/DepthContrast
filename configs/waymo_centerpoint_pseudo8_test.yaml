@@ -1,8 +1,7 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
 # python tools/main_dist.py --cfg configs/waymo.yaml
 wb_extra_tags: ['centerpoint', 'waymo', 'pretrain_object_detection']
-resume: true
-linear_probe: false
+resume: false
 num_workers: 4 # should be same as  (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
@@ -22,19 +21,21 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #'waymo_processed_data_10' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_10' #'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train_short}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: 10 #1/4th of waymo
-  BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
+  FRAME_SAMPLING_INTERVAL: {'train': 20} #1/4th of waymo
+  BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] 
-  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium'] #['Vehicle', 'Pedestrian', 'Cyclist']
-  DIST_THRESH: 2.5
+  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
                 [0.91, 0.86, 1.73],
                 [1.78, 0.84, 1.78],
                 [0.5, 0.5, 1.0],
-                [3, 2, 1.5]]
+                [3, 2, 1.5],
+                [10, 2.5, 1.7],
+                [20, 2.5, 1.7],
+                [20, 20, 1.7]]
   
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
@@ -71,13 +72,12 @@ optimizer:
   num_epochs: 20
   lr:
     name: "cosine"
-    base_lr: 0.003 #0.1 for linear_probe #0.12
+    base_lr: 0.012 #0.1 for linear_probe #0.12
 
 model:
-  name: "pretrain_centerpoint_v1_lowlr"
-  model_dir: "checkpoints/centerpoint/waymo"
+  model_dir: "checkpoints/centerpoint"
+  name: "centerpoint_pretrain_pseudo_8_test" 
   VOX: True
-  linear_probe_dim: [128, 2]
 
   MODEL_BASE:
     NAME: CenterPoint
@@ -119,7 +119,7 @@ model:
       INPUT_FEATURES: 512
 
       CLASS_NAMES_EACH_HEAD: [
-          ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium']
+          ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig']
       ]
 
       SHARED_CONV_CHANNEL: 64
@@ -145,8 +145,8 @@ model:
               'cls_weight': 1.0,
               'loc_weight': 2.0,
               'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-              'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0],
-              'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0]
+              'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5],
+              'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
           }
     
   # MODEL_AUX_HEAD:
@@ -164,8 +164,9 @@ model:
   #           'code_weights': [1.0, 1.0]
   #       }
 
-loss:
-  args:
-    TEMPERATURE: 0.1
-    NUM_NEGATIVES: 65536
-    EMBEDDING_DIM: 128
+NCE_LOSS:
+  LOSS_WEIGHT: 1.0
+  TEMPERATURE: 0.1
+  NUM_NEGATIVES: 65536
+  EMBEDDING_DIM: 128
+  IOU_FILTER: True

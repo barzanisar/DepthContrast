@@ -1,12 +1,11 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
 # python tools/main_dist.py --cfg configs/waymo.yaml
 wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
-resume: false
-linear_probe: false
+resume: true
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
-log2wb: false
+log2wb: true
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
@@ -14,7 +13,7 @@ ckpt_save_interval: 1 #save only models to finetune for object detection
 save_ckpt_after_epochs: 0
 
 WANDB:
-  ENABLED: False 
+  ENABLED: True 
   PROJECT: SSL3dObject
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
@@ -22,11 +21,11 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_10' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train_short}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: 4 # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
-  BATCHSIZE_PER_REPLICA: 1 #Change to 14, if input moco feats is false, use 8
+  FRAME_SAMPLING_INTERVAL: {'train': 4} # 1/4th of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  BATCHSIZE_PER_REPLICA: 10 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist']
   DIST_THRESH: 2.5
@@ -65,16 +64,15 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 20
+  num_epochs: 10
   lr:
     name: "cosine"
-    base_lr: 0.012 #0.1 for linear_probe #0.12
+    base_lr: 0.24 #0.1 for linear_probe #0.12
 
 model:
-  name: "pretrain_pointrcnn_v1"
-  model_dir: "checkpoints/pointrcnn/waymo"
+  model_dir: "checkpoints/pointrcnn"
+  name: "pretrain_pseudo_3" 
   VOX: False
-  linear_probe_dim: [128, 2]
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -125,8 +123,8 @@ model:
             'point_cls_weight': 1.0,
             'point_box_weight': 1.0,
             'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-            'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0], 
-            'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0]
+            'class_wise_cls_weights': [1.0, 1.0, 1.0], 
+            'class_wise_reg_weights': [1.0, 1.0, 1.0]
         }
     
     ROI_HEAD:
@@ -208,8 +206,9 @@ model:
   #           'code_weights': [1.0, 1.0]
   #       }
 
-loss:
-  args:
-    TEMPERATURE: 0.1
-    NUM_NEGATIVES: 65536
-    EMBEDDING_DIM: 128
+NCE_LOSS:
+  LOSS_WEIGHT: 1.0
+  TEMPERATURE: 0.1
+  NUM_NEGATIVES: 65536
+  EMBEDDING_DIM: 128
+  IOU_FILTER: True
