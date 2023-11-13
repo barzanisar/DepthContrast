@@ -51,17 +51,21 @@ class NCELossMoco(nn.Module):
 
         self.K = int(config["NUM_NEGATIVES"])
         self.dim = int(config["EMBEDDING_DIM"]) 
-        if self.cluster:
+        self.iou_filter = config.get("IOU_FILTER", False) and self.cluster
+        if self.iou_filter:
             self.dim += 4 #lwhz
         self.T = float(config["TEMPERATURE"])
 
         self.register_buffer("queue", torch.randn(self.dim, self.K)) # queue of dc (either pointnet or vox) based negative key embeddings
         self.queue[:int(config["EMBEDDING_DIM"]), :] = nn.functional.normalize(self.queue[:int(config["EMBEDDING_DIM"]), :], dim=0)
-        self.queue[int(config["EMBEDDING_DIM"]):, :] = -1 * torch.ones((4,  self.K))
+        
+        if self.iou_filter:
+            self.queue[int(config["EMBEDDING_DIM"]):, :] = -1 * torch.ones((4,  self.K))
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
         
         # cross-entropy loss. Also called InfoNCE
         self.xe_criterion = nn.CrossEntropyLoss()
+        self.loss_weight = config['LOSS_WEIGHT']
 
 
     @classmethod
@@ -154,7 +158,7 @@ class NCELossMoco(nn.Module):
         normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key embeddings
 
         #TODO: class balanced contrastive loss
-        if self.cluster:
+        if self.iou_filter:
             batch_size = output_dict['gt_boxes'].shape[0]
             #dxdydz = torch.cat([output_dict['gt_boxes'][k, output_dict['common_cluster_gtbox_idx'][k], 3:6]  for k in range(batch_size)]) #(N,3)
             #dxdydz = torch.cat([output_dict_moco['gt_boxes'][k, output_dict_moco['common_cluster_gtbox_idx'][k],3:6]  for k in range(batch_size)])
@@ -190,7 +194,7 @@ class NCELossMoco(nn.Module):
         # negative logits: NxK
         l_neg = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()[:feature_dim,:]])
 
-        if self.cluster and self.queue[-1,-1] > 0:
+        if self.iou_filter and self.queue[-1,-1] > 0:
             neg_w =  (1-iou3d) #if high iou, similar sizes -> low weight
 
             # # Another option remove neg examples from denominator if iou3d of positive and neg samples > 0.7
@@ -210,14 +214,17 @@ class NCELossMoco(nn.Module):
         ) # because for each pair out of N pairs, zero'th class (out of K=60000 classes) is the true class
 
         if len(logits.shape) > 2:
-            loss= self.xe_criterion(torch.squeeze(logits), labels) #loss between pointnet query and key embedding
+            loss = self.loss_weight * self.xe_criterion(torch.squeeze(logits), labels) #loss between pointnet query and key embedding
         else:
-            loss = self.xe_criterion(logits, labels) # Nx(1+K) logits, N labels
+            loss = self.loss_weight * self.xe_criterion(logits, labels) # Nx(1+K) logits, N labels
         
 
         if self.cluster:
-            keys = torch.cat([normalized_output2, l,w,h,z], dim=1)
-            self._dequeue_and_enqueue_cluster(keys)
+            if self.iou_filter:
+                keys = torch.cat([normalized_output2, l,w,h,z], dim=1)
+                self._dequeue_and_enqueue_cluster(keys)
+            else:
+                self._dequeue_and_enqueue_cluster(normalized_output2)
         else:
             self._dequeue_and_enqueue_pcd(normalized_output2)
 
