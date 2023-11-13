@@ -40,13 +40,9 @@ def reinit(cfg, args, job_type='train'):
     dir = cfg['WANDB'].get('dir', None)
     
     run_name = cfg['model']['name']
-    if job_type == 'linear_probe':
+    if job_type != 'train':
         ckpt_name = cfg['checkpoint'].split('.')[0]
-        run_name += '-' + ckpt_name
-        if 'SEMANTIC_KITTI' in cfg['dataset']:
-            run_name += '-lpSem'
-        else:
-            run_name += '-lpDense'
+        run_name += '-' + job_type + '-'+ckpt_name
 
     run = wandb.init(name=run_name,
                config=cfg,

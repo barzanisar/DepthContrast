@@ -18,42 +18,58 @@ def mask_boxes_outside_range(gt_boxes, point_cloud_range):
     )
     return keep_mask
 
+def find_pt_wise_gtbox_idx(points, gt_boxes):
+    num_gt_boxes = gt_boxes.shape[0]
+
+    box_pts_map = roiaware_pool3d_utils.points_in_boxes_cpu(
+            points[:, 0:3],
+            gt_boxes[:, 0:7]) #(num_obj, num points)
+        
+    pt_wise_gtbox_idxs=-1 * np.ones(points.shape[0], dtype=np.int32) #(num points)
+
+    for i in range(num_gt_boxes):
+        obj_points_mask = box_pts_map[i]>0
+        pt_wise_gtbox_idxs[obj_points_mask] = i
     
-def mask_boxes_with_few_points(points, gt_boxes):
+    return pt_wise_gtbox_idxs
+
+    
+def mask_boxes_with_few_points(points, gt_boxes, pt_cluster_ids = None):
     # Only do this for training, this can happen after dropping patches
     # return mask for selecting valid boxes
     num_gt_boxes = gt_boxes.shape[0]
     box_keep_mask = np.ones(num_gt_boxes, dtype=bool)
-    for i in range(num_gt_boxes):
-        box_label = gt_boxes[i][-1]
-        pts_this_box_mask = points[:,-1] == box_label
-        num_pts_this_box = pts_this_box_mask.sum()
-        if num_pts_this_box <=5:
-            box_keep_mask[i] = False
+    pt_wise_gtbox_idxs = None
 
-            #Set pt labels to -1 i.e. background if fewer than 5 pts
-            points[pts_this_box_mask,-1] = -1
-    
-    return points, gt_boxes[box_keep_mask] 
+    if pt_cluster_ids is not None:
+        for i in range(num_gt_boxes):
+            box_label = gt_boxes[i][-1]
+            pts_this_box_mask = pt_cluster_ids == box_label
+            num_pts_this_box = pts_this_box_mask.sum()
+            if num_pts_this_box <=5:
+                box_keep_mask[i] = False
 
-
-    # box_pts_map = roiaware_pool3d_utils.points_in_boxes_cpu(
-    #     points[:, 0:3],
-    #     gt_boxes[:, 0:7]) #(num_obj, num points)
-    
-    # num_obj = gt_boxes.shape[0]
-    # box_keep_mask = []
-    # box_idxs_of_pts=-1 * np.ones(points.shape[0], dtype=int)
-
-    # for i in range(num_obj):
-    #     obj_points_mask = box_pts_map[i]>0
+                #Set pt labels to -1 i.e. background if fewer than 5 pts
+                points[pts_this_box_mask,-1] = -1
+    else:
+        box_pts_map = roiaware_pool3d_utils.points_in_boxes_cpu(
+            points[:, 0:3],
+            gt_boxes[:, 0:7]) #(num_obj, num points)
         
-    #     if len(points[obj_points_mask]) <= 5:
-    #         box_keep_mask.append(False)
-    #     else:
-    #         box_idxs_of_pts[obj_points_mask] = i
-    #         box_keep_mask.append(True)
+        pt_wise_gtbox_idxs=-1 * np.ones(points.shape[0], dtype=np.int32) #(num points)
 
+        for i in range(num_gt_boxes):
+            obj_points_mask = box_pts_map[i]>0
+            
+            if len(points[obj_points_mask]) <= 5:
+                box_keep_mask[i] = False
+            else:
+                pt_wise_gtbox_idxs[obj_points_mask] = i
+    
+    return points, gt_boxes[box_keep_mask], pt_wise_gtbox_idxs
+
+
+   
     # return box_keep_mask, box_idxs_of_pts
 
 def shuffle_points(points):

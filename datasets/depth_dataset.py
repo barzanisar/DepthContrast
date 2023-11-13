@@ -54,7 +54,7 @@ class DepthContrastDataset(Dataset):
         self.class_names = cfg["CLASS_NAMES"]
         self.used_num_point_features  = 4
 
-        self.data_augmentor = data_augmentor.DataAugmentor(self.cfg["POINT_TRANSFORMS"]) if self.pretraining else None
+        self.data_augmentor = data_augmentor.DataAugmentor(self.cfg["POINT_TRANSFORMS"])
 
 
         #### Add the voxelizer here
@@ -62,7 +62,7 @@ class DepthContrastDataset(Dataset):
         self.voxel_size = None
         self.depth_downsample_factor = None 
         if cfg["VOX"]:
-            self.voxel_size = [0.1, 0.1, 0.15] #[0.05, 0.05, 0.1]
+            self.voxel_size = [0.1, 0.1, 0.15] #[0.05, 0.05, 0.1] #
 
             self.MAX_POINTS_PER_VOXEL = 5
             self.MAX_NUMBER_OF_VOXELS = 150000 #80000
@@ -117,27 +117,25 @@ class DepthContrastDataset(Dataset):
             data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7])
             #Reappend class_idx
             data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx])
+        
         if not cfg["VOX"]:
             data_dict['points'] = data_processor.sample_points(data_dict['points'], self.cfg["SAMPLE_NUM_POINTS"] )
 
         if self.mode == 'train':
             data_dict['points'] = data_processor.shuffle_points(data_dict['points'])
-        
-        # # for per point fg,bg prediction
-        # if self.mode == 'train':
-        #     # If augmentor removes a patch with gt box, remove its gt box and label its points as -1
-        #     data_dict['points'], data_dict['gt_boxes'] = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
-
+            
+            #Only needed if augmentation removes points
+            # If augmentor removes a patch with gt box, remove its gt box 
+            data_dict['points'], data_dict['gt_boxes'], data_dict['pt_wise_gtbox_idxs'] = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
+        else:
+            data_dict['pt_wise_gtbox_idxs'] = data_processor.find_pt_wise_gtbox_idx(data_dict['points'], data_dict['gt_boxes'])
         if cfg["VOX"]:
-            vox_dict = self.toVox(data_dict["points"]) # xyzil=clusterlabel 
+            vox_dict = self.toVox(data_dict["points"]) # xyzil=seg label 
             data_dict["vox"] = vox_dict
 
 
-
-
-
         return data_dict
-    def prepare_data(self, data_dict):
+    def prepare_data_pretrain(self, data_dict):
         
         PLOT= False
         cfg = self.cfg
@@ -206,9 +204,9 @@ class DepthContrastDataset(Dataset):
         # for per point fg,bg prediction
         if self.mode == 'train':
             # If augmentor removes a patch with gt box, remove its gt box and label its points as -1
-            data_dict['points'], data_dict['gt_boxes'] = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
+            data_dict['points'], data_dict['gt_boxes'], _ = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'], pt_cluster_ids=data_dict['points'][:, -1])
             if self.pretraining:
-                data_dict['points_moco'], data_dict['gt_boxes_moco'] = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'])
+                data_dict['points_moco'], data_dict['gt_boxes_moco'], _ = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'], pt_cluster_ids=data_dict['points_moco'][:, -1])
 
         
         if PLOT:

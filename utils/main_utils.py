@@ -16,6 +16,8 @@ import collections.abc as container_abcs
 from utils.logger import Logger
 import glob
 from pathlib import Path
+from functools import partial
+
 
 from datasets import build_dataset, get_loader
 
@@ -195,11 +197,9 @@ def recursive_copy_to_gpu(value, non_blocking=True, max_depth=3, curr_depth=0):
 
         raise AttributeError("Value must have .cuda attr or be a Seq / Map iterable")
 
-def get_ckpts_to_eval(cfg, logger, eval_list_dir):
+def get_ckpts_to_eval(cfg, logger, pretrain_model_dir, eval_list_dir):
     checkpoints_to_eval = []
-    model_dir = Path(cfg['model']['model_dir']) / cfg['model']['name']
-    pretrained_ckpt_dir = model_dir / 'pretrain'
-    assert os.path.isdir(pretrained_ckpt_dir) 
+    assert os.path.isdir(pretrain_model_dir) 
     assert os.path.isdir(eval_list_dir) 
     
     # evaluated ckpt record
@@ -207,7 +207,7 @@ def get_ckpts_to_eval(cfg, logger, eval_list_dir):
     with open(ckpt_record_file, 'a'):
         pass
     if cfg['load_pretrained_checkpoint'] == 'all':
-        ckpt_list = glob.glob(os.path.join(pretrained_ckpt_dir, 'checkpoint*.pth.tar'))
+        ckpt_list = glob.glob(os.path.join(pretrain_model_dir, 'checkpoint*.pth.tar'))
         ckpt_list.sort(key=os.path.getmtime)
         evaluated_ckpt_list = [x.strip() for x in open(ckpt_record_file, 'r').readlines()]
         if len(evaluated_ckpt_list) == 0:
@@ -224,19 +224,30 @@ def get_ckpts_to_eval(cfg, logger, eval_list_dir):
     logger.add_line(f'{checkpoints_to_eval}')
     return checkpoints_to_eval, ckpt_record_file
 
-def prep_environment(args, cfg, phase='pretrain'):
+def prep_environment(args, cfg, pretraining=True):
     from torch.utils.tensorboard import SummaryWriter
-    
+    DATASET_NAMES = { 'WaymoDataset': 'waymo', 'SemanticKittiDataset': 'semantickitti'}
+    dataset_name = DATASET_NAMES[cfg['dataset']['DATASET_NAMES'][0]]
+    if pretraining:
+        phase_name = f'pretrain_waymo'
+    else:
+        downstream_task = 'segmentation' if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
+        if cfg['model']['linear_probe']:
+            phase_name = f'linearprobe_{downstream_task}_{dataset_name}'
+        else:
+            phase_name = f'finetune_{downstream_task}_{dataset_name}'
+
     # Prepare loggers (must be configured after initialize_distributed_backend())
-    model_dir = '{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], phase)
+    model_dir = '{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], phase_name)
+    pretrain_model_dir = '{}/{}/pretrain_waymo'.format(cfg['model']['model_dir'], cfg['model']['name'])
     
     
     if args.rank == 0:
-        if phase != 'pretrain':
-            assert os.path.isdir(model_dir.split(f'/{phase}')[0])
+        if not pretraining:
+            assert os.path.isdir(model_dir.split(f'/{phase_name}')[0])
         prep_output_folder(model_dir)
 
-    log_fn = '{}/{}_{}.log'.format(model_dir, phase, datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
+    log_fn = '{}/{}.log'.format(model_dir, datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     logger = Logger(quiet=args.quiet, log_fn=log_fn, rank=args.rank)
 
     logger.add_line(str(datetime.datetime.now()))
@@ -266,12 +277,12 @@ def prep_environment(args, cfg, phase='pretrain'):
         os.system('mkdir -p {}'.format(tb_dir))
         tb_writter = SummaryWriter(tb_dir)
 
-    return logger, tb_writter, model_dir
+    return logger, tb_writter, model_dir, pretrain_model_dir, phase_name
 
 
-def build_model(cfg, cluster, dataset, logger=None, linear_probe=False):
+def build_model(cfg, pretraining, dataset, logger=None):
     import models
-    return models.build_model(cfg, cluster, dataset, logger, linear_probe)
+    return models.build_model(cfg, pretraining, dataset, logger)
 
 
 def distribute_model_to_cuda(models, args, find_unused_params=False):
@@ -312,7 +323,7 @@ def distribute_model_to_cuda(models, args, find_unused_params=False):
 def build_dataloader(config, num_workers, pretraining=True, mode='train', logger=None):
     datasets = build_dataset(config, pretraining, mode, logger)
     logger.add_line("\n"+"="*30+f"   {mode} data   "+"="*30)
-    logger.add_line(str(datasets.dataset))
+    # logger.add_line(str(datasets.dataset))
     
     loader = get_loader(
         dataset=datasets,
@@ -322,15 +333,9 @@ def build_dataloader(config, num_workers, pretraining=True, mode='train', logger
     )
     return loader
 
-def build_criterion(cfg, cluster, linear_probe, logger=None):
+def build_criterion(cfg, cluster, logger=None):
     import criterions
-    if linear_probe:
-        if cfg['name'] == 'FocalLoss':
-            criterion = criterions.__dict__['FocalLoss'](cfg['args'])
-        else:
-            criterion = torch.nn.CrossEntropyLoss(ignore_index=cfg['args']['ignore_index'])
-    else:
-        criterion = criterions.__dict__['NCELossMoco'](cfg['args'], cluster)
+    criterion = criterions.__dict__['NCELossMoco'](cfg, cluster)
     
     if logger is not None:
         logger.add_line(str(criterion))
@@ -338,7 +343,7 @@ def build_criterion(cfg, cluster, linear_probe, logger=None):
     return criterion
 
 
-def build_optimizer(params, cfg, logger=None):
+def build_optimizer(params, cfg, total_iters_each_epoch=None, logger=None):
     if cfg['name'] == 'sgd':
         optimizer = torch.optim.SGD(
             params=params,
@@ -361,9 +366,26 @@ def build_optimizer(params, cfg, logger=None):
 
     if cfg['lr']['name'] == 'multistep':
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=cfg['lr']['milestones'], gamma=cfg['lr']['gamma'])
-    else:
+    elif cfg['lr']['name'] == 'cosine':
         ### By default we use a cosine param scheduler
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['num_epochs'], eta_min=cfg['lr']['base_lr']/1000)
+    else:
+        def linear_warmup_with_cosdecay(cur_step, total_steps, warmup_steps=0, min_scale=1e-5):
+            if cur_step < warmup_steps:
+                return (1 - min_scale) * cur_step / warmup_steps + min_scale
+            else:
+                ratio = (cur_step - warmup_steps) / total_steps
+                return (1 - min_scale) * 0.5 * (1 + np.cos(np.pi * ratio)) + min_scale
+
+    
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer, lr_lambda=partial(
+                linear_warmup_with_cosdecay,
+                total_steps=total_iters_each_epoch*cfg['num_epochs'],
+                warmup_steps=total_iters_each_epoch*cfg['warmup_epochs']
+            )
+        )
+        
     return optimizer, scheduler
 
 
@@ -409,8 +431,8 @@ class CheckpointManager(object):
 
     def checkpoint_exists(self, last=False, best=False):
         return os.path.isfile(self.checkpoint_fn(last, best))
-
-    def restore(self, fn=None, restore_last=False, restore_best=False, **kwargs):
+        
+    def restore(self, fn=None, restore_last=False, restore_best=False, skip_model_layers=None, **kwargs):
         checkpoint_fn = f'{self.checkpoint_dir}/{fn}' if fn is not None else self.checkpoint_fn(restore_last, restore_best)
         ckp = torch.load(checkpoint_fn, map_location={'cuda:0': 'cpu'})
         self.logger.add_line(f"Loading chkpoint from: {checkpoint_fn}")
@@ -420,14 +442,60 @@ class CheckpointManager(object):
                 try:
                     kwargs[k].load_state_dict(ckp[k])
                 except:
-                    newparam = {}
-                    for tempk in ckp[k]:
-                        if tempk[:7] == 'module.':
-                            newparam[tempk[7:]] = ckp[k][tempk]
+                    ckpt_state_dict = ckp[k]
+                    new_model_state_dict = kwargs[k].state_dict()
+                    model_init_layers = {param_name: False for param_name in new_model_state_dict}
+                    # new_state_dict = {} # make ckpt state_stict same as model_state_dict
+                    not_found, not_init = [], []
+                    for param_name in model_init_layers:
+                        if skip_model_layers is not None and len(skip_model_layers) > 0:
+                            for sl in skip_model_layers:
+                                if param_name.find(sl) >=0:
+                                    # self.logger.add_line(f"Ignored layer:\t{param_name}")
+                                    not_init.append(param_name)
+                                    break
+                            if len(not_init) and not_init[-1] == param_name:        
+                                continue
+
+                        if "module."+param_name in ckpt_state_dict:
+                            new_model_state_dict[param_name].copy_(ckpt_state_dict["module."+param_name])
+                            model_init_layers[param_name] = True
+                            # self.logger.add_line(f"Init layer:\t{param_name}")
+
+                        elif param_name in ckpt_state_dict:
+                            new_model_state_dict[param_name].copy_(ckpt_state_dict[param_name]) 
+                            model_init_layers[param_name] = True
+                            # self.logger.add_line(f"Init layer:\t{param_name}")
                         else:
-                            newparam[tempk] = ckp[k][tempk]
-                    ### Fix the module issue
-                    kwargs[k].load_state_dict(newparam)
+                            not_found.append(param_name)
+                            # self.logger.add_line(f"Not found:\t{param_name}")
+                    
+                    kwargs[k].load_state_dict(new_model_state_dict)
+                    
+                    # if skip_model_layers is None:
+                    #     # ckpt state_dict is same as model_state_dict so it can be loaded
+                    #     kwargs[k].load_state_dict(state_dict) 
+                    # else:
+                    #     # skip_model_layers have been removed from ckpt state_dict so load each param in ckpt individually 
+                    #     for param_name in new_model_state_dict:
+                    #         if param_name in state_dict:
+                    #             param = state_dict[param_name]
+                    #             if not isinstance(param, torch.Tensor):
+                    #                 param = torch.from_numpy(param)
+                    #             new_model_state_dict[param_name].copy_(param)
+                    #             model_init_layers[param_name] = True
+                    #             self.logger.add_line(f"Init layer:\t{param_name}")
+                    #         else:
+                    #             self.logger.add_line(f"Not found:\t{param_name}")
+
+                    # newparam = {}
+                    # for tempk in ckp[k]:
+                    #     if tempk[:7] == 'module.':
+                    #         newparam[tempk[7:]] = ckp[k][tempk]
+                    #     else:
+                    #         newparam[tempk] = ckp[k][tempk]
+                    # ### Fix the module issue
+                    # kwargs[k].load_state_dict(newparam)
             else:
                 kwargs[k].load_state_dict(ckp[k])
         return start_epoch

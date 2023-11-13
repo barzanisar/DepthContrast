@@ -28,7 +28,8 @@ from pathlib import Path
 
 import numpy as np
 from utils.ioueval import iouEval
-from utils.data_map import LABELS
+from utils.data_map import WAYMO_LABELS
+from models.base_ssl3d_model import parameter_description
 
 
 parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training in 3D')
@@ -79,27 +80,38 @@ def main_worker(args, cfg):
     # Run on every GPU with args.local_rank
     # Setup environment
     args = main_utils.initialize_distributed_backend(args)
-    logger, tb_writter, linear_probe_dir = main_utils.prep_environment(args, cfg, phase='linear_probe')
+    logger, _, downstream_dir, pretrain_model_dir, phase_name = main_utils.prep_environment(args, cfg, pretraining=False)
 
-    pretrained_model_dir = linear_probe_dir.split('/linear_probe')[0] + '/pretrain'
-    checkpoints_to_eval, ckpt_record_file = main_utils.get_ckpts_to_eval(cfg, logger, eval_list_dir=linear_probe_dir)
+    checkpoints_to_eval, ckpt_record_file = main_utils.get_ckpts_to_eval(cfg, logger, 
+                                                                         pretrain_model_dir=pretrain_model_dir, 
+                                                                         eval_list_dir=downstream_dir)
 
     # Define dataloaders once
     train_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='train', logger=logger)  
-    val_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='val', logger=logger)  
+    val_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='val', logger=logger) 
+
+    # Define model
+    model = main_utils.build_model(cfg['model'], pretraining=False, dataset=train_loader.dataset, logger=logger) 
+
+    # configuration
+    linear_probe = cfg['model']['linear_probe']
+    downstream_task = 'segmentation' if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
 
     for ckpt in checkpoints_to_eval:
         logger.add_line('\n'+'='*30 + f'Evaluating ckpt: {ckpt}' +'='*30)
         cfg['checkpoint'] = ckpt #TODO
         ckpt_name = ckpt.split('.')[0]
-        _, run = wandb_utils.reinit(cfg, args, job_type='linear_probe')
+        _, run = wandb_utils.reinit(cfg, args, job_type=phase_name) #TODO
 
-        linear_probe_ckpt_dir = Path(linear_probe_dir) / ckpt_name
-        linear_probe_ckpt_dir.mkdir(parents=True, exist_ok=True)
+        downstream_ckpt_dir = Path(downstream_dir) / ckpt_name
+        downstream_ckpt_dir.mkdir(parents=True, exist_ok=True)
         eval_dict = eval_one_ckpt(args, cfg, logger, 
-                                  linear_probe_dir = str(linear_probe_ckpt_dir), 
-                                  pretrained_model_dir=pretrained_model_dir, 
-                                  train_loader=train_loader, val_loader=val_loader)
+                                  downstream_dir = str(downstream_ckpt_dir), 
+                                  pretrain_model_dir=pretrain_model_dir, 
+                                  train_loader=train_loader, val_loader=val_loader,
+                                  model=model,
+                                  linear_probe=linear_probe,
+                                  downstream_task=downstream_task)
         if eval_dict is not None:
 
             highest_metric = -1
@@ -115,31 +127,25 @@ def main_worker(args, cfg):
     if args.multiprocessing_distributed:
         dist.destroy_process_group()
 
-def eval_one_ckpt(args, cfg, logger, linear_probe_dir, pretrained_model_dir, train_loader, val_loader, tb_writter=None, linear_probe_dataset=None):
-    ckp_manager_pretrained_model = main_utils.CheckpointManager(pretrained_model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
-    ckp_manager_linear = main_utils.CheckpointManager(linear_probe_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
-
-    # Define model
-    model = main_utils.build_model(cfg['model'], cfg['cluster'], logger=logger, linear_probe=True)
+def eval_one_ckpt(args, cfg, logger, 
+                  downstream_dir, pretrain_model_dir, 
+                  train_loader, val_loader, model,
+                  linear_probe, downstream_task,
+                  tb_writter=None):
+    ckp_manager_pretrained_model = main_utils.CheckpointManager(pretrain_model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
+    ckp_manager_linear = main_utils.CheckpointManager(downstream_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
 
     # Load model state dict i.e. load checkpoint
-    if cfg.get('checkpoint', None) is not None:
-        base_model_epoch = ckp_manager_pretrained_model.restore(fn=cfg['checkpoint'], model=model)
-    else:
-        base_model_epoch = ckp_manager_pretrained_model.restore(restore_last=True, model=model) #TODO: when will this be true?
+    base_model_epoch = ckp_manager_pretrained_model.restore(fn=cfg['checkpoint'], skip_model_layers=['global_step', 'num_batches_tracked'], model=model)
         
+    logger.add_line(f"Downstream Epoch {base_model_epoch-1}")
 
-    logger.add_line(f"Linear Probing Epoch {base_model_epoch-1}")
-    # Delete moco encoder
-    del model.trunk[1]
 
-    # Freeze training for feature layers TODO
-    for param in model.parameters():
-        param.requires_grad = False
+    if linear_probe:
+        # Freeze Backbone
+        for param in model.trunk[0].parameters():
+            param.requires_grad = False
 
-    # linear classifier TODO
-    if 'SEGMENTATION_LOSS' in cfg:
-        model.trunk[0].head = MLP(cfg["model"]["linear_probe_dim"], use_dropout=len(cfg["model"]["linear_probe_dim"])>2)
 
     if args.multiprocessing_distributed:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -148,25 +154,35 @@ def eval_one_ckpt(args, cfg, logger, linear_probe_dir, pretrained_model_dir, tra
     model, args = main_utils.distribute_model_to_cuda(model, args)
 
     # Define segmentation criterion TODO
-    train_criterion = None
-    if 'SEGMENTATION_LOSS' in cfg:
-        train_criterion =  main_utils.build_criterion(cfg['loss'], cfg['cluster'], linear_probe=True, logger=logger) 
-        train_criterion = train_criterion.cuda()
+    # train_criterion = None
+    # if downstream_task == 'segmentation':
+    #     train_criterion =  main_utils.build_criterion(cfg['loss'], cfg['cluster'], logger=logger) 
+    #     train_criterion = train_criterion.cuda()
     
-
-    if args.multiprocessing_distributed:     
-        # Define optimizer
-        optimizer, scheduler = main_utils.build_optimizer(
-            params=model.module.trunk[0].head.parameters(), #TODO: check this
-            cfg=cfg['optimizer'],
-            logger=logger)
+    if not linear_probe:
+        params_to_optimize = [model.parameters()]
     else:
-        # Define optimizer
-        optimizer, scheduler = main_utils.build_optimizer(
-            params=model.trunk[0].head.parameters(),
-            cfg=cfg['optimizer'],
-            logger=logger)
+        params_to_optimize = [param for key, param in model.named_parameters() if param.requires_grad]
+        if args.multiprocessing_distributed:
+            model.module.trunk[0].eval()
+        else:
+            model.trunk[0].eval()     
 
+    # logger.add_line(parameter_description(model))
+
+    optimizer, scheduler = main_utils.build_optimizer(
+            params=params_to_optimize,
+            cfg=cfg['optimizer'],
+            total_iters_each_epoch=len(train_loader),
+            logger=logger)
+        
+
+    if 'SEGMENTATION_HEAD' in cfg['model']:
+        num_classes = cfg['model']['SEGMENTATION_HEAD']['CLS_FC'][-1]
+    else:
+        num_classes = 3
+
+    cfg['num_classes'] = num_classes
     
     start_epoch, end_epoch = 0, cfg['optimizer']['num_epochs']
 
@@ -186,7 +202,7 @@ def eval_one_ckpt(args, cfg, logger, linear_probe_dir, pretrained_model_dir, tra
     val_accuracies = []
     val_mIoUs = []
     epochs = []
-    evaluator = iouEval(n_classes=cfg['loss']['args']['num_classes'], ignore=cfg['loss']['args']['ignore_index'])
+    evaluator = iouEval(n_classes=num_classes, ignore=0)
     for epoch in range(start_epoch, end_epoch):
         if args.multiprocessing_distributed:
             train_loader.sampler.set_epoch(epoch)
@@ -194,16 +210,14 @@ def eval_one_ckpt(args, cfg, logger, linear_probe_dir, pretrained_model_dir, tra
         # Train for one epoch
         logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
         logger.add_line('LR: {}'.format(scheduler.get_lr()))
-        lr = scheduler.get_last_lr()
-        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr, evaluator)
-        scheduler.step(epoch)
-
+        run_phase('train', train_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
+        
         # Validate one epoch
-        accuracy, m_iou= run_phase('val', val_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr, evaluator)
+        accuracy, m_iou= run_phase('val', val_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
 
         #Save linear probe ckpt
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
-            ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
+            ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer)
             logger.add_line(f'Saved linear_probe checkpoint {ckp_manager_linear.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
         
         val_accuracies.append(accuracy)
@@ -228,17 +242,19 @@ def eval_one_ckpt(args, cfg, logger, linear_probe_dir, pretrained_model_dir, tra
     else:
         return None
     
-def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter, lr, evaluator=None):
+def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator=None):
     from utils import metrics_utils
     logger.add_line('\n{}: Epoch {}'.format(phase, epoch))
-    batch_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Process Time', ':6.3f', window_size=100)
-    data_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Load Time', ':6.3f', window_size=100)
-    loss_meter = metrics_utils.AverageMeter(f'{phase}-Total Loss', ':.3e') # total loss
+    batch_time = metrics_utils.AverageMeter(f'Avg Batch Process Time', ':6.3f', window_size=100)
+    data_time = metrics_utils.AverageMeter(f'Avg Batch Load Time', ':6.3f', window_size=100)
+    loss_meter = metrics_utils.AverageMeter(f'Total Loss', ':.3e') # total loss
     det_cls_loss_meter = metrics_utils.AverageMeter(f'det_cls_loss', ':.3e')
     det_reg_loss_meter = metrics_utils.AverageMeter(f'det_reg_loss', ':.3e')
     det_cls_rcnn_loss_meter = metrics_utils.AverageMeter(f'det_cls_rcnn_loss', ':.3e')
     det_reg_rcnn_loss_meter = metrics_utils.AverageMeter(f'det_reg_rcnn_loss', ':.3e')
-    seg_loss_meter = metrics_utils.AverageMeter(f'seg_loss', ':.3e')
+    seg_celoss_meter = metrics_utils.AverageMeter(f'seg_celoss', ':.3e')
+    seg_lovloss_meter = metrics_utils.AverageMeter(f'seg_lovloss', ':.3e')
+
    
     list_of_meters = [batch_time, data_time, loss_meter]
     
@@ -247,8 +263,8 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         if 'ROI_HEAD' in cfg.model.MODEL_DET_HEAD:
             list_of_meters += [det_cls_rcnn_loss_meter, det_reg_rcnn_loss_meter]
     
-    if 'SEGMENTATION_LOSS' in cfg:
-        list_of_meters += [seg_loss_meter]
+    if 'SEGMENTATION_HEAD' in cfg['model']:
+        list_of_meters += [seg_celoss_meter, seg_lovloss_meter]
 
 
     list_of_meters_to_display = [batch_time.name, data_time.name, loss_meter.name]
@@ -259,7 +275,10 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
     all_y_gt=[]
     all_preds=[]
-    num_classes = cfg['loss']['args']['num_classes']
+    if 'SEGMENTATION_HEAD' in cfg['model']:
+        class_names = WAYMO_LABELS
+    else:
+        class_names = cfg['dataset']['CLASS_NAMES']
 
     # switch to train mode
     model.train(phase == 'train')
@@ -280,30 +299,21 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         #loss = criterion(output_dict['output'], output_dict['output_moco'])
         # Segmentation loss
         loss = 0
-        if 'SEGMENTATION_LOSS' in cfg:
-            if num_classes == 2:
-                # For background/foreground classes, undersample background class 
-                output, y_gt = main_utils.undersample_bk_class(output_dict['output'], sample['labels'])
-            else:
-                output = output_dict['output'].view(-1, num_classes) #num pts, num classes
-                y_gt = sample['labels'].view(-1)
-
-
-            # Load y_gt to gpu:
-            y_gt = main_utils.recursive_copy_to_gpu(y_gt)
-            loss = criterion(output, y_gt)
-
+        if 'SEGMENTATION_HEAD' in cfg['model']:
+            loss += output_dict['loss_seg']
+            seg_celoss_meter.update(output_dict['loss_seg_CELoss'])
+            seg_lovloss_meter.update(output_dict['loss_seg_LovLoss'])
 
         # detection loss
         if 'MODEL_DET_HEAD' in cfg['model']:
             loss += output_dict['loss_det_head']
-            det_cls_loss_meter.update(output_dict['loss_det_cls'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
-            det_reg_loss_meter.update(output_dict['loss_det_reg'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+            det_cls_loss_meter.update(output_dict['loss_det_cls'])
+            det_reg_loss_meter.update(output_dict['loss_det_reg'])
             if 'ROI_HEAD' in cfg.model:
-                det_cls_rcnn_loss_meter.update(output_dict['loss_det_cls_rcnn'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
-                det_reg_rcnn_loss_meter.update(output_dict['loss_det_reg_rcnn'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+                det_cls_rcnn_loss_meter.update(output_dict['loss_det_cls_rcnn'])
+                det_reg_rcnn_loss_meter.update(output_dict['loss_det_reg_rcnn'])
 
-        loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+        loss_meter.update(loss.item())
        
         # compute gradient and do SGD step during training
         if phase == 'train':
@@ -311,16 +321,16 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             loss.backward()
             clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
+            scheduler.step() # fordownstream: reduce LR step every iterations
 
 
         if evaluator is not None:
             # convert output probabilities to predicted class 
-            pred = output.max(dim=1)[1] #pred_y 
 
             #Update progress
-            all_y_gt.append(y_gt.view(-1))
-            all_preds.append(pred.view(-1))
-            evaluator.addBatch(pred.long().cpu().numpy(), y_gt.long().cpu().numpy())
+            all_y_gt.append(output_dict['output']['seg_labels'].view(-1))
+            all_preds.append(output_dict['output']['pred_labels'].view(-1))
+            evaluator.addBatch(output_dict['output']['pred_labels'].long().cpu().numpy(), output_dict['output']['seg_labels'].long().cpu().numpy())
             evaluator.addLoss(loss.item())
 
         # measure elapsed time
@@ -341,9 +351,10 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         for meter in progress.meters:
             tb_writter.add_scalar('{}-epoch/{}'.format(phase, meter.name), meter.avg, epoch)
     
-    eval_metrics_dict = {'epoch': epoch, 'lr': lr}
+    eval_metrics_dict = {f'{phase}/epoch': epoch, f'{phase}/lr': scheduler.get_last_lr()[0]
+}
     for meter in progress.meters:
-        eval_metrics_dict[meter.name +'-epoch'] = meter.avg
+        eval_metrics_dict[phase + '/' + meter.name +'-epoch'] = meter.avg
 
     # Evaluator:
     accuracy=0 
@@ -355,12 +366,12 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         accuracy = accuracy.item()
         eval_metrics_dict[f'{phase}/acc'] = accuracy
         eval_metrics_dict[f'{phase}/mIoU'] = mean_iou
-        # eval_metrics_dict[f'{phase}/loss'] = evaluator.getloss()
+        eval_metrics_dict[f'{phase}/loss'] = evaluator.getloss()
 
-        if num_classes > 2:
+        if cfg['num_classes'] > 2:
             # per class iou
             for class_num in range(class_iou.shape[0]):
-                eval_metrics_dict[f'{phase}/per_class_iou/{LABELS[class_num]}'] = class_iou[class_num].item()
+                eval_metrics_dict[f'{phase}/per_class_iou/{class_names[class_num]}'] = class_iou[class_num].item()
         else:
             eval_metrics_dict[f'{phase}/per_class_iou/background'] = class_iou[0].item()
             eval_metrics_dict[f'{phase}/per_class_iou/foreground'] = class_iou[1].item()

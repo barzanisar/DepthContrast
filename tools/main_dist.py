@@ -74,7 +74,7 @@ def main_worker(args, cfg):
     # Run on every GPU with args.local_rank
     # Setup environment
     args = main_utils.initialize_distributed_backend(args) ### Use other method instead
-    logger, tb_writter, model_dir = main_utils.prep_environment(args, cfg)
+    logger, tb_writter, model_dir, _, _ = main_utils.prep_environment(args, cfg)
     wandb_utils.init(cfg, args, job_type='pretrain')
     # print("=" * 30 + "   DDP   " + "=" * 30)
     # print(f"world_size: {args.world_size}")
@@ -91,7 +91,7 @@ def main_worker(args, cfg):
     train_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=True, mode='train', logger=logger)  
 
     # Define model
-    model = main_utils.build_model(cfg['model'], CLUSTER, train_loader.dataset, logger)
+    model = main_utils.build_model(cfg['model'], pretraining=True, dataset=train_loader.dataset, logger=logger)
     if args.multiprocessing_distributed:
         logger.add_line('='*30 + 'Sync Batch Normalization' + '='*30)
         
@@ -105,7 +105,7 @@ def main_worker(args, cfg):
 
 
     # Define criterion    
-    train_criterion = main_utils.build_criterion(cfg['loss'], CLUSTER, cfg['linear_probe'],logger=logger)
+    train_criterion = main_utils.build_criterion(cfg['NCE_LOSS'], CLUSTER, logger=logger)
     train_criterion = train_criterion.cuda()
             
     # Define optimizer
@@ -142,7 +142,7 @@ def main_worker(args, cfg):
         logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
         logger.add_line('LR: {}'.format(scheduler.get_last_lr()))
 
-        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_last_lr())
+        run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_last_lr()[0])
         scheduler.step(epoch)
 
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):

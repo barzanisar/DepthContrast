@@ -1,3 +1,5 @@
+
+################### Semantic Kitti Labels #####################
 learning_map = {
   0 : 0,     # "unlabeled"
   1 : 0,     # "outlier" mapped to "unlabeled" --------------------------mapped
@@ -111,7 +113,7 @@ content_indoor = {
   12: 0.12212566337045223,
 }
 
-LABELS = {
+SEMANTIC_KITTI_LABELS = {
   0: "unlabeled",
   1: "car",
   2: "bicycle",
@@ -156,3 +158,11 @@ color_map = {
   18: [150, 240, 255],
   19: [0, 0, 255],
 }
+
+#################### Semantic Kitti Labels ###############
+
+#################### Waymo Labels ########################
+
+WAYMO_LABELS = ['UNDEFINED', 'CAR', 'TRUCK', 'BUS', 'OTHER_VEHICLE', 'MOTORCYCLIST', 'BICYCLIST', 'PEDESTRIAN', 'SIGN',
+                  'TRAFFIC_LIGHT', 'POLE', 'CONSTRUCTION_CONE', 'BICYCLE', 'MOTORCYCLE', 'BUILDING', 'VEGETATION',
+                  'TREE_TRUNK', 'CURB', 'ROAD', 'LANE_MARKER', 'OTHER_GROUND', 'WALKABLE', 'SIDEWALK']

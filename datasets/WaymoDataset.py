@@ -13,6 +13,10 @@ def drop_info_with_name(info, name):
         ret_info[key] = info[key][keep_indices]
     return ret_info
 
+def keep_arrays_by_name(gt_names, used_classes):
+    inds = [i for i, x in enumerate(gt_names) if x in used_classes]
+    inds = np.array(inds, dtype=np.int64)
+    return inds
 
 class WaymoDataset(DepthContrastDataset):
     def __init__(self, cfg, pretraining=True, mode='train', logger=None):
@@ -20,11 +24,11 @@ class WaymoDataset(DepthContrastDataset):
         self.data_root_path =  self.root_path / cfg["DATA_PATH"] #root_path: DepthContrast, DATA_PATH: 'data/waymo'
         self.lidar_data_path = self.data_root_path / cfg.PROCESSED_DATA_TAG 
         self.cluster_root_path = self.data_root_path / f'{cfg.PROCESSED_DATA_TAG}_clustered'
-        self.seglabels_root_path = self.data_root_path/ f'{cfg.PROCESSED_DATA_TAG}_seglabels'
+        self.seglabels_root_path = self.data_root_path/ f'{cfg.PROCESSED_DATA_TAG}_labels'
         self.split = cfg.DATA_SPLIT[self.mode]
 
         self.mean_box_sizes = cfg.get('MEAN_SIZES', None)
-        self.frame_sampling_interval= cfg["FRAME_SAMPLING_INTERVAL"]
+        self.frame_sampling_interval= cfg["FRAME_SAMPLING_INTERVAL"][self.mode]
 
         self.infos = []
         # read tfrecords in sample_seq_list and then find its pkl in waymo_processed_data_10 and include the pkl infos in waymo infos
@@ -118,7 +122,7 @@ class WaymoDataset(DepthContrastDataset):
 
     def get_seglabels(self, sequence_name, sample_idx):
         label_file = self.seglabels_root_path / sequence_name / ('%04d.npy' % sample_idx)
-        labels = np.fromfile(label_file, dtype=np.float16)
+        labels = np.load(label_file)
         return labels
 
     
@@ -137,30 +141,38 @@ class WaymoDataset(DepthContrastDataset):
         points = self.get_lidar(sequence_name, sample_idx)
         pt_seg_labels = self.get_seglabels(sequence_name, sample_idx)
         assert points.shape[0] == pt_seg_labels.shape[0], f'Missing labels for {frame_id}!!!!!!!!'
-        points = np.hstack([points, pt_seg_labels.reshape(-1, 1)]) #xyzi
+        points = np.hstack([points, pt_seg_labels.reshape(-1, 1)]) #xyzi, seglabel
 
 
         annos = info['annos']
-        annos = drop_info_with_name(annos, name='unknown') #filter unknown boxes
-        mask = (annos['num_points_in_gt'] > 0)  # filter empty boxes
+        #filter unknown boxes
+        annos = drop_info_with_name(annos, name='unknown')
+        # filter empty boxes
+        mask = (annos['num_points_in_gt'] > 0) 
         annos['name'] = annos['name'][mask]
         annos['gt_boxes_lidar'] = annos['gt_boxes_lidar'][mask]
         annos['num_points_in_gt'] = annos['num_points_in_gt'][mask]
+
+        #filer gt boxes not in self.class_names
+        selected = keep_arrays_by_name(annos['name'], self.class_names)
+        annos['name'] = annos['name'][selected]
+        annos['gt_boxes_lidar'] = annos['gt_boxes_lidar'][selected]
+        annos['num_points_in_gt'] = annos['num_points_in_gt'][selected]
 
 
         gt_classes = np.array([self.class_names.index(n) + 1 for n in annos['name']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
         
         #append class id as 8th entry in gt boxes 
-        gt_boxes = np.hstack([info['approx_boxes_closeness_to_edge'][:,:7], gt_classes.reshape(-1, 1).astype(np.float32)])
+        gt_boxes = np.hstack([annos['gt_boxes_lidar'][:,:7], gt_classes.reshape(-1, 1).astype(np.float32)])
         
 
         input_dict = {
-            'points': points,
-            'gt_boxes':  gt_boxes,
+            'points': points, #xyzi, seglabel
+            'gt_boxes':  gt_boxes, #gtbox, class_indx
             'frame_id': frame_id
             }
 
-        data_dict = self.prepare_data(data_dict=input_dict)
+        data_dict = self.prepare_data_downstream(data_dict=input_dict)
 
         return data_dict
 
@@ -202,7 +214,7 @@ class WaymoDataset(DepthContrastDataset):
         #     frame_id = input_dict['frame_id']
         #     assert cluster_id in input_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
 
-        data_dict = self.prepare_data(data_dict=input_dict)
+        data_dict = self.prepare_data_pretrain(data_dict=input_dict)
 
         return data_dict
 

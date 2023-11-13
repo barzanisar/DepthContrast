@@ -23,6 +23,13 @@ import numpy as np
 
 from utils import main_utils
 from third_party.OpenPCDet.pcdet.models.pretext_heads.gather_utils import *
+from third_party.OpenPCDet.pcdet.models.detectors import build_detector
+from models.SegmentationHead import SegmentationClassifierHead 
+def build_network(model_cfg, num_class, dataset):
+    model = build_detector(
+        model_cfg=model_cfg, num_class=num_class, dataset=dataset
+    )
+    return model
 
 def parameter_description(model):
     desc = ''
@@ -34,29 +41,67 @@ def parameter_description(model):
 
 
 class BaseSSLMultiInputOutputModel(nn.Module):
-    def __init__(self, model_config, cluster, dataset, logger, linear_probe=False):
+    def __init__(self, model_config, pretraining, dataset, logger):
         """
         Class to implement a self-supervised model.
         The model is split into `trunk' that computes features.
         """
         self.config = model_config
-        self.linear_probe = linear_probe
         self.logger = logger
-        self.cluster = cluster
+        self.pretraining = pretraining
         super().__init__()
         self.trunk = self._get_trunk(dataset)
         self.det_head = self._get_head(dataset, key="MODEL_DET_HEAD")
         self.aux_head = self._get_head(dataset, key="MODEL_AUX_HEAD")
+        if 'SEGMENTATION_HEAD' in model_config:
+            self.segmentation_head = SegmentationClassifierHead(model_config['SEGMENTATION_HEAD'], dataset.point_cloud_range, dataset.voxel_size)
         self.m = 0.999 ### Can be tuned momentum parameter for momentum update
-        
-    def multi_input_with_head_mapping_forward(self, batch_dict):
+        # self.weight_initialization()
+
+    # def weight_initialization(self):
+    #     for m in self.modules():
+    #         if isinstance(m, nn.BatchNorm1d):
+    #             nn.init.constant_(m.weight, 1)
+    #             nn.init.constant_(m.bias, 0)
+    #         elif isinstance(m, nn.SyncBatchNorm):
+    #             nn.init.constant_(m.weight, 1)
+    #             nn.init.constant_(m.bias, 0)
+
+    def downstream_forward(self, batch_dict): 
         output_dict = {}
 
-        outputs, _, _ = self._single_input_forward(batch_dict['input'], 0)
+        outputs, _, _, _ = self._single_input_forward(batch_dict['input'])
+        # outputs['batch_dict'].pop('points')
+        output_dict['output'] =  outputs['batch_dict']
+        
+        if 'MODEL_DET_HEAD' in self.config:
+            outputs_head, tb_dict, _, _ = self.det_head(output_dict['output'])
+
+            output_dict['loss_det_head']= outputs_head['loss']
+            if self.config['VOX']:
+                output_dict['loss_det_cls'] = tb_dict.get('hm_loss_head_0', 0)
+                output_dict['loss_det_reg'] = tb_dict.get('loc_loss_head_0', 0)
+            else:
+                output_dict['loss_det_cls'] = tb_dict.get('point_loss_cls', 0) #TODO
+                output_dict['loss_det_reg'] = tb_dict.get('point_loss_box', 0)
+                output_dict['loss_det_cls_rcnn'] = tb_dict.get('rcnn_loss_cls', 0) #TODO
+                output_dict['loss_det_reg_rcnn'] = tb_dict.get('rcnn_loss_reg', 0)
+        
+        if 'SEGMENTATION_HEAD' in self.config:
+            output_dict['loss_seg'], loss_seg_dict, output_dict['output']['pred_labels'], output_dict['output']['seg_labels'] = self.segmentation_head(output_dict['output'])
+            for type in self.segmentation_head.loss_types:
+                output_dict[f'loss_seg_{type}'] = loss_seg_dict[type].item()
+
+        return output_dict
+
+    def pretrain_forward(self, batch_dict):
+        output_dict = {}
+
+        outputs, _, _ , _= self._single_input_forward(batch_dict['input'])
         outputs['batch_dict'].pop('points')
         output_dict['output'] =  outputs['batch_dict']
 
-        outputs_moco, _, _ = self._single_input_forward_MOCO(batch_dict['input_moco'], 1)
+        outputs_moco, _, _, _ = self._single_input_forward_MOCO(batch_dict['input_moco'])
         outputs_moco['batch_dict'].pop('points')
         output_dict['output_moco'] =  outputs_moco['batch_dict']
         
@@ -68,9 +113,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         
         if 'MODEL_DET_HEAD' in self.config:
             if self.config['MODEL_DET_HEAD'].get('INPUT_MOCO_FEATS', False):
-                outputs_head, tb_dict, _ = self.det_head(new_batch_dict) 
+                outputs_head, tb_dict, _, _ = self.det_head(new_batch_dict) 
             else:
-                outputs_head, tb_dict, _ = self.det_head(output_dict['output'])
+                outputs_head, tb_dict, _, _ = self.det_head(output_dict['output'])
             
             output_dict['loss_det_head']= outputs_head['loss']
             if self.config['VOX']:
@@ -84,7 +129,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
 
         if 'MODEL_AUX_HEAD' in self.config:
-            outputs_head, _, _ = self.aux_head(new_batch_dict)
+            outputs_head, _, _, _ = self.aux_head(new_batch_dict)
             output_dict['loss_aux_head']= outputs_head['batch_dict']['seg_reg_loss']
             output_dict['loss_aux_head_rot']= outputs_head['batch_dict']['seg_reg_loss_rot']
             output_dict['loss_aux_head_scale']= outputs_head['batch_dict']['seg_reg_loss_scale']
@@ -151,18 +196,18 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         new_batch_dict['common_cluster_gtbox_idx_moco'] = output_moco_dict['common_cluster_gtbox_idx']
         
         return new_batch_dict
-    def _single_input_forward(self, batch_dict, target):
+    def _single_input_forward(self, batch_dict):
         
         main_utils.load_data_to_gpu(batch_dict)
-        output = self.trunk[target](batch_dict)
+        output = self.trunk[0](batch_dict)
         return output
 
     @torch.no_grad()
-    def _momentum_update_key(self, target=1):
+    def _momentum_update_key(self):
         """
         Momentum update of the key encoder
         """
-        for param_q, param_k in zip(self.trunk[target-1].parameters(), self.trunk[target].parameters()):
+        for param_q, param_k in zip(self.trunk[0].parameters(), self.trunk[1].parameters()):
             param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
     
     @torch.no_grad()
@@ -331,10 +376,10 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         return batch_dict
 
     
-    def _single_input_forward_MOCO(self, batch_dict, target):
+    def _single_input_forward_MOCO(self, batch_dict):
 
         with torch.no_grad():
-            self._momentum_update_key(target)  # update the key encoder
+            self._momentum_update_key()  # update the key encoder
             #shuffle for making use of BN
             main_utils.load_data_to_gpu(batch_dict)
 
@@ -350,36 +395,30 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             #main_utils.load_data_to_gpu(batch_dict)
             #print("After loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
 
-            output = self.trunk[target](batch_dict)
+            output = self.trunk[1](batch_dict)
             
             batch_dict.pop('idx_unshuffle', None)
             return output
 
     def forward(self, batch_dict):
-        return self.multi_input_with_head_mapping_forward(batch_dict)
+        if self.pretraining:
+            return self.pretrain_forward(batch_dict)
+        else:
+            return self.downstream_forward(batch_dict)
 
     def _get_head(self, dataset, key):
-        import models.trunks as models
         if key in self.config:
-            return models.build_network(model_cfg=self.config[key], num_class=len(dataset.class_names), dataset=dataset)
+            return build_network(model_cfg=self.config[key], num_class=len(dataset.class_names), dataset=dataset)
         else:
             return None
     
 
     def _get_trunk(self, dataset):
-        import models.trunks as models
         trunks = torch.nn.ModuleList()
-        # if 'arch_point' in self.config:
-        #     assert self.config['arch_point'] in models.TRUNKS, 'Unknown model architecture'
-        #     trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], cluster=self.cluster, linear_probe = self.linear_probe))
-        #     trunks.append(models.TRUNKS[self.config['arch_point']](**self.config['args_point'], cluster=self.cluster, linear_probe = self.linear_probe))
-        # if 'arch_vox' in self.config:
-        #     assert self.config['arch_vox'] in models.TRUNKS, 'Unknown model architecture'
-        #     trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))
-        #     trunks.append(models.TRUNKS[self.config['arch_vox']](**self.config['args_vox']))
 
-        trunks.append(models.build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
-        trunks.append(models.build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
+        trunks.append(build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
+        if self.pretraining:
+            trunks.append(build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
 
         # named_params_q = trunks[0].named_parameters()
         # named_params_k = trunks[1].named_parameters()
@@ -390,9 +429,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         #         named_params_k[name].copy_(param)
         #         named_params_k[name].requires_grad = False
         
-        for param_q, param_k in zip(trunks[0].parameters(), trunks[1].parameters()):
-            param_k.data.copy_(param_q.data)  # initialize
-            param_k.requires_grad = False  # not update by gradient
+            for param_q, param_k in zip(trunks[0].parameters(), trunks[1].parameters()):
+                param_k.data.copy_(param_q.data)  # initialize
+                param_k.requires_grad = False  # not update by gradient
 
 
         # for numh in range(len(trunks)//2):
