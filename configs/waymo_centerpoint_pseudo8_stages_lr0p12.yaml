@@ -76,7 +76,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/centerpoint"
-  name: "centerpoint_pretrain_pseudo_8_lr0p12" 
+  name: "centerpoint_pretrain_pseudo_8_stages_lr0p12" 
   VOX: True
 
   MODEL_BASE:
@@ -108,46 +108,46 @@ model:
       use_mlp: True
       mlp_dim: [768, 128, 128]
 
-  MODEL_DET_HEAD:
-    NAME: CenterPoint
+  # MODEL_DET_HEAD:
+  #   NAME: CenterPoint
 
-    INPUT_MOCO_FEATS: False
+  #   INPUT_MOCO_FEATS: False
 
-    DENSE_HEAD:
-      NAME: CenterHead
-      CLASS_AGNOSTIC: False # does not work
-      INPUT_FEATURES: 512
+  #   DENSE_HEAD:
+  #     NAME: CenterHead
+  #     CLASS_AGNOSTIC: False # does not work
+  #     INPUT_FEATURES: 512
 
-      CLASS_NAMES_EACH_HEAD: [
-          ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig']
-      ]
+  #     CLASS_NAMES_EACH_HEAD: [
+  #         ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig']
+  #     ]
 
-      SHARED_CONV_CHANNEL: 64
-      USE_BIAS_BEFORE_NORM: True
-      NUM_HM_CONV: 2
-      SEPARATE_HEAD_CFG:
-          HEAD_ORDER: ['center', 'center_z', 'dim', 'rot']
-          HEAD_DICT: {
-              'center': {'out_channels': 2, 'num_conv': 2},
-              'center_z': {'out_channels': 1, 'num_conv': 2},
-              'dim': {'out_channels': 3, 'num_conv': 2},
-              'rot': {'out_channels': 2, 'num_conv': 2},
-          }
+  #     SHARED_CONV_CHANNEL: 64
+  #     USE_BIAS_BEFORE_NORM: True
+  #     NUM_HM_CONV: 2
+  #     SEPARATE_HEAD_CFG:
+  #         HEAD_ORDER: ['center', 'center_z', 'dim', 'rot']
+  #         HEAD_DICT: {
+  #             'center': {'out_channels': 2, 'num_conv': 2},
+  #             'center_z': {'out_channels': 1, 'num_conv': 2},
+  #             'dim': {'out_channels': 3, 'num_conv': 2},
+  #             'rot': {'out_channels': 2, 'num_conv': 2},
+  #         }
 
-      TARGET_ASSIGNER_CONFIG:
-          FEATURE_MAP_STRIDE: 8
-          NUM_MAX_OBJS: 500
-          GAUSSIAN_OVERLAP: 0.1
-          MIN_RADIUS: 2
+  #     TARGET_ASSIGNER_CONFIG:
+  #         FEATURE_MAP_STRIDE: 8
+  #         NUM_MAX_OBJS: 500
+  #         GAUSSIAN_OVERLAP: 0.1
+  #         MIN_RADIUS: 2
 
-      LOSS_CONFIG:
-          LOSS_WEIGHTS: {
-              'cls_weight': 1.0,
-              'loc_weight': 2.0,
-              'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-              'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5],
-              'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
-          }
+  #     LOSS_CONFIG:
+  #         LOSS_WEIGHTS: {
+  #             'cls_weight': 1.0,
+  #             'loc_weight': 2.0,
+  #             'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  #             'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5],
+  #             'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
+  #         }
     
   # MODEL_AUX_HEAD:
   #   NAME: CenterPoint

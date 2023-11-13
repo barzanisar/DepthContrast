@@ -76,7 +76,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/centerpoint"
-  name: "centerpoint_pretrain_pseudo_8_lr0p12" 
+  name: "centerpoint_pretrain_pseudo_8_lr0p12_1node" 
   VOX: True
 
   MODEL_BASE:

@@ -72,11 +72,11 @@ optimizer:
   num_epochs: 10
   lr:
     name: "cosine"
-    base_lr: 0.12 #0.1 for linear_probe #0.12
+    base_lr: 0.24 #0.1 for linear_probe #0.12
 
 model:
   model_dir: "checkpoints/centerpoint"
-  name: "centerpoint_pretrain_pseudo_8_lr0p12" 
+  name: "centerpoint_pretrain_pseudo_8_lr0p24_1node" 
   VOX: True
 
   MODEL_BASE:

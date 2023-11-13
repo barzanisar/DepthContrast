@@ -24,7 +24,7 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 4} # 1/4th of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/4th of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 10 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
@@ -71,11 +71,11 @@ optimizer:
   num_epochs: 10
   lr:
     name: "cosine"
-    base_lr: 0.24 #0.1 for linear_probe #0.12
+    base_lr: 0.012 #0.1 for linear_probe #0.12
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pretrain_pseudo_8" #pseudo classes 8
+  name: "pointrcnn_pretrain_pseudo_8_lr0p012_1node" #pseudo classes 8
   VOX: False
 
   MODEL_BASE:
