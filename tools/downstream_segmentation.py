@@ -283,6 +283,7 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
     # switch to train mode
     model.train(phase == 'train')
     end = time.time()
+    lr = scheduler.get_last_lr()[0]
     for i, sample in enumerate(loader):
         torch.cuda.empty_cache()
 
@@ -351,8 +352,10 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
         for meter in progress.meters:
             tb_writter.add_scalar('{}-epoch/{}'.format(phase, meter.name), meter.avg, epoch)
     
-    eval_metrics_dict = {f'{phase}/epoch': epoch, f'{phase}/lr': scheduler.get_last_lr()[0]
-}
+    eval_metrics_dict = {f'{phase}/epoch': epoch}
+
+    if phase == 'train':
+        eval_metrics_dict[f'{phase}/lr'] =lr
     for meter in progress.meters:
         eval_metrics_dict[phase + '/' + meter.name +'-epoch'] = meter.avg
 
