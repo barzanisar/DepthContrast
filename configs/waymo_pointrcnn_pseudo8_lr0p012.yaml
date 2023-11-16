@@ -212,7 +212,7 @@ model:
   #       LOSS_REG: WeightedSmoothL1Loss
   #       LOSS_WEIGHTS: {
   #           'seg_reg_weight': 1.0,
-  #           'code_weights': [1.0, 1.0]
+  #           'code_weights': [1.0, 1.0, 1.0]
   #       }
 
 NCE_LOSS:

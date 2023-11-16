@@ -198,26 +198,26 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
          # contrastive loss
         loss = criterion(output_dict['output'], output_dict['output_moco'])
-        nce_loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+        nce_loss_meter.update(loss.item())
 
 
         # detection loss
         if 'MODEL_DET_HEAD' in cfg['model']:
             loss += output_dict['loss_det_head']
-            det_cls_loss_meter.update(output_dict['loss_det_cls'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
-            det_reg_loss_meter.update(output_dict['loss_det_reg'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+            det_cls_loss_meter.update(output_dict['loss_det_cls'])
+            det_reg_loss_meter.update(output_dict['loss_det_reg'])
             if 'ROI_HEAD' in cfg.model:
-                det_cls_rcnn_loss_meter.update(output_dict['loss_det_cls_rcnn'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
-                det_reg_rcnn_loss_meter.update(output_dict['loss_det_reg_rcnn'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+                det_cls_rcnn_loss_meter.update(output_dict['loss_det_cls_rcnn'])
+                det_reg_rcnn_loss_meter.update(output_dict['loss_det_reg_rcnn'])
 
         
         # aux head loss
         if 'MODEL_AUX_HEAD' in cfg['model']:
             loss += output_dict['loss_aux_head']
-            aux_rot_loss_meter.update(output_dict['loss_aux_head_rot'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
-            aux_scale_loss_meter.update(output_dict['loss_aux_head_scale'], cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+            aux_rot_loss_meter.update(output_dict['loss_aux_head_rot'])
+            aux_scale_loss_meter.update(output_dict['loss_aux_head_scale'])
 
-        loss_meter.update(loss.item(), cfg['dataset']['BATCHSIZE_PER_REPLICA'])
+        loss_meter.update(loss.item())
        
         # compute gradient and do SGD step during training
         if phase == 'train':

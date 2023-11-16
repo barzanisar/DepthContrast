@@ -5,7 +5,7 @@ resume: false
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
-log2wb: false
+log2wb: true
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
@@ -13,7 +13,7 @@ ckpt_save_interval: 1 #save only models to finetune for object detection
 save_ckpt_after_epochs: 0
 
 WANDB:
-  ENABLED: False 
+  ENABLED: True 
   PROJECT: SSL3dObject
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
@@ -75,7 +75,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pretrain_pseudo_8_test" 
+  name: "pointrcnn_pretrain_pseudo_8_test" 
   VOX: False
 
   MODEL_BASE:
@@ -213,7 +213,7 @@ model:
   #       LOSS_REG: WeightedSmoothL1Loss
   #       LOSS_WEIGHTS: {
   #           'seg_reg_weight': 1.0,
-  #           'code_weights': [1.0, 1.0]
+  #           'code_weights': [1.0, 1.0, 1.0]
   #       }
 
 NCE_LOSS:

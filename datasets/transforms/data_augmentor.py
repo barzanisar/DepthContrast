@@ -178,6 +178,6 @@ class DataAugmentor(object):
         
         gt_boxes[:, 6] = common_utils.limit_period(
             gt_boxes[:, 6], offset=0.5, period=2 * np.pi
-        )
+        )#[-2pi=-360deg, 2pi=360 deg] --> [-pi=-180, pi=180]
 
         return data_dict['points'], data_dict['gt_boxes']
