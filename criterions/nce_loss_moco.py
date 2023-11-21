@@ -66,6 +66,7 @@ class NCELossMoco(nn.Module):
         # cross-entropy loss. Also called InfoNCE
         self.xe_criterion = nn.CrossEntropyLoss()
         self.loss_weight = config['LOSS_WEIGHT']
+        self.neg_queue_filled = False
 
 
     @classmethod
@@ -140,6 +141,9 @@ class NCELossMoco(nn.Module):
             head_size = batch_size - tail_size
             self.queue[:, ptr:self.K] = keys.T[:, :tail_size]
             self.queue[:, :head_size] = keys.T[:, tail_size:]
+        
+        if ptr + batch_size >= self.K:
+            self.neg_queue_filled = True
 
         ptr = (ptr + batch_size) % self.K  # move pointer
 
@@ -159,7 +163,7 @@ class NCELossMoco(nn.Module):
 
         #TODO: class balanced contrastive loss
         if self.iou_filter:
-            batch_size = output_dict['gt_boxes'].shape[0]
+            #batch_size = output_dict['gt_boxes'].shape[0]
             #dxdydz = torch.cat([output_dict['gt_boxes'][k, output_dict['common_cluster_gtbox_idx'][k], 3:6]  for k in range(batch_size)]) #(N,3)
             #dxdydz = torch.cat([output_dict_moco['gt_boxes'][k, output_dict_moco['common_cluster_gtbox_idx'][k],3:6]  for k in range(batch_size)])
             # Define l= max(dx,dy), w = min(dx,dy)
@@ -168,7 +172,7 @@ class NCELossMoco(nn.Module):
             h = common_unscaled_lwhz[:, 2].view(-1,1)
             z =  common_unscaled_lwhz[:, 3].view(-1,1)
 
-            if self.queue[-1,-1] > 0: # last element of queue has been filled with the dims
+            if self.neg_queue_filled: # last element of queue has been filled with the dims
                 l_neg = self.queue[-4,:].view(1, -1)
                 w_neg = self.queue[-3,:].view(1, -1)
                 h_neg = self.queue[-2,:].view(1, -1)
@@ -194,7 +198,7 @@ class NCELossMoco(nn.Module):
         # negative logits: NxK
         l_neg = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()[:feature_dim,:]])
 
-        if self.iou_filter and self.queue[-1,-1] > 0:
+        if self.iou_filter and self.neg_queue_filled:
             neg_w =  (1-iou3d) #if high iou, similar sizes -> low weight
 
             # # Another option remove neg examples from denominator if iou3d of positive and neg samples > 0.7
