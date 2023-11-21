@@ -13,6 +13,7 @@ warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 def moco_collator(batch):
     batch_size = len(batch)
+    shape_descs_required = 'shape_desc_cluster_ids' in batch[0]
     
     if 'vox' in batch[0]:
         vox_dict = {'vox':{}, 'vox_moco':{}}
@@ -49,6 +50,8 @@ def moco_collator(batch):
     gt_boxes_moco_cluster_ids = [x["gt_boxes_moco_cluster_ids"] for x in batch]
     
     common_cluster_ids = []
+    if shape_descs_required:
+        shape_desc_cluster_ids = [x["shape_desc_cluster_ids"] for x in batch]
     for i in range(batch_size):
         # get unique labels from pcd_i and pcd_j
         unique_i = np.unique(cluster_ids[i])
@@ -56,6 +59,10 @@ def moco_collator(batch):
 
         # get labels present on both pcd (intersection)
         common_ij = np.intersect1d(unique_i, unique_j)[1:]
+        if shape_descs_required:
+            common_ij_which_has_shape_feats = np.isin(common_ij, shape_desc_cluster_ids[i])
+            common_ij = common_ij[common_ij_which_has_shape_feats]
+
         common_cluster_ids.append(common_ij)
 
     common_cluster_gtbox_idx=[]
@@ -70,9 +77,72 @@ def moco_collator(batch):
         assert (gt_boxes_cluster_ids[i][common_box_idx] - unscaled_lwhz[i][common_box_idx, -1]).sum() == 0
         common_cluster_gtbox_idx.append(common_box_idx)
         common_cluster_gtbox_moco_idx.append(common_box_idx_moco)
-        common_unscaled_lwhz.append(unscaled_lwhz[i][common_box_idx, :-1]) #exclude cluster id 
+        common_unscaled_lwhz.append(unscaled_lwhz[i][common_box_idx, :-1]) #exclude cluster id
+        
 
     common_unscaled_lwhz = np.concatenate(common_unscaled_lwhz, axis=0)
+
+    if shape_descs_required:
+        # map_bid_Idxcommonclusterids_Idxshapedescclusterids = []
+        map_bid_Idxgtclusterids_Idxshapedescclusterids = []
+        map_bid_Idxgtmococlusterids_Idxshapedescclusterids = []
+
+        # common_cluster_ids_has_shape_feats_mask=[]
+        # common_shape_feats_mask = []
+        # gt_box_idx_has_shape_feats = []
+        # gt_box_moco_idx_has_shape_feats = []
+        shape_cluster_ids_is_common_mask_batch = []
+        for i in range(batch_size):
+            shape_cluster_ids_is_common_mask= np.isin(shape_desc_cluster_ids[i], common_cluster_ids[i])
+            # idxOf_common_clusterids_has_shape_feats = np.where(np.isin(common_cluster_ids[i], shape_desc_cluster_ids[i]))[0] #mask of common cluster_ids length with true if shape desc id is in common cluster id
+            assert (common_cluster_ids[i]- shape_desc_cluster_ids[i][shape_cluster_ids_is_common_mask]).sum() == 0
+            # common_cluster_ids_has_shape_feats_mask.append(common_has_shape_feats_mask) 
+            # common_shape_feats_mask.append(shape_cluster_ids_is_common_mask)
+
+            gt_box_idx = np.where(np.isin(gt_boxes_cluster_ids[i], shape_desc_cluster_ids[i]))[0]
+            shape_des_idx = np.where(np.isin(shape_desc_cluster_ids[i], gt_boxes_cluster_ids[i]))[0]
+            assert (gt_boxes_cluster_ids[i][gt_box_idx] - shape_desc_cluster_ids[i][shape_des_idx]).sum() == 0
+
+            
+            gt_box_moco_idx = np.where(np.isin(gt_boxes_moco_cluster_ids[i], shape_desc_cluster_ids[i]))[0]
+            shape_des_moco_idx = np.where(np.isin(shape_desc_cluster_ids[i], gt_boxes_moco_cluster_ids[i]))[0]
+            assert (gt_boxes_moco_cluster_ids[i][gt_box_moco_idx] - shape_desc_cluster_ids[i][shape_des_moco_idx]).sum() == 0
+
+            # bid_Idxcommonclusterids_Idxshapedescclusterids = np.hstack([
+            #     i*np.ones((idxOf_common_clusterids_has_shape_feats.shape[0], 1)),
+            #     idxOf_common_clusterids_has_shape_feats.reshape(-1,1), 
+            #     idxOf_shape_cluster_ids_is_common.reshape(-1,1)])
+
+            bid_Idxgtclusterids_Idxshapedescclusterids = np.hstack([
+                i*np.ones((gt_box_idx.shape[0], 1)),
+                gt_box_idx.reshape(-1,1), 
+                shape_des_idx.reshape(-1,1)])
+            
+            bid_Idxgtmococlusterids_Idxshapedescclusterids = np.hstack([
+                i*np.ones((gt_box_moco_idx.shape[0], 1)),
+                gt_box_moco_idx.reshape(-1,1), 
+                shape_des_moco_idx.reshape(-1,1)])
+            
+            shape_cluster_ids_is_common_mask_batch.append(shape_cluster_ids_is_common_mask)
+            # map_bid_Idxcommonclusterids_Idxshapedescclusterids.append(bid_Idxcommonclusterids_Idxshapedescclusterids)
+            map_bid_Idxgtclusterids_Idxshapedescclusterids.append(bid_Idxgtclusterids_Idxshapedescclusterids)
+            map_bid_Idxgtmococlusterids_Idxshapedescclusterids.append(bid_Idxgtmococlusterids_Idxshapedescclusterids)
+
+
+            b=1
+
+        shape_cluster_ids_is_common_mask = np.concatenate(shape_cluster_ids_is_common_mask, axis=0)
+        # map_bid_Idxcommonclusterids_Idxshapedescclusterids = np.concatenate(map_bid_Idxcommonclusterids_Idxshapedescclusterids, axis=0)
+        map_bid_Idxgtclusterids_Idxshapedescclusterids = np.concatenate(map_bid_Idxgtclusterids_Idxshapedescclusterids, axis=0)
+        map_bid_Idxgtmococlusterids_Idxshapedescclusterids = np.concatenate(map_bid_Idxgtmococlusterids_Idxshapedescclusterids, axis=0)
+
+        shape_desc_cluster_ids = []
+        for bidx, x in enumerate(batch):
+            shape_descs_pad = np.pad(x['shape_desc_cluster_ids'], ((0, 0), (1, 0)), mode='constant', constant_values=bidx) 
+            shape_desc_cluster_ids.append(shape_descs_pad)
+        bid_shape_desc_cluster_ids = np.concatenate(shape_desc_cluster_ids, axis=0)
+        shape_descs = np.concatenate([x["shape_descs"] for x in batch], axis=0)
+
 
     # make gt boxes in shape (batch size, max gt box len, 8) (xyz, lwh, rz, class label)
     max_gt = max([len(x['gt_boxes']) for x in batch])
@@ -118,5 +188,15 @@ def moco_collator(batch):
                      'voxels': vox_dict['vox_moco']['voxels'],
                      'voxel_num_points': vox_dict['vox_moco']['voxel_num_points'],
                      'voxel_coords': vox_dict['vox_moco']['voxel_coords']})
+        
+    if shape_descs_required:
+        output_batch['input'].update({
+                     'shape_descs': shape_descs,
+                     'bid_shape_desc_cluster_ids': bid_shape_desc_cluster_ids,
+                     'shape_cluster_ids_is_common_mask_batch': shape_cluster_ids_is_common_mask_batch,
+                     'map_bid_Idxgtclusterids_Idxshapedescclusterids': map_bid_Idxgtclusterids_Idxshapedescclusterids,
+                     'map_bid_Idxgtmococlusterids_Idxshapedescclusterids': map_bid_Idxgtmococlusterids_Idxshapedescclusterids})
+        
+
 
     return output_batch

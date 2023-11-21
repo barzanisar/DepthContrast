@@ -50,23 +50,42 @@ class NCELossMoco(nn.Module):
         self.cluster = cluster
 
         self.K = int(config["NUM_NEGATIVES"])
-        self.dim = int(config["EMBEDDING_DIM"]) 
-        self.iou_filter = config.get("IOU_FILTER", False) and self.cluster
-        if self.iou_filter:
+        self.embedding_dim = int(config["EMBEDDING_DIM"])
+        self.dim = int(config["EMBEDDING_DIM"])
+        self.iou_threshold = None
+        self.iou_weight = None
+        self.shape_descs_dim = None
+        self.iou_guidance = False
+        self.neg_queue_filled = False
+        if self.cluster:
+            self.iou_threshold =  config.get("IOU_THRESHOLD", None)
+            self.shape_descs_dim = config.get("SHAPE_DESCRIPTORS_DIM", None)
+            self.iou_weight =  config.get("IOU_WEIGHT", None)
+            self.iou_guidance = self.iou_weight is not None or self.iou_threshold is not None
+
+        if self.shape_descs_dim is not None:
+            self.dim += self.shape_descs_dim
+        if self.iou_guidance:
             self.dim += 4 #lwhz
+
         self.T = float(config["TEMPERATURE"])
 
         self.register_buffer("queue", torch.randn(self.dim, self.K)) # queue of dc (either pointnet or vox) based negative key embeddings
-        self.queue[:int(config["EMBEDDING_DIM"]), :] = nn.functional.normalize(self.queue[:int(config["EMBEDDING_DIM"]), :], dim=0)
+        self.queue[:self.embedding_dim, :] = nn.functional.normalize(self.queue[:self.embedding_dim, :], dim=0)
         
-        if self.iou_filter:
-            self.queue[int(config["EMBEDDING_DIM"]):, :] = -1 * torch.ones((4,  self.K))
+        if self.shape_descs_dim is not None:
+            self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :] = -1 * torch.ones((self.shape_descs_dim,  self.K))
+        if self.iou_guidance:
+            if self.shape_descs_dim:
+                self.queue[self.embedding_dim+self.shape_descs_dim:, :] = -1 * torch.ones((4,  self.K))
+            else:
+                self.queue[self.embedding_dim:, :] = -1 * torch.ones((4,  self.K))
+
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
         
         # cross-entropy loss. Also called InfoNCE
         self.xe_criterion = nn.CrossEntropyLoss()
         self.loss_weight = config['LOSS_WEIGHT']
-        self.neg_queue_filled = False
 
 
     @classmethod
@@ -99,7 +118,7 @@ class NCELossMoco(nn.Module):
     
     @torch.no_grad()
     def _dequeue_and_enqueue_cluster(self, keys):
-        # keys: (N=num clusters in this gpu's batch, 128)
+        # keys: (N=num clusters in this gpu's batch, 128+3)
         # gather keys before updating queue
         if torch.cuda.device_count() > 1:
             # similar to shuffling, since for each gpu the number of segments may not be the same
@@ -156,14 +175,15 @@ class NCELossMoco(nn.Module):
         output_0 = output_dict['pretext_head_feats'] #query features (N=num common clusters , 128)
         output_1 = output_dict_moco['pretext_head_feats'] #key_features = moco features (N=num common clusters, 128)
         feature_dim = output_0.shape[1]
+        N_pos = output_0.shape[0]
             
         # assert output_0.shape == output_1.shape
         normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query embeddings 
         normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key embeddings
 
         #TODO: class balanced contrastive loss
-        if self.iou_filter:
-            #batch_size = output_dict['gt_boxes'].shape[0]
+        if self.iou_guidance:
+            # batch_size = output_dict['gt_boxes'].shape[0]
             #dxdydz = torch.cat([output_dict['gt_boxes'][k, output_dict['common_cluster_gtbox_idx'][k], 3:6]  for k in range(batch_size)]) #(N,3)
             #dxdydz = torch.cat([output_dict_moco['gt_boxes'][k, output_dict_moco['common_cluster_gtbox_idx'][k],3:6]  for k in range(batch_size)])
             # Define l= max(dx,dy), w = min(dx,dy)
@@ -191,6 +211,24 @@ class NCELossMoco(nn.Module):
                 vol_neg = (l_neg * w_neg * h_neg).view(1, -1) # 1xK
                 overlap_vol = torch.min(l, l_neg) *  torch.min(w, w_neg) * overlaps_h # NxK
                 iou3d = overlap_vol / torch.clamp(vol + vol_neg - overlap_vol, min=1e-6) # NxK
+                iou_based_neg_w =  (1-iou3d) # NxK #if high iou, similar sizes -> low weight or threshold
+                if self.iou_weight is not None:
+                    iou_based_neg_w *= self.iou_weight
+
+        if self.shape_descs_dim is not None:
+            common_shape_descs_mask = output_dict['shape_cluster_ids_is_common_mask_batch']
+            shape_descs = output_dict['shape_descs'][common_shape_descs_mask] #N x 604
+            rmse = torch.zeros((N_pos, self.K), device=shape_descs.device, dtype=shape_descs.dtype)
+            if self.neg_queue_filled:
+                for i in range(N_pos):
+                    shape_descs_neg = self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :].T
+                    rmse_pos_i_neg_all = torch.norm(shape_descs[i] - shape_descs_neg, dim=1) #norm((Nneg, 604)=(1, 604) - (Nneg, 604)) -> Nneg
+                    rmse[i] = rmse_pos_i_neg_all
+                
+                rmse_base_neg_w = rmse / torch.max(rmse, dim = 1, keepdim=True) #(Npos, Nneg) / (Npos, 1) = (Npos, Nneg)
+                if self.iou_weight is not None:
+                    rmse_base_neg_w *= (1-self.iou_weight)
+            
 
         # positive logits: Nx1 = batch size of positive examples
         l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1)
@@ -198,14 +236,17 @@ class NCELossMoco(nn.Module):
         # negative logits: NxK
         l_neg = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()[:feature_dim,:]])
 
-        if self.iou_filter and self.neg_queue_filled:
-            neg_w =  (1-iou3d) #if high iou, similar sizes -> low weight
+        # # Another option remove neg examples from denominator if iou3d of positive and neg samples > 0.6
+        # iou_based_neg_w[iou_based_neg_w<0.4] = 0
+        neg_w = 0
+        if self.neg_queue_filled:
+            if self.shape_descs_dim is not None:
+                neg_w = rmse_base_neg_w
+            if self.iou_weight is not None:
+                neg_w += iou_based_neg_w
+            if self.shape_descs_dim is not None or self.iou_weight is not None:
+                l_neg = l_neg * neg_w
 
-            # # Another option remove neg examples from denominator if iou3d of positive and neg samples > 0.7
-            # neg_w[neg_w<0.3] = 0
-            l_neg = l_neg * neg_w
-
-        
         # logits: Nx(1+K) i.e. N examples or clusters and K+1 class scores
         logits = torch.cat([l_pos, l_neg], dim=1)
         
@@ -224,15 +265,14 @@ class NCELossMoco(nn.Module):
         
 
         if self.cluster:
-            if self.iou_filter:
-                keys = torch.cat([normalized_output2, l,w,h,z], dim=1)
-                self._dequeue_and_enqueue_cluster(keys)
-            else:
-                self._dequeue_and_enqueue_cluster(normalized_output2)
+            keys = normalized_output2
+            if self.shape_descs_dim is not None:
+                keys = torch.cat([keys, shape_descs], dim=1)
+            if self.iou_guidance:
+                keys = torch.cat([keys, l,w,h,z], dim=1)
+            self._dequeue_and_enqueue_cluster(keys)  
         else:
             self._dequeue_and_enqueue_pcd(normalized_output2)
-
-            
 
         return loss
 

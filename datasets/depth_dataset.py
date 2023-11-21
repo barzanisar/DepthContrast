@@ -13,6 +13,7 @@ import numpy as np
 from pathlib import Path
 
 from datasets.transforms import database_sampler, data_augmentor, data_processor
+from datasets.features import global_descriptors
 
 from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
     
@@ -148,40 +149,54 @@ class DepthContrastDataset(Dataset):
             # After gt sampling and cropping
             V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7], color_feature='intensity')
 
-        if self.pretraining:
-            assert len(data_dict['points']) > 0
+        assert len(data_dict['points']) > 0
 
-            #Create different views / augmentation
-            data_dict['points_moco'] = np.copy(data_dict["points"])
-            data_dict['gt_boxes_moco'] = np.copy(data_dict["gt_boxes"])
-            gt_classes_idx = data_dict["gt_boxes"][:,-2].reshape(-1,1)
-            gt_cluster_ids = data_dict["gt_boxes"][:,-1].reshape(-1,1)
-            data_dict['unscaled_lwhz_cluster_id'] = np.hstack([data_dict["gt_boxes"][:,3:6], data_dict["gt_boxes"][:,2].reshape(-1,1), gt_cluster_ids])
+        #Create different views / augmentation
+        data_dict['points_moco'] = np.copy(data_dict["points"])
+        data_dict['gt_boxes_moco'] = np.copy(data_dict["gt_boxes"])
+        gt_classes_idx = data_dict["gt_boxes"][:,-2].reshape(-1,1)
+        gt_cluster_ids = data_dict["gt_boxes"][:,-1].reshape(-1,1)
+        data_dict['unscaled_lwhz_cluster_id'] = np.hstack([data_dict["gt_boxes"][:,3:6], data_dict["gt_boxes"][:,2].reshape(-1,1), gt_cluster_ids])
 
+        if 'EXTRACT_SHAPE_DESCRIPTORS' in cfg:
+            method=cfg['EXTRACT_SHAPE_DESCRIPTORS']
+            shape_descs = [] 
+            cluster_ids_for_shape_descs=[]
+            for i in gt_cluster_ids:
+                obj_points_mask = data_dict["points"][:, -1] == i
+                obj_points = data_dict["points"][:,:3]
+                if len(obj_points) > 5:
+                    shape_desc = global_descriptors.extract_feats(obj_points, method=method)
+                    if shape_desc is not None:
+                        shape_descs.append(shape_desc)
+                        cluster_ids_for_shape_descs.append(i)
             
-            # transform data_dict points and gt_boxes #TODO: check if augmentor assumes and returns 7 dim gt boxes
-            data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7], gt_box_cluster_ids=gt_cluster_ids)
+            data_dict['shape_descs'] = np.array(shape_descs)
+            data_dict['shape_desc_cluster_ids']=np.array(cluster_ids_for_shape_descs)
+        
+        # transform data_dict points and gt_boxes
+        data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7], gt_box_cluster_ids=gt_cluster_ids)
 
-            # transform data_dict points_moco and gt_boxes_moco
-            data_dict["points_moco"], data_dict["gt_boxes_moco"] = self.data_augmentor.forward(data_dict["points_moco"], data_dict["gt_boxes_moco"][:,:7], gt_box_cluster_ids=gt_cluster_ids)
-            
-            #reappend the gt class indexes and cluster ids
-            data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx, gt_cluster_ids])
-            data_dict["gt_boxes_moco"] = np.hstack([data_dict["gt_boxes_moco"], gt_classes_idx, gt_cluster_ids])
-            
-            # cluster_ids, cnts = np.unique(data_dict['points'][:,-1], return_counts=True)
-            # for cluster_id, cnt in zip(cluster_ids, cnts):
-            #     if cluster_id == -1:
-            #         continue
-            #     frame_id = data_dict['frame_id']
-            #     assert cluster_id in data_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
+        # transform data_dict points_moco and gt_boxes_moco
+        data_dict["points_moco"], data_dict["gt_boxes_moco"] = self.data_augmentor.forward(data_dict["points_moco"], data_dict["gt_boxes_moco"][:,:7], gt_box_cluster_ids=gt_cluster_ids)
+        
+        #reappend the gt class indexes and cluster ids
+        data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx, gt_cluster_ids])
+        data_dict["gt_boxes_moco"] = np.hstack([data_dict["gt_boxes_moco"], gt_classes_idx, gt_cluster_ids])
+        
+        # cluster_ids, cnts = np.unique(data_dict['points'][:,-1], return_counts=True)
+        # for cluster_id, cnt in zip(cluster_ids, cnts):
+        #     if cluster_id == -1:
+        #         continue
+        #     frame_id = data_dict['frame_id']
+        #     assert cluster_id in data_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
 
-            # cluster_ids, cnts = np.unique(data_dict['points_moco'][:,-1], return_counts=True)
-            # for cluster_id, cnt in zip(cluster_ids, cnts):
-            #     if cluster_id == -1:
-            #         continue
-            #     frame_id = data_dict['frame_id']
-            #     assert cluster_id in data_dict['gt_boxes_moco'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
+        # cluster_ids, cnts = np.unique(data_dict['points_moco'][:,-1], return_counts=True)
+        # for cluster_id, cnt in zip(cluster_ids, cnts):
+        #     if cluster_id == -1:
+        #         continue
+        #     frame_id = data_dict['frame_id']
+        #     assert cluster_id in data_dict['gt_boxes_moco'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
         
         if PLOT:
             # After augmenting both views
@@ -192,21 +207,18 @@ class DepthContrastDataset(Dataset):
         # sample points if pointnet backbone
         if not cfg["VOX"]:
             data_dict['points'] = data_processor.sample_points(data_dict['points'], self.cfg["SAMPLE_NUM_POINTS"] )
-            if self.pretraining:
-                data_dict['points_moco'] = data_processor.sample_points(data_dict['points_moco'], self.cfg["SAMPLE_NUM_POINTS"])
+            data_dict['points_moco'] = data_processor.sample_points(data_dict['points_moco'], self.cfg["SAMPLE_NUM_POINTS"])
 
         # # shuffle points
         if self.mode == 'train':
             data_dict['points'] = data_processor.shuffle_points(data_dict['points'])
-            if self.pretraining:
-                data_dict['points_moco'] = data_processor.shuffle_points(data_dict['points_moco'])
+            data_dict['points_moco'] = data_processor.shuffle_points(data_dict['points_moco'])
 
         # for per point fg,bg prediction
         if self.mode == 'train':
             # If augmentor removes a patch with gt box, remove its gt box and label its points as -1
             data_dict['points'], data_dict['gt_boxes'], _ = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'], pt_cluster_ids=data_dict['points'][:, -1])
-            if self.pretraining:
-                data_dict['points_moco'], data_dict['gt_boxes_moco'], _ = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'], pt_cluster_ids=data_dict['points_moco'][:, -1])
+            data_dict['points_moco'], data_dict['gt_boxes_moco'], _ = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'], pt_cluster_ids=data_dict['points_moco'][:, -1])
 
         
         if PLOT:
@@ -218,24 +230,22 @@ class DepthContrastDataset(Dataset):
             vox_dict = self.toVox(data_dict["points"]) # xyzil=clusterlabel 
             data_dict["vox"] = vox_dict
 
-            if self.pretraining:
-                vox_dict = self.toVox(data_dict["points_moco"])
-                data_dict["vox_moco"] = vox_dict
+            vox_dict = self.toVox(data_dict["points_moco"])
+            data_dict["vox_moco"] = vox_dict
 
         data_dict['gt_boxes_cluster_ids'] = data_dict['gt_boxes'][:,-1]
         data_dict['gt_boxes'] = data_dict['gt_boxes'][:, :8] #xyz,lwh, rz, gt class_index i.e. 1: Vehicle, ...
-        if self.pretraining:
-            data_dict['gt_boxes_moco_cluster_ids'] = data_dict['gt_boxes_moco'][:,-1]
-            data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][:, :8]
+        data_dict['gt_boxes_moco_cluster_ids'] = data_dict['gt_boxes_moco'][:,-1]
+        data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][:, :8]
         
         # Assert that points contain fg points
         assert (data_dict["points"][:,-1] > -1).sum() > 0
-        if self.pretraining:
-            assert (data_dict["points_moco"][:,-1] > -1).sum() > 0
+        assert (data_dict["points_moco"][:,-1] > -1).sum() > 0
 
-        #get box indices of gt_boxes remaining after augmentation and then keep only those unscaled lwhz
+        #get unscaled_lwhz_cluster_id of gt_boxes remaining after augmentation and then keep only those unscaled lwhz
         box_idx=np.where(np.isin(data_dict['unscaled_lwhz_cluster_id'][:,-1], data_dict['gt_boxes_cluster_ids']))[0]
         data_dict['unscaled_lwhz_cluster_id'] = data_dict['unscaled_lwhz_cluster_id'][box_idx]
+        assert (data_dict['unscaled_lwhz_cluster_id'][:,-1] -  data_dict['gt_boxes_cluster_ids']).sum() == 0
         
         return data_dict
     def __getitem__(self, idx):
