@@ -12,10 +12,12 @@ import os
 import numpy as np
 from pathlib import Path
 
-from datasets.transforms import database_sampler, data_augmentor, data_processor
+from datasets.transforms import  data_augmentor, data_processor
 from datasets.features import global_descriptors
 
 from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
+from utils.pcd_preprocess import visualize_selected_labels
+import open3d as o3d
     
 try:
     try:
@@ -162,17 +164,43 @@ class DepthContrastDataset(Dataset):
             method=cfg['EXTRACT_SHAPE_DESCRIPTORS']
             shape_descs = [] 
             cluster_ids_for_shape_descs=[]
-            for i in gt_cluster_ids:
+            for idx, i in enumerate(gt_cluster_ids):
                 obj_points_mask = data_dict["points"][:, -1] == i
-                obj_points = data_dict["points"][:,:3]
+                obj_points = data_dict["points"][obj_points_mask,:3] - data_dict["gt_boxes"][i,:3] # for vfh
                 if len(obj_points) > 5:
                     shape_desc = global_descriptors.extract_feats(obj_points, method=method)
+                    # visualize_selected_labels(obj_points, data_dict["points"][obj_points_mask, -1], [i])
+
                     if shape_desc is not None:
                         shape_descs.append(shape_desc)
                         cluster_ids_for_shape_descs.append(i)
+                        print(f'cluster_id: {i}')
+                        #visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], [i])
+
+            shape_descs = np.array(shape_descs)
+            cluster_ids_for_shape_descs = np.array(cluster_ids_for_shape_descs).flatten()
+            data_dict['shape_descs'] = shape_descs
+            data_dict['shape_desc_cluster_ids']= cluster_ids_for_shape_descs
+
             
-            data_dict['shape_descs'] = np.array(shape_descs)
-            data_dict['shape_desc_cluster_ids']=np.array(cluster_ids_for_shape_descs)
+            observe_cluster_id = 1
+            n_neighbors=50
+            query_desc = shape_descs[cluster_ids_for_shape_descs==observe_cluster_id]
+
+            # kd_tree = o3d.geometry.KDTreeFlann(shape_descs.T)
+            # [k, idx, sqdist] = kd_tree.search_knn_vector_xd(query_desc.T, n_neighbors)
+
+            rmse = np.linalg.norm(query_desc - shape_descs, axis=1) # (N objs)
+            idx_knn = np.argsort(rmse)[:n_neighbors]
+            rmse_knn = np.sort(rmse)[:n_neighbors]
+            #sq_dist_knn = rmse_knn**2
+            print(f'RMSE with {n_neighbors}-nn:')
+            print(rmse_knn)
+
+            visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], cluster_ids_for_shape_descs[idx_knn])
+
+            b=1
+
         
         # transform data_dict points and gt_boxes
         data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7], gt_box_cluster_ids=gt_cluster_ids)

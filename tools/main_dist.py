@@ -24,6 +24,10 @@ from third_party.OpenPCDet.pcdet.config import cfg, cfg_from_yaml_file
   
 import utils.logger
 from utils import main_utils, wandb_utils
+import warnings
+
+# Disable prototype warnings and such
+warnings.filterwarnings(action='ignore', category=UserWarning)
 
 
 parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training in 3D')
