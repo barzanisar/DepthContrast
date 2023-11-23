@@ -1,0 +1,3 @@
+conda install -c conda-forge/label/gcc7 qhull
+conda install -c conda-forge -c davidcaron pclpy
+pip install werkzeug==2.2.3
