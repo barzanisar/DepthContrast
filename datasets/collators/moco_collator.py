@@ -131,7 +131,7 @@ def moco_collator(batch):
 
             b=1
 
-        shape_cluster_ids_is_common_mask = np.concatenate(shape_cluster_ids_is_common_mask, axis=0)
+        shape_cluster_ids_is_common_mask_batch = np.concatenate(shape_cluster_ids_is_common_mask_batch, axis=0).reshape(-1)
         # map_bid_Idxcommonclusterids_Idxshapedescclusterids = np.concatenate(map_bid_Idxcommonclusterids_Idxshapedescclusterids, axis=0)
         map_bid_Idxgtclusterids_Idxshapedescclusterids = np.concatenate(map_bid_Idxgtclusterids_Idxshapedescclusterids, axis=0)
         map_bid_Idxgtmococlusterids_Idxshapedescclusterids = np.concatenate(map_bid_Idxgtmococlusterids_Idxshapedescclusterids, axis=0)

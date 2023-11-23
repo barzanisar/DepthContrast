@@ -53,18 +53,23 @@ class NCELossMoco(nn.Module):
         self.embedding_dim = int(config["EMBEDDING_DIM"])
         self.dim = int(config["EMBEDDING_DIM"])
         self.iou_threshold = None
+        self.rmse_threshold = None
         self.iou_weight = None
         self.shape_descs_dim = None
         self.iou_guidance = False
         self.neg_queue_filled = False
         if self.cluster:
-            self.iou_threshold =  config.get("IOU_THRESHOLD", None)
+            self.iou_threshold = config.get("IOU_THRESHOLD", None)
+            if self.iou_threshold is not None:
+                self.iou_threshold = 1 - self.iou_threshold
             self.shape_descs_dim = config.get("SHAPE_DESCRIPTORS_DIM", None)
             self.iou_weight =  config.get("IOU_WEIGHT", None)
+            self.rmse_threshold = config.get("RMSE_THRESHOLD", None)
             self.iou_guidance = self.iou_weight is not None or self.iou_threshold is not None
 
         if self.shape_descs_dim is not None:
             self.dim += self.shape_descs_dim
+
         if self.iou_guidance:
             self.dim += 4 #lwhz
 
@@ -76,7 +81,7 @@ class NCELossMoco(nn.Module):
         if self.shape_descs_dim is not None:
             self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :] = -1 * torch.ones((self.shape_descs_dim,  self.K))
         if self.iou_guidance:
-            if self.shape_descs_dim:
+            if self.shape_descs_dim is not None:
                 self.queue[self.embedding_dim+self.shape_descs_dim:, :] = -1 * torch.ones((4,  self.K))
             else:
                 self.queue[self.embedding_dim:, :] = -1 * torch.ones((4,  self.K))
@@ -164,6 +169,9 @@ class NCELossMoco(nn.Module):
         if ptr + batch_size >= self.K:
             self.neg_queue_filled = True
 
+        if ptr + batch_size >= self.K:
+            self.neg_queue_filled = True
+        
         ptr = (ptr + batch_size) % self.K  # move pointer
 
         self.queue_ptr[0] = ptr
@@ -212,23 +220,19 @@ class NCELossMoco(nn.Module):
                 overlap_vol = torch.min(l, l_neg) *  torch.min(w, w_neg) * overlaps_h # NxK
                 iou3d = overlap_vol / torch.clamp(vol + vol_neg - overlap_vol, min=1e-6) # NxK
                 iou_based_neg_w =  (1-iou3d) # NxK #if high iou, similar sizes -> low weight or threshold
-                if self.iou_weight is not None:
-                    iou_based_neg_w *= self.iou_weight
 
         if self.shape_descs_dim is not None:
             common_shape_descs_mask = output_dict['shape_cluster_ids_is_common_mask_batch']
             shape_descs = output_dict['shape_descs'][common_shape_descs_mask] #N x 604
             rmse = torch.zeros((N_pos, self.K), device=shape_descs.device, dtype=shape_descs.dtype)
             if self.neg_queue_filled:
+                shape_descs_neg = self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :].T
                 for i in range(N_pos):
-                    shape_descs_neg = self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :].T
                     rmse_pos_i_neg_all = torch.norm(shape_descs[i] - shape_descs_neg, dim=1) #norm((Nneg, 604)=(1, 604) - (Nneg, 604)) -> Nneg
                     rmse[i] = rmse_pos_i_neg_all
-                
-                rmse_base_neg_w = rmse / torch.max(rmse, dim = 1, keepdim=True) #(Npos, Nneg) / (Npos, 1) = (Npos, Nneg)
-                if self.iou_weight is not None:
-                    rmse_base_neg_w *= (1-self.iou_weight)
-            
+                # map rmse between 0 to 1
+                rmse_based_neg_w = rmse / torch.max(rmse, dim = 1, keepdim=True)[0] #(Npos, Nneg) / (Npos, 1) = (Npos, Nneg)
+
 
         # positive logits: Nx1 = batch size of positive examples
         l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1)
@@ -241,21 +245,29 @@ class NCELossMoco(nn.Module):
         neg_w = 0
         if self.neg_queue_filled:
             if self.shape_descs_dim is not None:
-                neg_w = rmse_base_neg_w
+                if self.iou_weight is not None:
+                    neg_w = rmse_based_neg_w * (1-self.iou_weight)
+                else:
+                    neg_w = rmse_based_neg_w
             if self.iou_weight is not None:
-                neg_w += iou_based_neg_w
+                neg_w += (self.iou_weight * iou_based_neg_w)
             if self.shape_descs_dim is not None or self.iou_weight is not None:
                 l_neg = l_neg * neg_w
 
+            if self.shape_descs_dim is not None and self.rmse_threshold is not None:
+                l_neg=l_neg.masked_fill(rmse_based_neg_w<self.rmse_threshold, -1e9)
+            if self.iou_threshold is not None:
+                # l_neg[iou_based_neg_w<self.iou_threshold] = float('-inf')
+                l_neg=l_neg.masked_fill(iou_based_neg_w<self.iou_threshold, -1e9)
         # logits: Nx(1+K) i.e. N examples or clusters and K+1 class scores
         logits = torch.cat([l_pos, l_neg], dim=1)
         
         # apply temperature
         logits /= self.T
 
-        N = logits.shape[0] # num common clusters in this batch of pcs for segContrast and batch size for DepthContrast
+        #N = logits.shape[0] # num common clusters in this batch of pcs for segContrast and batch size for DepthContrast
         labels = torch.zeros(
-            N, device=logits.device, dtype=torch.int64
+            N_pos, device=logits.device, dtype=torch.int64
         ) # because for each pair out of N pairs, zero'th class (out of K=60000 classes) is the true class
 
         if len(logits.shape) > 2:
