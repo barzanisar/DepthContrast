@@ -2,7 +2,7 @@
 # python tools/main_dist.py --cfg configs/waymo.yaml
 wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
 resume: false
-num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
+num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
 log2wb: true
@@ -25,7 +25,7 @@ dataset:
   DATA_SPLIT: {'train': train_short}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
-  BATCHSIZE_PER_REPLICA: 1 #Change to 14, if input moco feats is false, use 8
+  BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [  0. , -75. ,  -3. ,  75. ,  75. ,   3. ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
@@ -219,6 +219,6 @@ model:
 NCE_LOSS:
   LOSS_WEIGHT: 1.0
   TEMPERATURE: 0.1
-  NUM_NEGATIVES: 65536
+  NUM_NEGATIVES: 1000 #65536
   EMBEDDING_DIM: 128
   IOU_FILTER: True
