@@ -3,47 +3,47 @@
 
 ### Pretrain in stages e.g. backbone, then head
 ### centerpoint in stages
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p24 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19300 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p24.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p12 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19301 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p12.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p012 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19302 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p012.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p24 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19300 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p24.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p12 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19301 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p12.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p012 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19302 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p012.yaml
 
 ### PointRCNN in stages
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p24 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19303 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p24.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p12 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19304 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p12.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p012 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19305 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p012.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p24 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19303 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p24.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p12 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19304 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p12.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p012 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19305 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p012.yaml
 
 ### Pretrain full networks
-# CenterPoint full
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p24 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19306 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p24.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p12 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19307 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p12.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p012 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19308 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p012.yaml
+# # CenterPoint full
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p24 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19306 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p24.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p12 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19307 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p12.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p012 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19308 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p012.yaml
 
-### pointrcnn full
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p24 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19309 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p24.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p12 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19310 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p12.yaml
-sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p012 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19311 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p012.yaml
+# ### pointrcnn full
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p24 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19309 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p24.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p12 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19310 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p12.yaml
+# sbatch --time=01:00:00 --nodes=2 --ntasks=2 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p012 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19311 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p012.yaml
 
 ################################### Pretrain on 1 node
 ### Pretrain in stages e.g. backbone, then head
 ### centerpoint in stages
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p24_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19312 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p24_1node.yaml
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p12_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19313 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p12_1node.yaml
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p012_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19314 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p012_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p24_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19312 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p24_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p12_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19313 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p12_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_stages_lr0p012_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19314 --cfg_file configs/waymo_centerpoint_pseudo8_stages_lr0p012_1node.yaml
 
 ### PointRCNN in stages
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p24_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19315 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p24_1node.yaml
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p12_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19316 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p12_1node.yaml
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p012_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19317 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p012_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p24_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19315 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p24_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p12_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19316 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p12_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_stages_lr0p012_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19317 --cfg_file configs/waymo_pointrcnn_pseudo8_stages_lr0p012_1node.yaml
 
 ### Pretrain full networks
 # CenterPoint full
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p24_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19318 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p24_1node.yaml
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p12_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19319 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p12_1node.yaml
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p012_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19320 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p012_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p24_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19318 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p24_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p12_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19319 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p12_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_centerpoint_pseudo8_lr0p012_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19320 --cfg_file configs/waymo_centerpoint_pseudo8_lr0p012_1node.yaml
 
 ### pointrcnn full
 sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p24_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19667 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p24_1node.yaml
-sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p12_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19668 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p12_1node.yaml
+# sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p12_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19668 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p12_1node.yaml
 sbatch --time=01:00:00 --nodes=1 --ntasks=1 --array=1-4%1 --job-name=pretrain_pointrcnn_pseudo8_lr0p012_1node scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19669 --cfg_file configs/waymo_pointrcnn_pseudo8_lr0p012_1node.yaml
 
 
