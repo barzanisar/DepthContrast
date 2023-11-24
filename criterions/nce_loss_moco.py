@@ -52,20 +52,20 @@ class NCELossMoco(nn.Module):
         self.K = int(config["NUM_NEGATIVES"])
         self.embedding_dim = int(config["EMBEDDING_DIM"])
         self.dim = int(config["EMBEDDING_DIM"])
-        self.iou_threshold = None
+        self.iou_dist_threshold = None
+        self.iou_percentage_threshold = None
         self.rmse_threshold = None
         self.iou_weight = None
         self.shape_descs_dim = None
         self.iou_guidance = False
         self.neg_queue_filled = False
         if self.cluster:
-            self.iou_threshold = config.get("IOU_THRESHOLD", None)
-            if self.iou_threshold is not None:
-                self.iou_threshold = 1 - self.iou_threshold
+            self.iou_dist_threshold = config.get("IOU_DIST_THRESHOLD", None)
+            self.iou_percentage_threshold = config.get("IOU_PERCENTAGE_THRESHOLD", None)
             self.shape_descs_dim = config.get("SHAPE_DESCRIPTORS_DIM", None)
             self.iou_weight =  config.get("IOU_WEIGHT", None)
             self.rmse_threshold = config.get("RMSE_THRESHOLD", None)
-            self.iou_guidance = self.iou_weight is not None or self.iou_threshold is not None
+            self.iou_guidance = self.iou_weight is not None or self.iou_dist_threshold is not None or self.iou_percentage_threshold is not None
 
         if self.shape_descs_dim is not None:
             self.dim += self.shape_descs_dim
@@ -219,7 +219,7 @@ class NCELossMoco(nn.Module):
                 vol_neg = (l_neg * w_neg * h_neg).view(1, -1) # row: 1xK
                 overlap_vol = torch.min(l, l_neg) *  torch.min(w, w_neg) * overlaps_h # NxK
                 iou3d = overlap_vol / torch.clamp(vol + vol_neg - overlap_vol, min=1e-6) # NxK
-                iou_based_neg_w =  (1-iou3d) # NxK #if high iou, similar sizes -> low weight or threshold
+                iou_dist =  (1-iou3d) # NxK #if high iou, similar sizes -> low weight or threshold
 
         if self.shape_descs_dim is not None:
             common_shape_descs_mask = output_dict['shape_cluster_ids_is_common_mask_batch']
@@ -231,7 +231,7 @@ class NCELossMoco(nn.Module):
                     rmse_pos_i_neg_all = torch.norm(shape_descs[i] - shape_descs_neg, dim=1) #norm((Nneg, 604)=(1, 604) - (Nneg, 604)) -> Nneg
                     rmse[i] = rmse_pos_i_neg_all
                 # map rmse between 0 to 1
-                rmse_based_neg_w = rmse / torch.max(rmse, dim = 1, keepdim=True)[0] #(Npos, Nneg) / (Npos, 1) = (Npos, Nneg)
+                desc_dist = rmse / torch.max(rmse, dim = 1, keepdim=True)[0] #(Npos, Nneg) / (Npos, 1) = (Npos, Nneg)
 
 
         # positive logits: Nx1 = batch size of positive examples
@@ -241,24 +241,31 @@ class NCELossMoco(nn.Module):
         l_neg = torch.einsum('nc,ck->nk', [normalized_output1, self.queue.clone().detach()[:feature_dim,:]])
 
         # # Another option remove neg examples from denominator if iou3d of positive and neg samples > 0.6
-        # iou_based_neg_w[iou_based_neg_w<0.4] = 0
+        # iou_dist[iou_dist<0.4] = 0
         neg_w = 0
         if self.neg_queue_filled:
             if self.shape_descs_dim is not None:
                 if self.iou_weight is not None:
-                    neg_w = rmse_based_neg_w * (1-self.iou_weight)
+                    neg_w = desc_dist * (1-self.iou_weight)
                 else:
-                    neg_w = rmse_based_neg_w
+                    neg_w = desc_dist
             if self.iou_weight is not None:
-                neg_w += (self.iou_weight * iou_based_neg_w)
+                neg_w += (self.iou_weight * iou_dist)
             if self.shape_descs_dim is not None or self.iou_weight is not None:
                 l_neg = l_neg * neg_w
 
             if self.shape_descs_dim is not None and self.rmse_threshold is not None:
-                l_neg=l_neg.masked_fill(rmse_based_neg_w<self.rmse_threshold, -1e9)
-            if self.iou_threshold is not None:
-                # l_neg[iou_based_neg_w<self.iou_threshold] = float('-inf')
-                l_neg=l_neg.masked_fill(iou_based_neg_w<self.iou_threshold, -1e9)
+                l_neg=l_neg.masked_fill(desc_dist<self.rmse_threshold, -1e9)
+            if self.iou_dist_threshold is not None:
+                l_neg=l_neg.masked_fill(iou_dist<self.iou_dist_threshold, -1e9)
+            if self.iou_percentage_threshold is not None:
+                mask = torch.zeros_like(l_neg, dtype=bool)
+                idx_sort = torch.sort(iou_dist, axis=1)[1][:,:int(self.iou_percentage_threshold*self.K)] #(Npos, Nneg)
+                for i in range(N_pos):
+                    mask[i, idx_sort[i]] = True
+                l_neg=l_neg.masked_fill(mask, -1e9)
+            
+
         # logits: Nx(1+K) i.e. N examples or clusters and K+1 class scores
         logits = torch.cat([l_pos, l_neg], dim=1)
         

@@ -1,0 +1,111 @@
+# python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
+# python tools/main_dist.py --cfg configs/waymo.yaml
+wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
+resume: true
+num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
+
+log2tb: false
+log2wb: true
+
+test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
+print_freq: 1 #print progress after processing every <freq> iters or batches
+ckpt_save_interval: 1 #save only models to finetune for object detection
+save_ckpt_after_epochs: 0
+
+WANDB:
+  ENABLED: True 
+  PROJECT: SSL3dObject
+  ENTITY: trailab
+  SUMMARY_HIGHEST_METRIC: None
+  dir: '/DepthContrast/output'
+
+dataset:
+  DATASET_NAMES: [WaymoDataset]
+  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train}
+  DATA_PATH: 'data/waymo'
+  FRAME_SAMPLING_INTERVAL: {'train': 20} #5% waymo 
+  BATCHSIZE_PER_REPLICA: 32
+  POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
+  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
+  MEAN_SIZES: [[4.7, 2.1, 1.7],
+                [0.91, 0.86, 1.73],
+                [1.78, 0.84, 1.78],
+                [0.5, 0.5, 1.0],
+                [3, 2, 1.5],
+                [10, 2.5, 1.7],
+                [20, 2.5, 1.7],
+                [20, 20, 1.7]]
+
+  POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
+    - NAME: random_world_flip
+      ALONG_AXIS_LIST: ['x', 'y']
+    - NAME: random_world_rotation
+      WORLD_ROT_ANGLE: [-0.78539816, 0.78539816] #-45deg, + 45deg
+    - NAME: random_world_scaling
+      WORLD_SCALE_RANGE: [0.95, 1.05]
+    - NAME: random_local_translation
+      LOCAL_TRANSLATION_RANGE: [-0.3, 0.3]
+      ALONG_AXIS_LIST: ['x', 'y']
+    - NAME: random_local_rotation
+      LOCAL_ROT_ANGLE: [-0.78539816, 0.78539816]
+    - NAME: random_local_scaling
+      LOCAL_SCALE_RANGE: [0.95, 1.05]
+
+    # - NAME: random_cuboid_lidar
+    #   npoints: 10000
+    # - NAME: random_drop
+
+  SAMPLE_NUM_POINTS: 80000
+  
+  VOX: False
+
+  COLLATE_FUNCTION: "moco_collator"
+  DROP_LAST: True
+
+optimizer:
+  name: "sgd"
+  weight_decay: 0.0001
+  momentum: 0.9
+  nesterov: True
+  num_epochs: 100
+  lr:
+    name: "cosine"
+    base_lr: 0.12
+
+model:
+  model_dir: "checkpoints/pointrcnn"
+  name: "pointrcnn_pretrain_backbone_iou_thresh_0p7" #pseudo classes 8
+  VOX: False
+
+  MODEL_BASE:
+    NAME: PointRCNN
+
+    BACKBONE_3D:
+      NAME: PointNet2MSG
+      SA_CONFIG:
+        NPOINTS: [4096, 1024, 256, 64]
+        RADIUS: [[0.1, 0.5], [0.5, 1.0], [1.0, 2.0], [2.0, 4.0]]
+        NSAMPLE: [[16, 32], [16, 32], [16, 32], [16, 32]]
+        MLPS: [[[16, 16, 32], [32, 32, 64]],
+                [[64, 64, 128], [64, 96, 128]],
+                [[128, 196, 256], [128, 196, 256]],
+                [[256, 256, 512], [256, 384, 512]]]
+      FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
+
+    PRETEXT_HEAD: 
+      NAME: SegHead
+      use_mlp: True
+      mlp_dim: [128, 128, 128]
+
+
+NCE_LOSS:
+  LOSS_WEIGHT: 1.0
+  TEMPERATURE: 0.1
+  NUM_NEGATIVES: 65536
+  EMBEDDING_DIM: 128
+  IOU_DIST_THRESHOLD: 0.7 # filter out neg samples if their iou with query is < iou_dist_thresh
+  # IOU_PERCENTAGE_THRESHOLD: 0.3
+  # RMSE_THRESHOLD: 0.25 # filter out neg samples if their shape desc rmse with query is < rmse_thresh
+  # IOU_WEIGHT: 0.1
+  # SHAPE_DESCRIPTORS_DIM: 640

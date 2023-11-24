@@ -13,7 +13,7 @@ import numpy as np
 from pathlib import Path
 
 from datasets.transforms import  data_augmentor, data_processor
-from datasets.features import global_descriptors
+#from datasets.features import global_descriptors
 
 from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 from utils.pcd_preprocess import visualize_selected_labels
@@ -160,6 +160,7 @@ class DepthContrastDataset(Dataset):
         gt_cluster_ids = data_dict["gt_boxes"][:,-1].reshape(-1,1)
         data_dict['unscaled_lwhz_cluster_id'] = np.hstack([data_dict["gt_boxes"][:,3:6], data_dict["gt_boxes"][:,2].reshape(-1,1), gt_cluster_ids])
         
+        ################################ Visualize iou knn and threshold filtering #######################
         # l_a= torch.from_numpy(data_dict['unscaled_lwhz_cluster_id'][:,0]).reshape(-1, 1)
         # w_a= torch.from_numpy(data_dict['unscaled_lwhz_cluster_id'][:,1]).reshape(-1, 1)
         # h_a= torch.from_numpy(data_dict['unscaled_lwhz_cluster_id'][:,2]).reshape(-1, 1)
@@ -204,32 +205,32 @@ class DepthContrastDataset(Dataset):
         # print(iou_dist)
         # visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], gt_cluster_ids[idx])
 
+        ################################ Extract Shape descriptors #######################
 
-        # b=1
+        # if 'EXTRACT_SHAPE_DESCRIPTORS' in cfg:
+        #     method=cfg['EXTRACT_SHAPE_DESCRIPTORS']
+        #     shape_descs = [] 
+        #     cluster_ids_for_shape_descs=[]
+        #     for idx, i in enumerate(gt_cluster_ids):
+        #         obj_points_mask = data_dict["points"][:, -1] == i
+        #         obj_points = data_dict["points"][obj_points_mask,:3] - data_dict["gt_boxes"][idx,:3] # for vfh
+        #         if len(obj_points) > 5:
+        #             shape_desc = global_descriptors.extract_feats(obj_points, method=method)
+        #             # visualize_selected_labels(obj_points, data_dict["points"][obj_points_mask, -1], [i])
 
-        if 'EXTRACT_SHAPE_DESCRIPTORS' in cfg:
-            method=cfg['EXTRACT_SHAPE_DESCRIPTORS']
-            shape_descs = [] 
-            cluster_ids_for_shape_descs=[]
-            for idx, i in enumerate(gt_cluster_ids):
-                obj_points_mask = data_dict["points"][:, -1] == i
-                obj_points = data_dict["points"][obj_points_mask,:3] - data_dict["gt_boxes"][idx,:3] # for vfh
-                if len(obj_points) > 5:
-                    shape_desc = global_descriptors.extract_feats(obj_points, method=method)
-                    # visualize_selected_labels(obj_points, data_dict["points"][obj_points_mask, -1], [i])
+        #             if shape_desc is not None:
+        #                 shape_descs.append(shape_desc)
+        #                 cluster_ids_for_shape_descs.append(i)
+        #                 #print(f'cluster_id: {i}')
+        #                 #visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], [i])
 
-                    if shape_desc is not None:
-                        shape_descs.append(shape_desc)
-                        cluster_ids_for_shape_descs.append(i)
-                        #print(f'cluster_id: {i}')
-                        #visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], [i])
+        #     shape_descs = np.array(shape_descs)
+        #     cluster_ids_for_shape_descs = np.array(cluster_ids_for_shape_descs).flatten()
+        #     data_dict['shape_descs'] = shape_descs
+        #     data_dict['shape_desc_cluster_ids']= cluster_ids_for_shape_descs
 
-            shape_descs = np.array(shape_descs)
-            cluster_ids_for_shape_descs = np.array(cluster_ids_for_shape_descs).flatten()
-            data_dict['shape_descs'] = shape_descs
-            data_dict['shape_desc_cluster_ids']= cluster_ids_for_shape_descs
-
-            
+        ################################ Visualize knn for shape desc #######################
+    
         #     observe_cluster_id = 1
         #     n_neighbors=50
         #     query_desc = shape_descs[cluster_ids_for_shape_descs==observe_cluster_id]
@@ -245,10 +246,8 @@ class DepthContrastDataset(Dataset):
         #     print(rmse_knn)
 
         #     visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], cluster_ids_for_shape_descs[idx_knn])
+         #######################################################
 
-        #     b=1
-
-        
         # transform data_dict points and gt_boxes
         data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7], gt_box_cluster_ids=gt_cluster_ids)
 
