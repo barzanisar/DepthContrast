@@ -148,17 +148,64 @@ class DepthContrastDataset(Dataset):
     
 
         if PLOT:
-            # After gt sampling and cropping
-            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7], color_feature='intensity')
+            # After cropping points outside range
+            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
 
         assert len(data_dict['points']) > 0
 
-        #Create different views / augmentation
+        # #Create different views / augmentation
         data_dict['points_moco'] = np.copy(data_dict["points"])
         data_dict['gt_boxes_moco'] = np.copy(data_dict["gt_boxes"])
         gt_classes_idx = data_dict["gt_boxes"][:,-2].reshape(-1,1)
         gt_cluster_ids = data_dict["gt_boxes"][:,-1].reshape(-1,1)
         data_dict['unscaled_lwhz_cluster_id'] = np.hstack([data_dict["gt_boxes"][:,3:6], data_dict["gt_boxes"][:,2].reshape(-1,1), gt_cluster_ids])
+        
+        # l_a= torch.from_numpy(data_dict['unscaled_lwhz_cluster_id'][:,0]).reshape(-1, 1)
+        # w_a= torch.from_numpy(data_dict['unscaled_lwhz_cluster_id'][:,1]).reshape(-1, 1)
+        # h_a= torch.from_numpy(data_dict['unscaled_lwhz_cluster_id'][:,2]).reshape(-1, 1)
+        # z_a= torch.from_numpy(data_dict['unscaled_lwhz_cluster_id'][:,3]).reshape(-1, 1)
+
+        # l_b = l_a.reshape(1, -1)
+        # w_b = w_a.reshape(1, -1)
+        # h_b = h_a.reshape(1, -1)
+        # z_b = z_a.reshape(1, -1)
+
+        # boxes_a_height_max = (z_a + h_a / 2).reshape(-1, 1) #col
+        # boxes_a_height_min = (z_a - h_a / 2).reshape(-1, 1) #col
+        # boxes_b_height_max = boxes_a_height_max.reshape(1, -1) #row
+        # boxes_b_height_min = boxes_a_height_min.reshape(1, -1) #row
+
+        # max_of_min = torch.max(boxes_a_height_min, boxes_b_height_min) #(Npos, Nneg)
+        # min_of_max = torch.min(boxes_a_height_max, boxes_b_height_max) #(Npos, Nneg)
+        # overlaps_h = torch.clamp(min_of_max - max_of_min, min=0) # torch.min(h, h_neg)  #(Npos, Nneg) height overlaps between each pos and neg sample
+
+        # vol_a = (l_a*w_a*h_a).view(-1, 1) # col: Nposx1
+        # vol_b = (l_b * w_b * h_b).view(1, -1) # row: 1xK
+        # overlap_vol = torch.min(l_a, l_b) *  torch.min(w_a, w_b) * overlaps_h # NxK
+        # iou3d = overlap_vol / torch.clamp(vol_a + vol_b - overlap_vol, min=1e-6) # NxK
+        # iou3d_dist = 1-iou3d
+
+
+        # observe_cluster_id = 1
+        # observe_cluster_idx=np.where(observe_cluster_id == gt_cluster_ids)[0]
+        # #visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], [observe_cluster_id])
+        # n_neighbors=50
+        # iou_dist_vec = iou3d_dist[observe_cluster_idx].numpy().flatten()
+        # # idx_knn = np.argsort(iou_dist_vec)[:n_neighbors]
+        # # iou_dist_knn = np.sort(iou_dist_vec)[:n_neighbors]
+        # # print(f'IOU with {n_neighbors}-nn:')
+        # # print(1-iou_dist_knn)
+        # # visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], gt_cluster_ids[idx_knn])
+
+        # iou_dist_thresh = 0.8 #(0.6, 0.7, 0.8) record percentage removed
+        # idx = np.where(iou_dist_vec <= iou_dist_thresh)[0]
+        # iou_dist = iou_dist_vec[idx]
+        # print(f'Num samples with iou dist <= {iou_dist_thresh}: {len(idx)}')
+        # print(iou_dist)
+        # visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], gt_cluster_ids[idx])
+
+
+        # b=1
 
         if 'EXTRACT_SHAPE_DESCRIPTORS' in cfg:
             method=cfg['EXTRACT_SHAPE_DESCRIPTORS']
@@ -166,7 +213,7 @@ class DepthContrastDataset(Dataset):
             cluster_ids_for_shape_descs=[]
             for idx, i in enumerate(gt_cluster_ids):
                 obj_points_mask = data_dict["points"][:, -1] == i
-                obj_points = data_dict["points"][obj_points_mask,:3] - data_dict["gt_boxes"][i,:3] # for vfh
+                obj_points = data_dict["points"][obj_points_mask,:3] - data_dict["gt_boxes"][idx,:3] # for vfh
                 if len(obj_points) > 5:
                     shape_desc = global_descriptors.extract_feats(obj_points, method=method)
                     # visualize_selected_labels(obj_points, data_dict["points"][obj_points_mask, -1], [i])
@@ -174,7 +221,7 @@ class DepthContrastDataset(Dataset):
                     if shape_desc is not None:
                         shape_descs.append(shape_desc)
                         cluster_ids_for_shape_descs.append(i)
-                        print(f'cluster_id: {i}')
+                        #print(f'cluster_id: {i}')
                         #visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], [i])
 
             shape_descs = np.array(shape_descs)
@@ -183,23 +230,23 @@ class DepthContrastDataset(Dataset):
             data_dict['shape_desc_cluster_ids']= cluster_ids_for_shape_descs
 
             
-            observe_cluster_id = 1
-            n_neighbors=50
-            query_desc = shape_descs[cluster_ids_for_shape_descs==observe_cluster_id]
+        #     observe_cluster_id = 1
+        #     n_neighbors=50
+        #     query_desc = shape_descs[cluster_ids_for_shape_descs==observe_cluster_id]
 
-            # kd_tree = o3d.geometry.KDTreeFlann(shape_descs.T)
-            # [k, idx, sqdist] = kd_tree.search_knn_vector_xd(query_desc.T, n_neighbors)
+        #     # kd_tree = o3d.geometry.KDTreeFlann(shape_descs.T)
+        #     # [k, idx, sqdist] = kd_tree.search_knn_vector_xd(query_desc.T, n_neighbors)
 
-            rmse = np.linalg.norm(query_desc - shape_descs, axis=1) # (N objs)
-            idx_knn = np.argsort(rmse)[:n_neighbors]
-            rmse_knn = np.sort(rmse)[:n_neighbors]
-            #sq_dist_knn = rmse_knn**2
-            print(f'RMSE with {n_neighbors}-nn:')
-            print(rmse_knn)
+        #     rmse = np.linalg.norm(query_desc - shape_descs, axis=1) # (N objs)
+        #     idx_knn = np.argsort(rmse)[:n_neighbors]
+        #     rmse_knn = np.sort(rmse)[:n_neighbors]
+        #     #sq_dist_knn = rmse_knn**2
+        #     print(f'RMSE with {n_neighbors}-nn:')
+        #     print(rmse_knn)
 
-            visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], cluster_ids_for_shape_descs[idx_knn])
+        #     visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], cluster_ids_for_shape_descs[idx_knn])
 
-            b=1
+        #     b=1
 
         
         # transform data_dict points and gt_boxes
@@ -228,8 +275,8 @@ class DepthContrastDataset(Dataset):
         
         if PLOT:
             # After augmenting both views
-            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7], color_feature='intensity')
-            V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7], color_feature='intensity')
+            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
+            V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
 
         # data processor
         # sample points if pointnet backbone
@@ -251,8 +298,8 @@ class DepthContrastDataset(Dataset):
         
         if PLOT:
             # After sampling points and removing empty boxes
-            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7], color_feature='intensity')
-            V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7], color_feature='intensity')
+            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
+            V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
         # if vox then transform points to voxels else save points as tensor
         if cfg["VOX"]:
             vox_dict = self.toVox(data_dict["points"]) # xyzil=clusterlabel 

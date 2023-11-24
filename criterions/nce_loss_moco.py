@@ -195,28 +195,28 @@ class NCELossMoco(nn.Module):
             #dxdydz = torch.cat([output_dict['gt_boxes'][k, output_dict['common_cluster_gtbox_idx'][k], 3:6]  for k in range(batch_size)]) #(N,3)
             #dxdydz = torch.cat([output_dict_moco['gt_boxes'][k, output_dict_moco['common_cluster_gtbox_idx'][k],3:6]  for k in range(batch_size)])
             # Define l= max(dx,dy), w = min(dx,dy)
-            l = torch.max(common_unscaled_lwhz[:,:2], dim=-1)[0].view(-1,1)
-            w = torch.min(common_unscaled_lwhz[:,:2], dim=-1)[0].view(-1,1)
-            h = common_unscaled_lwhz[:, 2].view(-1,1)
-            z =  common_unscaled_lwhz[:, 3].view(-1,1)
+            l = torch.max(common_unscaled_lwhz[:,:2], dim=-1)[0].view(-1,1) #column of lenghts of positive samples
+            w = torch.min(common_unscaled_lwhz[:,:2], dim=-1)[0].view(-1,1) #column of widths of positive samples 
+            h = common_unscaled_lwhz[:, 2].view(-1,1) #column of heights of positive samples
+            z =  common_unscaled_lwhz[:, 3].view(-1,1) #column of z of positive samples
 
             if self.neg_queue_filled: # last element of queue has been filled with the dims
-                l_neg = self.queue[-4,:].view(1, -1)
+                l_neg = self.queue[-4,:].view(1, -1) #row vector of neg sample lengths
                 w_neg = self.queue[-3,:].view(1, -1)
                 h_neg = self.queue[-2,:].view(1, -1)
                 z_neg = self.queue[-1,:].view(1, -1)
 
                 # height overlap
-                boxes_pos_height_max = (z + h / 2).view(-1, 1)
-                boxes_pos_height_min = (z - h / 2).view(-1, 1)
-                boxes_neg_height_max = (z_neg + h_neg / 2).view(1, -1)
-                boxes_neg_height_min = (z_neg - h_neg / 2).view(1, -1)
-                max_of_min = torch.max(boxes_pos_height_min, boxes_neg_height_min)
-                min_of_max = torch.min(boxes_pos_height_max, boxes_neg_height_max)
-                overlaps_h = torch.clamp(min_of_max - max_of_min, min=0) # torch.min(h, h_neg)
+                boxes_pos_height_max = (z + h / 2).view(-1, 1) #col
+                boxes_pos_height_min = (z - h / 2).view(-1, 1) #col
+                boxes_neg_height_max = (z_neg + h_neg / 2).view(1, -1) #row
+                boxes_neg_height_min = (z_neg - h_neg / 2).view(1, -1) #row
+                max_of_min = torch.max(boxes_pos_height_min, boxes_neg_height_min) #(Npos, Nneg)
+                min_of_max = torch.min(boxes_pos_height_max, boxes_neg_height_max) #(Npos, Nneg)
+                overlaps_h = torch.clamp(min_of_max - max_of_min, min=0) # torch.min(h, h_neg)  #(Npos, Nneg) height overlaps between each pos and neg sample
 
-                vol = (l*w*h).view(-1, 1) # Nx1
-                vol_neg = (l_neg * w_neg * h_neg).view(1, -1) # 1xK
+                vol = (l*w*h).view(-1, 1) # col: Nposx1
+                vol_neg = (l_neg * w_neg * h_neg).view(1, -1) # row: 1xK
                 overlap_vol = torch.min(l, l_neg) *  torch.min(w, w_neg) * overlaps_h # NxK
                 iou3d = overlap_vol / torch.clamp(vol + vol_neg - overlap_vol, min=1e-6) # NxK
                 iou_based_neg_w =  (1-iou3d) # NxK #if high iou, similar sizes -> low weight or threshold
