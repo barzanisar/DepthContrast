@@ -138,7 +138,7 @@ def moco_collator(batch):
 
         shape_desc_cluster_ids = []
         for bidx, x in enumerate(batch):
-            shape_descs_pad = np.pad(x['shape_desc_cluster_ids'], ((0, 0), (1, 0)), mode='constant', constant_values=bidx) 
+            shape_descs_pad = np.pad(x['shape_desc_cluster_ids'].reshape(-1,1), ((0, 0), (1, 0)), mode='constant', constant_values=bidx) 
             shape_desc_cluster_ids.append(shape_descs_pad)
         bid_shape_desc_cluster_ids = np.concatenate(shape_desc_cluster_ids, axis=0)
         shape_descs = np.concatenate([x["shape_descs"] for x in batch], axis=0)
