@@ -371,7 +371,9 @@ if __name__ == "__main__":
     random_seed = 42 
     EXTRACT_ALL_INFOS_FEATS=False
     EVAL_FEATS=False
-    EVAL_FEATS_DISTANCES=True
+    EVAL_FEATS_DISTANCES=False
+    EVAL_PRECISION_K=True
+    EVAL_PRECISION_IOU=False
 
 
     CHECK_ROT_TRANS_SCALE_INVARIANCE=False
@@ -430,33 +432,88 @@ if __name__ == "__main__":
         X = data_dict['feats'] #(nsamples, nfeats)
         y = data_dict['labels'] #(nsamples,)
         draw_feats(X,y, class_names)
+    
+    if EVAL_PRECISION_IOU:
+        n_samples = 0
+        for class_idx, class_name in enumerate(class_names):
+            n_samples += len(dbinfos[class_name])
+
+        lwhz_mat = np.zeros((n_samples, 4))
+        for class_idx, class_name in enumerate(class_names):    
+            for i, info in tqdm(enumerate(dbinfos[class_name])):
+                lwhz_mat[i, :3] = info['box3d_lidar'][3:6]
+                lwhz_mat[i, 3] = info['box3d_lidar'][2]
+        
+
+        l_a= lwhz_mat[:,0].reshape(-1, 1)
+        w_a= lwhz_mat[:,1].reshape(-1, 1)
+        h_a= lwhz_mat[:,2].reshape(-1, 1)
+        z_a= lwhz_mat[:,3].reshape(-1, 1)
+
+        l_b = l_a.reshape(1, -1)
+        w_b = w_a.reshape(1, -1)
+        h_b = h_a.reshape(1, -1)
+        z_b = z_a.reshape(1, -1)
+
+        boxes_a_height_max = (z_a + h_a / 2).reshape(-1, 1) #col
+        boxes_a_height_min = (z_a - h_a / 2).reshape(-1, 1) #col
+        boxes_b_height_max = boxes_a_height_max.reshape(1, -1) #row
+        boxes_b_height_min = boxes_a_height_min.reshape(1, -1) #row
+
+        max_of_min = torch.max(boxes_a_height_min, boxes_b_height_min) #(Npos, Nneg)
+        min_of_max = torch.min(boxes_a_height_max, boxes_b_height_max) #(Npos, Nneg)
+        overlaps_h = torch.clamp(min_of_max - max_of_min, min=0) # torch.min(h, h_neg)  #(Npos, Nneg) height overlaps between each pos and neg sample
+
+        vol_a = (l_a*w_a*h_a).view(-1, 1) # col: Nposx1
+        vol_b = (l_b * w_b * h_b).view(1, -1) # row: 1xK
+        overlap_vol = torch.min(l_a, l_b) *  torch.min(w_a, w_b) * overlaps_h # NxK
+        iou3d = overlap_vol / torch.clamp(vol_a + vol_b - overlap_vol, min=1e-6) # NxK
+
+
 
     if EVAL_PRECISION_K:
         data_dict = pickle.load(open(f"{METHOD}_feats_data_dict.pkl", "rb"))
         X = data_dict['feats'] #(nsamples, nfeats)
         y = data_dict['labels'] #(nsamples,)
-        n_clusters = len(class_names)
-        k_neighbors = np.arange(1, 11)
+        # n_clusters = len(class_names)
+        k_neighbors = np.arange(1, 1000)
 
-        for metric in ["cosine", "euclidean", "cityblock"]:
+        for metric in ["euclidean", "cityblock"]:
+            print(f'Processing metric: {metric}')
             kd_tree = KDTree(X, metric=metric)
             acc_dict = {}
             for i in range(len(class_names)):
-                acc_dict[i] = {}
-                for k in k_neighbors:
-                    acc_dict[i][k]=[]
+                n_samples_this_class = len(X[y==i])
+                acc_dict[i]=np.zeros((n_samples_this_class, len(k_neighbors)))
 
             for i, class_name in enumerate(class_names):
                 X_cls = X[y==i]
-                for k in k_neighbors:
-                    for j in range(len(X_cls)):
-                        dist, ind = tree.query(X_cls[j], k=k)
-                        acc = (y[ind] == i).sum()/k
-                        acc_dict[i][k].append(acc)
+                print(f'Processing class: {class_name}')
+                for j in tqdm(range(len(X_cls))):
+                    dist, ind = kd_tree.query(X_cls[j].reshape(1, -1), k=k_neighbors[-1])
+                    count_true=0
+                    acc_mask = y[ind] == i
+                    acc_dict[i][j, :] = np.cumsum(acc_mask)/k_neighbors
+                    
+            pickle.dump(acc_dict, open(f"{metric}_knn_desc.pkl", "wb"))
+        
+        styles = ['-', '--']
+        colors = ['r', 'b', 'g']
+        for style_idx, metric in enumerate(["euclidean", "cityblock"]):
+            acc_dict = pickle.load(open(f"{metric}_knn_desc.pkl", "rb"))
+            for i, class_name in enumerate(class_names):
+                avg_acc = np.mean(acc_dict[i], axis=0)
+                plt.plot(k_neighbors, avg_acc, styles[style_idx], color=colors[i], label=f'{class_name}_{metric}')
             
+        plt.legend()
+        plt.xlabel('Knn')
+        plt.ylabel('Accuracy in Knn')
+        plt.show()
+        
 
 
 
+        
     ##################### Eval feats distances 
     if EVAL_FEATS_DISTANCES:
         data_dict = pickle.load(open(f"{METHOD}_feats_data_dict.pkl", "rb"))

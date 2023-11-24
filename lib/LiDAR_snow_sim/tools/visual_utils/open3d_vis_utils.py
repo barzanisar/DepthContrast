@@ -95,7 +95,7 @@ def draw_scenes(points, gt_boxes=None, ref_boxes=None, ref_labels=None, ref_scor
     vis = open3d.visualization.Visualizer()
     vis.create_window()
 
-    vis.get_render_option().point_size = 6.0
+    vis.get_render_option().point_size = 2 #6.0
     vis.get_render_option().background_color = np.ones(3)
 
     # draw origin
