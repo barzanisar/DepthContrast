@@ -16,8 +16,8 @@ from datasets.transforms import  data_augmentor, data_processor
 #from datasets.features import global_descriptors
 
 from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
-from utils.pcd_preprocess import visualize_selected_labels
-import open3d as o3d
+# from utils.pcd_preprocess import visualize_selected_labels
+# import open3d as o3d
     
 try:
     try:
