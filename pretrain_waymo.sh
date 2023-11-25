@@ -41,7 +41,6 @@ sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_weight 
 sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=seg_contrast scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19348 --cfg_file configs/waymo_pointrcnn_backbone_segcontrast.yaml
 
 
-
 sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_0p7 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19317 --cfg_file configs/waymo_pointrcnn_backbone_iou_thresh_0p7.yaml
 sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_0p6 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19316 --cfg_file configs/waymo_pointrcnn_backbone_iou_thresh_0p6.yaml
 sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_0p5 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19315 --cfg_file configs/waymo_pointrcnn_backbone_iou_thresh_0p5.yaml
@@ -49,6 +48,7 @@ sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_
 sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19327 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p4.yaml
 sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19326 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p3.yaml
 sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19325 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p2.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19324 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p1.yaml
 
 ### Pretrain full networks
 # CenterPoint full
