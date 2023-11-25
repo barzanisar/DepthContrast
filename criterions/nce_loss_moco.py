@@ -259,11 +259,14 @@ class NCELossMoco(nn.Module):
             if self.iou_dist_threshold is not None:
                 l_neg=l_neg.masked_fill(iou_dist<self.iou_dist_threshold, -1e9)
             if self.iou_percentage_threshold is not None:
-                mask = torch.zeros_like(l_neg, dtype=bool)
                 idx_sort = torch.sort(iou_dist, axis=1)[1][:,:int(self.iou_percentage_threshold*self.K)] #(Npos, Nneg)
                 for i in range(N_pos):
-                    mask[i, idx_sort[i]] = True
-                l_neg=l_neg.masked_fill(mask, -1e9)
+                    l_neg[i, idx_sort[i]] = -1e9
+                # mask = torch.zeros_like(l_neg, dtype=bool)
+                # idx_sort = torch.sort(iou_dist, axis=1)[1][:,:int(self.iou_percentage_threshold*self.K)] #(Npos, Nneg)
+                # for i in range(N_pos):
+                #     mask[i, idx_sort[i]] = True
+                # l_neg=l_neg.masked_fill(mask, -1e9)
             
 
         # logits: Nx(1+K) i.e. N examples or clusters and K+1 class scores
