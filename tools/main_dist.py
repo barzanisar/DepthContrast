@@ -90,6 +90,12 @@ def main_worker(args, cfg):
     if 'PRETEXT_HEAD'in cfg['model']['MODEL_BASE']:
         pretext_head_name = cfg['model']['MODEL_BASE']['PRETEXT_HEAD']['NAME']
         CLUSTER = pretext_head_name in ['SegHead', 'SegVoxHead']
+    if 'EXTRACT_SHAPE_DESCRIPTORS' in cfg['dataset']:
+        shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
+        cfg['NCE_LOSS']['SHAPE_DESCRIPTORS_DIM'] = shape_dim_dict[cfg['dataset']['EXTRACT_SHAPE_DESCRIPTORS']]
+    cfg['NCE_LOSS']['cluster'] = CLUSTER
+
+
     
     # Define dataloaders
     train_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=True, mode='train', logger=logger)  
@@ -109,7 +115,7 @@ def main_worker(args, cfg):
 
 
     # Define criterion    
-    train_criterion = main_utils.build_criterion(cfg['NCE_LOSS'], CLUSTER, logger=logger)
+    train_criterion = main_utils.build_criterion(cfg['NCE_LOSS'], logger=logger)
     train_criterion = train_criterion.cuda()
             
     # Define optimizer

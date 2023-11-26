@@ -48,7 +48,6 @@ RUN apt-get install -y --no-install-recommends \
 # ==================================================================
 # python
 # ------------------------------------------------------------------
-WORKDIR /DepthContrast
 RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
@@ -60,17 +59,32 @@ RUN apt-get install -y --no-install-recommends \
         python3-setuptools
 RUN ln -s /usr/bin/python3.8 /usr/local/bin/python3
 RUN ln -s /usr/bin/python3.8 /usr/local/bin/python
-COPY requirements.txt requirements.txt
-RUN python -m pip install --upgrade pip
-RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
-RUN apt-get update && apt-get install -y libgl1
-RUN pip install -U urllib3 requests
 
-RUN apt-get update -y
-RUN apt-get install -y libeigen3-dev
-RUN pip install numpy open3d hdbscan
+# ==================================================================
+# conda
+# ------------------------------------------------------------------
 
+#RUN mkdir -p /opt/conda
+ENV CONDA_DIR /opt/conda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda
 
+ENV PATH=$CONDA_DIR/bin:$PATH
+RUN rm -rf ~/miniconda.sh
+ENV PATH /opt/conda/envs/ssl/bin:$PATH
+
+RUN /opt/conda/bin/conda init bash \
+    && . ~/.bashrc \
+    && conda create -n ssl python=3.8 \
+    && conda activate ssl 
+RUN echo "source activate ssl" > ~/.bashrc
+
+# Make RUN commands use the new environment:
+SHELL ["conda", "run", "--no-capture-output", "-n", "ssl", "/bin/bash", "-c"]
+
+RUN conda install -c conda-forge/label/gcc7 qhull
+RUN conda install -c conda-forge -c davidcaron pclpy
+RUN pip install werkzeug==2.2.3
 
 # ==================================================================
 # config & cleanup
@@ -116,6 +130,16 @@ ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPA
 # ------------------------------------------------------------------
 
 WORKDIR /DepthContrast
+COPY requirements.txt requirements.txt
+RUN python -m pip install --upgrade pip
+RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
+RUN apt-get update && apt-get install -y libgl1
+RUN pip install -U urllib3 requests
+
+RUN apt-get update -y
+RUN apt-get install -y libeigen3-dev
+RUN pip install numpy open3d hdbscan
+
 COPY third_party third_party
 ENV TORCH_CUDA_ARCH_LIST="Kepler;Kepler+Tesla;Maxwell;Maxwell+Tegra;Pascal;Volta;Turing"
 ENV PYTHONPATH="/usr/lib/python3.8/site-packages/:${PYTHONPATH}"
@@ -126,8 +150,8 @@ RUN python ./third_party/OpenPCDet/setup.py develop
 
 WORKDIR /DepthContrast
 RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
-RUN rm /usr/local/lib/python3.8/dist-packages/spconv/pytorch/utils.py
-COPY spconv/utils.py /usr/local/lib/python3.8/dist-packages/spconv/pytorch/utils.py
+# RUN rm /usr/local/lib/python3.8/dist-packages/spconv/pytorch/utils.py
+# COPY spconv/utils.py /usr/local/lib/python3.8/dist-packages/spconv/pytorch/utils.py
 RUN python -m pip --no-cache-dir install torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 RUN mkdir checkpoints &&  \
     mkdir configs &&  \
@@ -141,19 +165,19 @@ RUN mkdir checkpoints &&  \
     mkdir output && \
     mkdir lib
 
+# RUN cd && git clone https://github.com/isl-org/Open3D 
+# RUN cd /root/Open3D && rm util/install_deps_ubuntu.sh
+# RUN cp third_party/patchwork-plusplus/install_deps_ubuntu.sh /root/Open3D/util/install_deps_ubuntu.sh
+# WORKDIR /Open3D
+# # RUN rm util/install_deps_ubuntu.sh
+# # COPY /DepthContrast/third_party/patchwork-plusplus/install_deps_ubuntu.sh util/install_deps_ubuntu.sh
+# RUN chmod +x /root/Open3D/util/install_deps_ubuntu.sh
+# RUN bash /root/Open3D/util/install_deps_ubuntu.sh
+
+# RUN cd /root/Open3D && mkdir build && cd build && cmake .. && make && make install
+
+# WORKDIR /DepthContrast
+# RUN cd third_party/patchwork-plusplus && mkdir build && cd build && cmake .. && make && make install
+# RUN cp third_party/patchwork-plusplus/build/python_wrapper/*.so third_party/
 
 
-RUN cd && git clone https://github.com/isl-org/Open3D 
-RUN cd /root/Open3D && rm util/install_deps_ubuntu.sh
-RUN cp third_party/patchwork-plusplus/install_deps_ubuntu.sh /root/Open3D/util/install_deps_ubuntu.sh
-WORKDIR /Open3D
-# RUN rm util/install_deps_ubuntu.sh
-# COPY /DepthContrast/third_party/patchwork-plusplus/install_deps_ubuntu.sh util/install_deps_ubuntu.sh
-RUN chmod +x /root/Open3D/util/install_deps_ubuntu.sh
-RUN bash /root/Open3D/util/install_deps_ubuntu.sh
-
-RUN cd /root/Open3D && mkdir build && cd build && cmake .. && make && make install
-
-WORKDIR /DepthContrast
-RUN cd third_party/patchwork-plusplus && mkdir build && cd build && cmake .. && make && make install
-RUN cp third_party/patchwork-plusplus/build/python_wrapper/*.so third_party/

@@ -7,7 +7,7 @@ import pickle
 from sklearn.manifold import TSNE
 # from umap import UMAP
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 from tqdm import tqdm
 import math
 import torch
@@ -366,18 +366,18 @@ if __name__ == "__main__":
     with open(path, 'rb') as f:
         dbinfos = pickle.load(f)
     class_names=['Vehicle', 'Pedestrian', 'Cyclist']
-    METHOD='gasd' #vfh 96.5, esf 89.1, gasd 82.3
+    METHOD='vfh' #vfh 96.5, esf 89.1, gasd 82.3
     reject_infinite_normal_objs=False
     random_seed = 42 
     EXTRACT_ALL_INFOS_FEATS=False
     EVAL_FEATS=False
     EVAL_FEATS_DISTANCES=False
-    EVAL_PRECISION_K=True
+    EVAL_PRECISION_K=False
     EVAL_PRECISION_IOU=False
 
 
     CHECK_ROT_TRANS_SCALE_INVARIANCE=False
-    COMPARE_FEATS=False
+    COMPARE_FEATS=True
     VISUALIZE_TSNE=False
     VISUALIZE_FEATS=False
     CROSS_VAL=False
@@ -393,25 +393,37 @@ if __name__ == "__main__":
 
     # ########### compare feats 
     if COMPARE_FEATS:
-        sample=100 #100 Veh
+        sample=40 #100 Veh
         obj_class1 = 'Vehicle'
         path = ROOT_PATH + dbinfos[obj_class1][sample]['path']
         points = np.fromfile(str(path), dtype=np.float32).reshape([-1, 5])
         obj_points1 = np.fromfile(str(path), dtype=np.float32).reshape([-1, 5])
-        V.draw_scenes(points=obj_points1[:,:4])
+        #V.draw_scenes(points=obj_points1[:,:4])
         desc1 = extract_feats(obj_points1[:,:3], method=METHOD, reject_infinite_normal_objs=reject_infinite_normal_objs)
 
 
-        sample=50 #50 Ped
+        sample=42 #50 Ped
         obj_class2 = 'Pedestrian'
         path = ROOT_PATH + dbinfos[obj_class2][sample]['path']
         obj_points2 = np.fromfile(str(path), dtype=np.float32).reshape([-1, 5])
-        V.draw_scenes(points=obj_points2[:,:4])
+        #V.draw_scenes(points=obj_points2[:,:4])
         desc2 = extract_feats(obj_points2[:,:3], method=METHOD, reject_infinite_normal_objs=reject_infinite_normal_objs)
+        
+        # plt.plot(desc1, label=obj_class1+'1')
+        # plt.plot(desc2, label=obj_class2+'2')
+        # plt.title('Euclidean Distance: {:.2f}'.format(np.linalg.norm(desc1-desc2)))
+        # plt.legend()
+        # plt.show()
 
-        plt.plot(desc1, label=obj_class1+'1')
-        plt.plot(desc2, label=obj_class2+'2')
-        plt.title('Euclidean Distance: {:.2f}'.format(np.linalg.norm(desc1-desc2)))
+        normalized_d1=desc1/np.linalg.norm(desc1)
+        normalized_d2=desc2/np.linalg.norm(desc2)
+        cosine_dist = 1 - np.dot(normalized_d1, normalized_d2)
+        euc_dist = np.linalg.norm(normalized_d1-normalized_d2)
+
+
+        plt.plot(normalized_d1, label=obj_class1+'1')
+        plt.plot(normalized_d2, label=obj_class2+'2')
+        plt.title('Normalized vec Euclidean Distance: {:.2f}, cosine_dist: {:.2f}'.format(euc_dist, cosine_dist))
         plt.legend()
         plt.show()
     

@@ -333,9 +333,9 @@ def build_dataloader(config, num_workers, pretraining=True, mode='train', logger
     )
     return loader
 
-def build_criterion(cfg, cluster, logger=None):
+def build_criterion(cfg, logger=None):
     import criterions
-    criterion = criterions.__dict__['NCELossMoco'](cfg, cluster)
+    criterion = criterions.__dict__['NCELossMoco'](cfg)
     
     if logger is not None:
         logger.add_line(str(criterion))

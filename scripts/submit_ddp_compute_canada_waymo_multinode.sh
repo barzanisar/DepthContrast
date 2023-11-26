@@ -22,7 +22,7 @@ TCP_PORT=18888
 
 # Additional parameters
 DATA_DIR=/home/$USER/scratch/Datasets/Waymo #/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
-SING_IMG=/home/$USER/scratch/singularity/ssl.sif
+SING_IMG=/home/$USER/scratch/singularity/ssl_conda.sif
 
 
 # Usage info

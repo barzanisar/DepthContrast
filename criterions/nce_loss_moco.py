@@ -44,30 +44,36 @@ class NCELossMoco(nn.Module):
     This class supports training using both NCE and CrossEntropy (InfoNCE).
     """
 
-    def __init__(self, config, cluster):
+    def __init__(self, config):
         super(NCELossMoco, self).__init__()
 
-        self.cluster = cluster
+        self.cluster = config['cluster']
 
         self.K = int(config["NUM_NEGATIVES"])
         self.embedding_dim = int(config["EMBEDDING_DIM"])
         self.dim = int(config["EMBEDDING_DIM"])
         self.iou_dist_threshold = None
         self.iou_percentage_threshold = None
-        self.rmse_threshold = None
+        self.shape_dist_threshold = None
         self.iou_weight = None
         self.shape_descs_dim = None
         self.iou_guidance = False
         self.neg_queue_filled = False
         if self.cluster:
             self.iou_dist_threshold = config.get("IOU_DIST_THRESHOLD", None)
+            self.shape_dist_threshold = config.get("SHAPE_DIST_THRESHOLD", None)
             self.iou_percentage_threshold = config.get("IOU_PERCENTAGE_THRESHOLD", None)
-            self.shape_descs_dim = config.get("SHAPE_DESCRIPTORS_DIM", None)
             self.iou_weight =  config.get("IOU_WEIGHT", None)
-            self.rmse_threshold = config.get("RMSE_THRESHOLD", None)
+            self.shape_weight = config.get("SHAPE_WEIGHT", None)
+            self.shape_descs_dim = config.get("SHAPE_DESCRIPTORS_DIM", None)
+            self.shape_dist_type = config.get("SHAPE_DIST_TYPE", None)
+            if self.shape_weight is not None or self.shape_dist_threshold is not None:
+                assert self.shape_descs_dim is not None
+                assert self.shape_dist_type is not None
+            self.shape_guidance = self.shape_descs_dim is not None and self.shape_dist_type is not None
             self.iou_guidance = self.iou_weight is not None or self.iou_dist_threshold is not None or self.iou_percentage_threshold is not None
-
-        if self.shape_descs_dim is not None:
+            
+        if self.shape_guidance:
             self.dim += self.shape_descs_dim
 
         if self.iou_guidance:
@@ -78,10 +84,10 @@ class NCELossMoco(nn.Module):
         self.register_buffer("queue", torch.randn(self.dim, self.K)) # queue of dc (either pointnet or vox) based negative key embeddings
         self.queue[:self.embedding_dim, :] = nn.functional.normalize(self.queue[:self.embedding_dim, :], dim=0)
         
-        if self.shape_descs_dim is not None:
+        if self.shape_guidance:
             self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :] = -1 * torch.ones((self.shape_descs_dim,  self.K))
         if self.iou_guidance:
-            if self.shape_descs_dim is not None:
+            if self.shape_guidance:
                 self.queue[self.embedding_dim+self.shape_descs_dim:, :] = -1 * torch.ones((4,  self.K))
             else:
                 self.queue[self.embedding_dim:, :] = -1 * torch.ones((4,  self.K))
@@ -168,9 +174,6 @@ class NCELossMoco(nn.Module):
         
         if ptr + batch_size >= self.K:
             self.neg_queue_filled = True
-
-        if ptr + batch_size >= self.K:
-            self.neg_queue_filled = True
         
         ptr = (ptr + batch_size) % self.K  # move pointer
 
@@ -221,18 +224,29 @@ class NCELossMoco(nn.Module):
                 iou3d = overlap_vol / torch.clamp(vol + vol_neg - overlap_vol, min=1e-6) # NxK
                 iou_dist =  (1-iou3d) # NxK #if high iou, similar sizes -> low weight or threshold
 
-        if self.shape_descs_dim is not None:
+        if self.shape_guidance:
             common_shape_descs_mask = output_dict['shape_cluster_ids_is_common_mask_batch']
-            shape_descs = output_dict['shape_descs'][common_shape_descs_mask] #N x 604
-            rmse = torch.zeros((N_pos, self.K), device=shape_descs.device, dtype=shape_descs.dtype)
-            if self.neg_queue_filled:
-                shape_descs_neg = self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :].T
-                for i in range(N_pos):
-                    rmse_pos_i_neg_all = torch.norm(shape_descs[i] - shape_descs_neg, dim=1) #norm((Nneg, 604)=(1, 604) - (Nneg, 604)) -> Nneg
-                    rmse[i] = rmse_pos_i_neg_all
-                # map rmse between 0 to 1
-                desc_dist = rmse / torch.max(rmse, dim = 1, keepdim=True)[0] #(Npos, Nneg) / (Npos, 1) = (Npos, Nneg)
+            shape_descs_pos = output_dict['shape_descs'][common_shape_descs_mask] #N x 604
+            if self.shape_dist_type == 'cosine':
+                shape_descs_pos =  nn.functional.normalize(shape_descs_pos, dim=1, p=2) #(Npos, 604)
 
+            if self.neg_queue_filled:
+                shape_dist_mat = torch.zeros((N_pos, self.K), device=shape_descs_pos.device, dtype=shape_descs_pos.dtype) #(Npos, Nneg)
+                
+                #calculate euclidean distance
+                if self.shape_dist_type == 'euclidean':
+                    shape_descs_neg = self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :].T #(Nneg, 604)
+                    for i in range(N_pos):
+                        shape_dist_mat[i] = torch.norm(shape_descs_pos[i] - shape_descs_neg, dim=1) #norm((Nneg, 604)=(1, 604) - (Nneg, 604)) -> Nneg
+                    # map shape_dist_mat between 0 to 1
+                    shape_dist_mat = shape_dist_mat / torch.max(shape_dist_mat, dim = 1, keepdim=True)[0] #(Npos, Nneg) / (Npos, 1) = (Npos, Nneg)
+                elif self.shape_dist_type == 'cosine':
+                    # shape_descs_neg = self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :] #(604, Nneg)
+                    # cosine dist = 1 - cosine similarity
+                    shape_dist_mat = 1 - torch.einsum('nc,ck->nk', [shape_descs_pos, self.queue[self.embedding_dim:self.embedding_dim+self.shape_descs_dim, :]])
+                    shape_dist_mat = torch.clamp(shape_dist_mat, min=0)
+                    #percentage_removed = 100*((shape_dist_mat < 0.3).sum(dim=1)/self.K)
+                    #plt.plot(percentage_removed.cpu().numpy())
 
         # positive logits: Nx1 = batch size of positive examples
         l_pos = torch.einsum('nc,nc->n', [normalized_output1, normalized_output2]).unsqueeze(-1)
@@ -244,18 +258,15 @@ class NCELossMoco(nn.Module):
         # iou_dist[iou_dist<0.4] = 0
         neg_w = 0
         if self.neg_queue_filled:
-            if self.shape_descs_dim is not None:
-                if self.iou_weight is not None:
-                    neg_w = desc_dist * (1-self.iou_weight)
-                else:
-                    neg_w = desc_dist
+            if self.shape_weight is not None:
+                neg_w =  self.shape_weight * shape_dist_mat
             if self.iou_weight is not None:
                 neg_w += (self.iou_weight * iou_dist)
-            if self.shape_descs_dim is not None or self.iou_weight is not None:
+            if self.shape_weight is not None or self.iou_weight is not None:
                 l_neg = l_neg * neg_w
 
-            if self.shape_descs_dim is not None and self.rmse_threshold is not None:
-                l_neg=l_neg.masked_fill(desc_dist<self.rmse_threshold, -1e9)
+            if self.shape_dist_threshold is not None:
+                l_neg=l_neg.masked_fill(shape_dist_mat<self.shape_dist_threshold, -1e9)
             if self.iou_dist_threshold is not None:
                 l_neg=l_neg.masked_fill(iou_dist<self.iou_dist_threshold, -1e9)
             if self.iou_percentage_threshold is not None:
@@ -288,8 +299,8 @@ class NCELossMoco(nn.Module):
 
         if self.cluster:
             keys = normalized_output2
-            if self.shape_descs_dim is not None:
-                keys = torch.cat([keys, shape_descs], dim=1)
+            if self.shape_guidance:
+                keys = torch.cat([keys, shape_descs_pos], dim=1)
             if self.iou_guidance:
                 keys = torch.cat([keys, l,w,h,z], dim=1)
             self._dequeue_and_enqueue_cluster(keys)  

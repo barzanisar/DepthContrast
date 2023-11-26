@@ -1,5 +1,6 @@
-spconv==2.1.21
-spconv-cu111==2.1.21
+# spconv==2.1.21
+spconv-cu111==2.1.25 # automatically installs cumm-cu111==0.2.9
+# spconv-cu114==2.1.21
 setuptools==59.5.0
 open3d
 tensorboard
@@ -16,3 +17,5 @@ scikit-learn
 tqdm
 PyMieScatt 
 pyquaternion
+pccm==0.3.4
+ccimport==0.3.7
