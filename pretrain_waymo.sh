@@ -40,7 +40,13 @@
 # sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19338 --cfg_file configs/waymo_pointrcnn_backbone_iou_weight.yaml
 # sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=seg_contrast scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19348 --cfg_file configs/waymo_pointrcnn_backbone_segcontrast.yaml
 
-sbatch --time=1:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_thresh_0p8 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19318 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_iou_thresh_0p8.yaml
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_thresh_0p8 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19318 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_iou_thresh_0p8.yaml
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_thresh_0p7 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19317 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_iou_thresh_0p7.yaml
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_thresh_0p6 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19316 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_iou_thresh_0p6.yaml
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_thresh_0p5 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19315 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_iou_thresh_0p5.yaml
+
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19338 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_iou_weight.yaml
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_segcontrast scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19348 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_segcontrast.yaml
 
 # sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_0p8 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19318 --cfg_file configs/waymo_pointrcnn_backbone_iou_thresh_0p8.yaml
 sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_0p7 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19317 --cfg_file configs/waymo_pointrcnn_backbone_iou_thresh_0p7.yaml
@@ -55,14 +61,21 @@ sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_
 # sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p5 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19328 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p5.yaml
 
 #shape backbone variations (thresh, weight)
-sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=vfh_thresh_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19211 --cfg_file configs/waymo_pointrcnn_backbone_vfh_thresh_0p4.yaml
-sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=esf_thresh_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19212 --cfg_file configs/waymo_pointrcnn_backbone_esf_thresh_0p2.yaml
-sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=gasd_thresh_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19213 --cfg_file configs/waymo_pointrcnn_backbone_gasd_thresh_0p2.yaml
+# sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=vfh_thresh_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19211 --cfg_file configs/waymo_pointrcnn_backbone_vfh_thresh_0p4.yaml
+# sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=esf_thresh_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19212 --cfg_file configs/waymo_pointrcnn_backbone_esf_thresh_0p2.yaml
+# sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=gasd_thresh_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19213 --cfg_file configs/waymo_pointrcnn_backbone_gasd_thresh_0p2.yaml
 
-sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=vfh_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19214 --cfg_file configs/waymo_pointrcnn_backbone_vfh_weight.yaml
-sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=esf_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19215 --cfg_file configs/waymo_pointrcnn_backbone_esf_weight.yaml
-sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=gasd_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19216 --cfg_file configs/waymo_pointrcnn_backbone_gasd_weight.yaml
+# sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=vfh_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19214 --cfg_file configs/waymo_pointrcnn_backbone_vfh_weight.yaml
+# sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=esf_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19215 --cfg_file configs/waymo_pointrcnn_backbone_esf_weight.yaml
+# sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=gasd_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19216 --cfg_file configs/waymo_pointrcnn_backbone_gasd_weight.yaml
 
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_vfh_thresh_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19211 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_vfh_thresh_0p4.yaml
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_esf_thresh_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19212 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_esf_thresh_0p2.yaml
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_gasd_thresh_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19213 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_gasd_thresh_0p2.yaml
+
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_vfh_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19214 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_vfh_weight.yaml
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_esf_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19215 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_esf_weight.yaml
+sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_gasd_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19216 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_gasd_weight.yaml
 
 ### Pretrain full networks
 # CenterPoint full

@@ -122,7 +122,7 @@ class WaymoDataset(DepthContrastDataset):
 
     def get_seglabels(self, sequence_name, sample_idx):
         label_file = self.seglabels_root_path / sequence_name / ('%04d.npy' % sample_idx)
-        labels = np.load(label_file)
+        labels = np.load(label_file, allow_pickle=True)
         return labels
 
     
