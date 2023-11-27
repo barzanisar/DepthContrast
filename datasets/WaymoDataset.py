@@ -122,11 +122,7 @@ class WaymoDataset(DepthContrastDataset):
 
     def get_seglabels(self, sequence_name, sample_idx):
         label_file = self.seglabels_root_path / sequence_name / ('%04d.npy' % sample_idx)
-        try:
-            labels = np.load(label_file)
-        except:
-            print(f'Loading label file: {label_file} FAILED!!!!!!!!!!')
-            raise FileNotFoundError
+        labels = np.fromfile(label_file, dtype=np.float16)
         return labels
 
     
