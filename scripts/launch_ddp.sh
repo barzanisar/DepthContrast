@@ -99,11 +99,29 @@ TRAIN_CMD+="python -m torch.distributed.launch
 --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE --dist-url tcp://$MASTER_ADDR:$TCP_PORT
 "
 
-echo "Running training"
-echo "Node $SLURM_NODEID says: Launching python script..."
+TEST_CMD=$BASE_CMD
 
-echo "$TRAIN_CMD"
-eval $TRAIN_CMD
-echo "Done training"
+TEST_CMD+="python -m torch.distributed.launch
+--nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+/DepthContrast/tools/downstream_segmentation.py
+--launcher pytorch
+--multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE --dist-url tcp://$MASTER_ADDR:$TCP_PORT
+"
 
 
+if [ $DOWNSTREAM == "true" ]
+then
+    echo "Running ONLY downstream"
+    echo "Node $SLURM_NODEID says: Launching python script..."
+
+    echo "$TEST_CMD"
+    eval $TEST_CMD
+    echo "Done evaluation"
+else
+    echo "Running training"
+    echo "Node $SLURM_NODEID says: Launching python script..."
+
+    echo "$TRAIN_CMD"
+    eval $TRAIN_CMD
+    echo "Done training"
+fi

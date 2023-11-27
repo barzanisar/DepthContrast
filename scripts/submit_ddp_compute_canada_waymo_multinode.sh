@@ -19,6 +19,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # main.py script parameters
 CFG_FILE=configs/waymo.yaml
 TCP_PORT=18888
+DOWNSTREAM=false
 
 # Additional parameters
 DATA_DIR=/home/$USER/scratch/Datasets/Waymo #/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
@@ -61,6 +62,9 @@ while :; do
             die 'ERROR: "--tcp_port" requires a non-empty option argument.'
         fi
         ;;
+    -d|--downstream)       # Takes an option argument; ensure it has been specified.
+        DOWNSTREAM="true"
+        ;;
     # Additional parameters
     -?*)
         printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
@@ -84,6 +88,7 @@ export TCP_PORT=$TCP_PORT
 export CFG_FILE=$CFG_FILE
 export SING_IMG=$SING_IMG
 export DATA_DIR=$DATA_DIR
+export DOWNSTREAM=$DOWNSTREAM
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
 

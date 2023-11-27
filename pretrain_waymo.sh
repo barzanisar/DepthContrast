@@ -40,7 +40,7 @@
 # sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_weight scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19338 --cfg_file configs/waymo_pointrcnn_backbone_iou_weight.yaml
 # sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=seg_contrast scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19348 --cfg_file configs/waymo_pointrcnn_backbone_segcontrast.yaml
 
-sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_thresh_0p8 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19318 --cfg_file configs/waymo_lpseg_pointrcnn_backbone_iou_thresh_0p8.yaml
+sbatch --time=1:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_thresh_0p8 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19318 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_backbone_iou_thresh_0p8.yaml
 
 # sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_0p8 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19318 --cfg_file configs/waymo_pointrcnn_backbone_iou_thresh_0p8.yaml
 sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_0p7 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19317 --cfg_file configs/waymo_pointrcnn_backbone_iou_thresh_0p7.yaml
