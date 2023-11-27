@@ -125,7 +125,7 @@ class WaymoDataset(DepthContrastDataset):
         try:
             labels = np.load(label_file)
         except:
-            self.logger.add_line(f'Loading label file: {label_file} FAILED!!!!!!!!!!')
+            print(f'Loading label file: {label_file} FAILED!!!!!!!!!!')
             raise FileNotFoundError
         return labels
 
