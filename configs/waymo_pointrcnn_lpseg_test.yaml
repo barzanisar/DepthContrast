@@ -1,5 +1,5 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
-# python tools/main_dist.py --cfg configs/waymo.yaml
+# python tools/downstream_segmentation.py --cfg configs/waymo_pointrcnn_lpseg_test.yaml
 wb_extra_tags: ['pointrcnn', 'linearprobe_segmentation_waymo']
 resume: false
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
@@ -25,7 +25,7 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train_one, 'val': train_one}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 1, 'val': 1} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  FRAME_SAMPLING_INTERVAL: {'train': 4, 'val': 4} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 4 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist'] #['Vehicle', 'Pedestrian', 'Cyclist']
@@ -62,7 +62,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 5
+  num_epochs: 3
   warmup_epochs: 1
   lr:
     name: "cosine_warm_up"
@@ -94,4 +94,4 @@ model:
     CLS_FC: [128, 23]
     loss_types: ['CELoss', 'LovLoss']
     loss_weights: [1.0, 1.0]
-    label_smoothing: 0.1
+    # label_smoothing: 0.1

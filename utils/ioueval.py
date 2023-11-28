@@ -1,6 +1,52 @@
 import sys
 import torch
 import numpy as np
+import pickle
+from pathlib import Path
+
+
+class EvalMetrics:
+  def __init__(self, class_names, ckpt_epoch, save_dir):
+    self.eval_dict_ckpt = { 'ckpt_epoch': ckpt_epoch, 'downstream_trainval_epochs': []}
+    self.eval_metrics = ['acc', 'mIoU', 'loss']
+    self.class_names = class_names
+    self.save_dir = save_dir
+
+    for phase in ['train', 'val']:
+      for metric in self.eval_metrics:
+          self.eval_dict_ckpt[f'{phase}/{metric}'] = []
+      for class_name in class_names:
+          self.eval_dict_ckpt[f'{phase}/per_class_iou/{class_name}'] = []
+  
+  def push_back_single_epoch(self, phase, downstream_epoch, eval_dict):
+      self.eval_dict_ckpt['downstream_trainval_epochs'].append(downstream_epoch)
+      for metric in self.eval_metrics:
+          self.eval_dict_ckpt[f'{phase}/{metric}'].append(eval_dict[f'{phase}/{metric}'])
+      for class_name in self.class_names:
+          self.eval_dict_ckpt[f'{phase}/per_class_iou/{class_name}'].append(eval_dict[f'{phase}/per_class_iou/{class_name}'])
+
+
+  def get_best_dict(self):
+    ret_dict = {'ckpt_epoch': self.eval_dict_ckpt['ckpt_epoch']}
+    for phase in ['train', 'val']:
+      for metric in self.eval_metrics:
+          key = f'{phase}/{metric}'
+          if metric == 'loss':
+             ret_dict[key] = np.min(self.eval_dict_ckpt[key])
+          else:
+            ret_dict[key] = np.max(self.eval_dict_ckpt[key])
+      for class_name in self.class_names:
+          key=f'{phase}/per_class_iou/{class_name}'
+          ret_dict[key] = np.max(self.eval_dict_ckpt[key])
+    return ret_dict     
+  
+  def save(self, global_rank):
+    if global_rank == 0:
+        fn= f'{self.save_dir}/downstream_results.pkl'
+        pickle.dump(self.eval_dict_ckpt, open(fn, 'wb'))
+        b=1
+     
+
 
 class iouEval:
   def __init__(self, n_classes, ignore=None):

@@ -27,7 +27,7 @@ from utils import main_utils, wandb_utils
 from pathlib import Path
 
 import numpy as np
-from utils.ioueval import iouEval
+from utils.ioueval import iouEval, EvalMetrics
 from utils.data_map import WAYMO_LABELS
 from models.base_ssl3d_model import parameter_description
 
@@ -86,6 +86,10 @@ def main_worker(args, cfg):
                                                                          pretrain_model_dir=pretrain_model_dir, 
                                                                          eval_list_dir=downstream_dir)
 
+    checkpoints_to_eval.sort()
+    cfg['checkpoints_to_eval'] = checkpoints_to_eval
+    wandb_utils.init(cfg, args, job_type=phase_name)
+
     # Define dataloaders once
     train_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='train', logger=logger)  
     val_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='val', logger=logger) 
@@ -98,31 +102,28 @@ def main_worker(args, cfg):
     downstream_task = 'segmentation' if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
 
     for ckpt in checkpoints_to_eval:
+        if ckpt == 'checkpoint.pth.tar':
+            continue
         logger.add_line('\n'+'='*30 + f'Evaluating ckpt: {ckpt}' +'='*30)
-        cfg['checkpoint'] = ckpt #TODO
+        cfg['pretrain_checkpoint'] = ckpt
+        cfg['pretrain_ckpt_epoch'] = int(ckpt.split('-ep')[1].split('.')[0])
         ckpt_name = ckpt.split('.')[0]
-        _, run = wandb_utils.reinit(cfg, args, job_type=phase_name) #TODO
+        # _, run = wandb_utils.reinit(cfg, args, job_type=phase_name) #TODO
 
         downstream_ckpt_dir = Path(downstream_dir) / ckpt_name
         downstream_ckpt_dir.mkdir(parents=True, exist_ok=True)
-        eval_dict = eval_one_ckpt(args, cfg, logger, 
+        eval_one_ckpt(args, cfg, logger, 
                                   downstream_dir = str(downstream_ckpt_dir), 
                                   pretrain_model_dir=pretrain_model_dir, 
                                   train_loader=train_loader, val_loader=val_loader,
                                   model=model,
                                   linear_probe=linear_probe,
                                   downstream_task=downstream_task)
-        if eval_dict is not None:
 
-            highest_metric = -1
-            highest_metric = wandb_utils.summary(cfg, args, eval_dict, step=None, highest_metric=highest_metric)
-
-            if run is not None:
-                run.finish()
-            # record this epoch which has been evaluated
-            with open(ckpt_record_file, 'a') as f:
-                print('%s' % ckpt, file=f)
-            logger.add_line('\n'+'='*30 + f'Ckpt {ckpt} has been evaluated'+ '='*30)
+        # record this epoch which has been evaluated
+        with open(ckpt_record_file, 'a') as f:
+            print('%s' % ckpt, file=f)
+        logger.add_line('\n'+'='*30 + f'Ckpt {ckpt} has been evaluated'+ '='*30)
 
     if args.multiprocessing_distributed:
         dist.destroy_process_group()
@@ -136,7 +137,7 @@ def eval_one_ckpt(args, cfg, logger,
     ckp_manager_linear = main_utils.CheckpointManager(downstream_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
 
     # Load model state dict i.e. load checkpoint
-    base_model_epoch = ckp_manager_pretrained_model.restore(fn=cfg['checkpoint'], skip_model_layers=['global_step', 'num_batches_tracked'], model=model)
+    base_model_epoch = ckp_manager_pretrained_model.restore(fn=cfg['pretrain_checkpoint'], skip_model_layers=['global_step', 'num_batches_tracked'], model=model)
         
     logger.add_line(f"Downstream Epoch {base_model_epoch-1}")
 
@@ -178,31 +179,33 @@ def eval_one_ckpt(args, cfg, logger,
         
 
     if 'SEGMENTATION_HEAD' in cfg['model']:
-        num_classes = cfg['model']['SEGMENTATION_HEAD']['CLS_FC'][-1]
+        #num_classes = cfg['model']['SEGMENTATION_HEAD']['CLS_FC'][-1]
+        class_names = WAYMO_LABELS
     else:
-        num_classes = 3
+        # num_classes = 3
+        class_names = cfg['dataset']['CLASS_NAMES']
 
-    cfg['num_classes'] = num_classes
+    cfg['num_classes'] = len(class_names)
+    cfg['class_names'] = class_names
     
     start_epoch, end_epoch = 0, cfg['optimizer']['num_epochs']
 
-    # Optionally resume from a checkpoint
-    if cfg['resume']:
-        if ckp_manager_linear.checkpoint_exists(last=True):
-            start_epoch = ckp_manager_linear.restore(restore_last=True, model=model, optimizer=optimizer)
-            scheduler.step(start_epoch)
-            logger.add_line("Checkpoint loaded: '{}' (epoch {})".format(ckp_manager_linear.last_checkpoint_fn(), start_epoch))
-        else:
-            logger.add_line("No checkpoint found at '{}'".format(ckp_manager_linear.last_checkpoint_fn()))
+    # # Optionally resume from a checkpoint
+    # if cfg['resume']:
+    #     if ckp_manager_linear.checkpoint_exists(last=True):
+    #         start_epoch = ckp_manager_linear.restore(restore_last=True, model=model, optimizer=optimizer)
+    #         scheduler.step(start_epoch)
+    #         logger.add_line("Checkpoint loaded: '{}' (epoch {})".format(ckp_manager_linear.last_checkpoint_fn(), start_epoch))
+    #     else:
+    #         logger.add_line("No checkpoint found at '{}'".format(ckp_manager_linear.last_checkpoint_fn()))
 
     cudnn.benchmark = True
 
     ############################ TRAIN Linear classifier head #########################################
     test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
-    val_accuracies = []
-    val_mIoUs = []
-    epochs = []
-    evaluator = iouEval(n_classes=num_classes, ignore=0)
+    
+    evaluator = iouEval(n_classes=cfg['num_classes'], ignore=0)
+    eval_dict_ckpt = EvalMetrics(class_names, cfg['pretrain_ckpt_epoch'], save_dir=downstream_dir)
     for epoch in range(start_epoch, end_epoch):
         if args.multiprocessing_distributed:
             train_loader.sampler.set_epoch(epoch)
@@ -210,37 +213,24 @@ def eval_one_ckpt(args, cfg, logger,
         # Train for one epoch
         logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
         logger.add_line('LR: {}'.format(scheduler.get_lr()))
-        run_phase('train', train_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
+        train_eval_metrics_dict_single_downstream_epoch = run_phase('train', train_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
         
         # Validate one epoch
-        accuracy, m_iou= run_phase('val', val_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
+        val_eval_metrics_dict_single_downstream_epoch = run_phase('val', val_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
 
         #Save linear probe ckpt
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
             ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer)
             logger.add_line(f'Saved linear_probe checkpoint {ckp_manager_linear.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
         
-        val_accuracies.append(accuracy)
-        val_mIoUs.append(m_iou)
-        epochs.append(epoch)
 
-    if len(val_accuracies):
-        max_acc_epoch = epochs[np.array(val_accuracies).argmax()]
-        eval_dict = {
-                    'base_model_epoch': base_model_epoch,
-                    'lp_max_acc_epoch': max_acc_epoch,
-                    'max_acc': np.array(val_accuracies).max(),
-                    'std_acc' : np.array(val_accuracies).std(),
-                    'mean_acc' : np.array(val_accuracies).mean(),
-                    'min_acc' : np.array(val_accuracies).min(),
-                    'max_mIou' : np.array(val_mIoUs).max(),
-                    'std_mIou' : np.array(val_mIoUs).std(),
-                    'mean_mIou' : np.array(val_mIoUs).mean(),
-                    'min_mIou' : np.array(val_mIoUs).min()
-                    }
-        return eval_dict
-    else:
-        return None
+        eval_dict_ckpt.push_back_single_epoch('train', epoch, train_eval_metrics_dict_single_downstream_epoch)
+        eval_dict_ckpt.push_back_single_epoch('val', epoch, val_eval_metrics_dict_single_downstream_epoch)
+
+    ckpt_best_downstream_results = eval_dict_ckpt.get_best_dict()
+    wandb_utils.log(cfg, args, ckpt_best_downstream_results,  step=cfg['pretrain_ckpt_epoch'])
+    eval_dict_ckpt.save(args.rank)
+
     
 def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator=None):
     from utils import metrics_utils
@@ -275,10 +265,8 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
 
     all_y_gt=[]
     all_preds=[]
-    if 'SEGMENTATION_HEAD' in cfg['model']:
-        class_names = WAYMO_LABELS
-    else:
-        class_names = cfg['dataset']['CLASS_NAMES']
+
+    class_names = cfg['class_names']
 
     # switch to train mode
     model.train(phase == 'train')
@@ -371,13 +359,16 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
         eval_metrics_dict[f'{phase}/mIoU'] = mean_iou
         eval_metrics_dict[f'{phase}/loss'] = evaluator.getloss()
 
-        if cfg['num_classes'] > 2:
-            # per class iou
-            for class_num in range(class_iou.shape[0]):
-                eval_metrics_dict[f'{phase}/per_class_iou/{class_names[class_num]}'] = class_iou[class_num].item()
-        else:
-            eval_metrics_dict[f'{phase}/per_class_iou/background'] = class_iou[0].item()
-            eval_metrics_dict[f'{phase}/per_class_iou/foreground'] = class_iou[1].item()
+        for class_num in range(class_iou.shape[0]):
+            eval_metrics_dict[f'{phase}/per_class_iou/{class_names[class_num]}'] = class_iou[class_num].item()
+
+        # if cfg['num_classes'] > 2:
+        #     # per class iou
+        #     for class_num in range(class_iou.shape[0]):
+        #         eval_metrics_dict[f'{phase}/per_class_iou/{class_names[class_num]}'] = class_iou[class_num].item()
+        # else:
+        #     eval_metrics_dict[f'{phase}/per_class_iou/background'] = class_iou[0].item()
+        #     eval_metrics_dict[f'{phase}/per_class_iou/foreground'] = class_iou[1].item()
 
 
 
@@ -388,9 +379,9 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
         logger.add_line(f'{phase} mIoU: {mean_iou}, IoU per class: {class_iou}')
 
 
-    wandb_utils.log(cfg, args, eval_metrics_dict, epoch)
+    # wandb_utils.log(cfg, args, eval_metrics_dict, epoch)
 
-    return accuracy, mean_iou
+    return eval_metrics_dict
 
 if __name__ == '__main__':
     main()

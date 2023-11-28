@@ -136,7 +136,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_centerpoint_lpseg_test.yaml"
+                "configs/waymo_pointrcnn_lpseg_test.yaml"
             ]
         },
         // {

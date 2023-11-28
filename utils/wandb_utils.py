@@ -21,7 +21,12 @@ def init(cfg, args, job_type='train'):
         return False
 
     dir = cfg['WANDB'].get('dir', None)
-    wandb.init(name=cfg['model']['name'],
+
+    run_name = cfg['model']['name']
+    if job_type != 'pretrain':
+        run_name += '-' + job_type
+
+    wandb.init(name=run_name,
                config=cfg,
                tags=cfg['wb_extra_tags'],
                project=cfg['WANDB']['PROJECT'],
