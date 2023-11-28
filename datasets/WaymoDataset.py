@@ -120,9 +120,20 @@ class WaymoDataset(DepthContrastDataset):
         labels = np.fromfile(label_file, dtype=np.float16)
         return labels
 
-    def get_seglabels(self, sequence_name, sample_idx):
+    def get_seglabels(self, sequence_name, sample_idx, num_points):
         label_file = self.seglabels_root_path / sequence_name / ('%04d.npy' % sample_idx)
-        labels = np.fromfile(label_file, dtype=np.float16)
+        # labels = np.fromfile(label_file, dtype=np.float16)
+        # if labels.shape[0] == num_points and labels.max() < 23:
+        #     return labels
+        # else:
+        labels = np.load(label_file)
+        # if labels.shape[0] != num_points:
+        #     print(label_file, f'lbls: {labels.shape[0]}, numpts: {num_points}')
+        # if labels.max() >= 23:
+        #     print(label_file)
+        assert labels.shape[0] == num_points, label_file
+        assert labels.max() < 23, label_file
+        
         return labels
 
     
@@ -139,7 +150,7 @@ class WaymoDataset(DepthContrastDataset):
         # print('frame_id: ', info['frame_id'])
 
         points = self.get_lidar(sequence_name, sample_idx)
-        pt_seg_labels = self.get_seglabels(sequence_name, sample_idx)
+        pt_seg_labels = self.get_seglabels(sequence_name, sample_idx, points.shape[0])
         assert points.shape[0] == pt_seg_labels.shape[0], f'Missing labels for {frame_id}!!!!!!!!'
         points = np.hstack([points, pt_seg_labels.reshape(-1, 1)]) #xyzi, seglabel
 
