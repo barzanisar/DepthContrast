@@ -34,7 +34,7 @@ def find_pt_wise_gtbox_idx(points, gt_boxes):
     return pt_wise_gtbox_idxs
 
     
-def mask_boxes_with_few_points(points, gt_boxes, pt_cluster_ids = None):
+def mask_boxes_with_few_points(points, gt_boxes, numpts, pt_cluster_ids = None):
     # Only do this for training, this can happen after dropping patches
     # return mask for selecting valid boxes
     num_gt_boxes = gt_boxes.shape[0]
@@ -46,7 +46,7 @@ def mask_boxes_with_few_points(points, gt_boxes, pt_cluster_ids = None):
             box_label = gt_boxes[i][-1]
             pts_this_box_mask = pt_cluster_ids == box_label
             num_pts_this_box = pts_this_box_mask.sum()
-            if num_pts_this_box <=5:
+            if num_pts_this_box <=numpts:
                 box_keep_mask[i] = False
 
                 #Set pt labels to -1 i.e. background if fewer than 5 pts
@@ -61,7 +61,7 @@ def mask_boxes_with_few_points(points, gt_boxes, pt_cluster_ids = None):
         for i in range(num_gt_boxes):
             obj_points_mask = box_pts_map[i]>0
             
-            if len(points[obj_points_mask]) <= 5:
+            if len(points[obj_points_mask]) <= numpts:
                 box_keep_mask[i] = False
             else:
                 pt_wise_gtbox_idxs[obj_points_mask] = i

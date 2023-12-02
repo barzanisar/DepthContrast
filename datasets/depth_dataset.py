@@ -14,6 +14,7 @@ from pathlib import Path
 
 from datasets.transforms import  data_augmentor, data_processor
 from datasets.features import global_descriptors
+from datasets.collators.sparse_collator import point_set_to_coord_feats
 
 from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 # from utils.pcd_preprocess import visualize_selected_labels
@@ -64,7 +65,7 @@ class DepthContrastDataset(Dataset):
         self.grid_size = None
         self.voxel_size = None
         self.depth_downsample_factor = None 
-        if cfg["VOX"]:
+        if cfg["INPUT"] == 'voxels':
             self.voxel_size = [0.1, 0.1, 0.15] #[0.05, 0.05, 0.1] #
 
             self.MAX_POINTS_PER_VOXEL = 5
@@ -121,7 +122,7 @@ class DepthContrastDataset(Dataset):
             #Reappend class_idx
             data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx])
         
-        if not cfg["VOX"]:
+        if cfg['INPUT'] == 'points':
             data_dict['points'] = data_processor.sample_points(data_dict['points'], self.cfg["SAMPLE_NUM_POINTS"] )
 
         if self.mode == 'train':
@@ -129,10 +130,10 @@ class DepthContrastDataset(Dataset):
             
             #Only needed if augmentation removes points
             # If augmentor removes a patch with gt box, remove its gt box 
-            data_dict['points'], data_dict['gt_boxes'], data_dict['pt_wise_gtbox_idxs'] = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'])
+            data_dict['points'], data_dict['gt_boxes'], data_dict['pt_wise_gtbox_idxs'] = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'],  numpts=20)
         else:
             data_dict['pt_wise_gtbox_idxs'] = data_processor.find_pt_wise_gtbox_idx(data_dict['points'], data_dict['gt_boxes'])
-        if cfg["VOX"]:
+        if cfg['INPUT'] == 'voxels':
             vox_dict = self.toVox(data_dict["points"]) # xyzil=seg label 
             data_dict["vox"] = vox_dict
 
@@ -227,7 +228,7 @@ class DepthContrastDataset(Dataset):
             shape_descs = np.array(shape_descs)
             cluster_ids_for_shape_descs = np.array(cluster_ids_for_shape_descs).flatten()
             data_dict['shape_descs'] = shape_descs
-            data_dict['shape_desc_cluster_ids']= cluster_ids_for_shape_descs
+            data_dict['shape_desc_cluster_ids'] = cluster_ids_for_shape_descs
 
         ################################ Visualize knn for shape desc #######################
     
@@ -279,7 +280,7 @@ class DepthContrastDataset(Dataset):
 
         # data processor
         # sample points if pointnet backbone
-        if not cfg["VOX"]:
+        if cfg['INPUT'] == 'points':
             data_dict['points'] = data_processor.sample_points(data_dict['points'], self.cfg["SAMPLE_NUM_POINTS"] )
             data_dict['points_moco'] = data_processor.sample_points(data_dict['points_moco'], self.cfg["SAMPLE_NUM_POINTS"])
 
@@ -291,8 +292,8 @@ class DepthContrastDataset(Dataset):
         # for per point fg,bg prediction
         if self.mode == 'train':
             # If augmentor removes a patch with gt box, remove its gt box and label its points as -1
-            data_dict['points'], data_dict['gt_boxes'], _ = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'], pt_cluster_ids=data_dict['points'][:, -1])
-            data_dict['points_moco'], data_dict['gt_boxes_moco'], _ = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'], pt_cluster_ids=data_dict['points_moco'][:, -1])
+            data_dict['points'], data_dict['gt_boxes'], _ = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'], pt_cluster_ids=data_dict['points'][:, -1], numpts=20)
+            data_dict['points_moco'], data_dict['gt_boxes_moco'], _ = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'], pt_cluster_ids=data_dict['points_moco'][:, -1], numpts=20)
 
         
         if PLOT:
@@ -300,12 +301,21 @@ class DepthContrastDataset(Dataset):
             V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
             V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
         # if vox then transform points to voxels else save points as tensor
-        if cfg["VOX"]:
+        if cfg['INPUT'] == 'voxels':
             vox_dict = self.toVox(data_dict["points"]) # xyzil=clusterlabel 
             data_dict["vox"] = vox_dict
 
             vox_dict = self.toVox(data_dict["points_moco"])
             data_dict["vox_moco"] = vox_dict
+
+        if cfg['INPUT'] == 'sparse_tensor':
+            data_dict['voxel_coords'], feats, cluster_p = point_set_to_coord_feats(data_dict["points"][:,:-1], data_dict["points"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"])
+            data_dict["points"] = np.hstack([feats, cluster_p[:,None]])
+
+            data_dict['voxel_coords_moco'], feats_moco, cluster_p_moco = point_set_to_coord_feats(data_dict["points"][:,:-1], data_dict["points"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"])
+            data_dict["points_moco"] = np.hstack([feats_moco, cluster_p_moco[:,None]])
+
+
 
         data_dict['gt_boxes_cluster_ids'] = data_dict['gt_boxes'][:,-1]
         data_dict['gt_boxes'] = data_dict['gt_boxes'][:, :8] #xyz,lwh, rz, gt class_index i.e. 1: Vehicle, ...

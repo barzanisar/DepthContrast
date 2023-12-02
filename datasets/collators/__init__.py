@@ -7,11 +7,13 @@
 # LICENSE file in the root directory of this source tree.
 
 from datasets.collators.moco_collator import moco_collator
+from datasets.collators.sparse_collator import sparse_moco_collator
 from datasets.collators.downstream_collator import downstream_collator
 
 COLLATORS_MAP = {
     "moco_collator": moco_collator,
-    "downstream_collator": downstream_collator
+    "downstream_collator": downstream_collator,
+    "sparse_moco_collator": sparse_moco_collator
 }
 
 

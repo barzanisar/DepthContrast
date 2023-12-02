@@ -89,11 +89,12 @@ def main_worker(args, cfg):
     CLUSTER = False
     if 'PRETEXT_HEAD'in cfg['model']['MODEL_BASE']:
         pretext_head_name = cfg['model']['MODEL_BASE']['PRETEXT_HEAD']['NAME']
-        CLUSTER = pretext_head_name in ['SegHead', 'SegVoxHead']
+        CLUSTER = pretext_head_name in ['SegHead', 'SegVoxHead', 'SegSparseVoxHead']
     if 'EXTRACT_SHAPE_DESCRIPTORS' in cfg['dataset']:
         shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
         cfg['NCE_LOSS']['SHAPE_DESCRIPTORS_DIM'] = shape_dim_dict[cfg['dataset']['EXTRACT_SHAPE_DESCRIPTORS']]
     cfg['NCE_LOSS']['cluster'] = CLUSTER
+    cfg['model']['INPUT'] = cfg['dataset']['INPUT']
 
 
     
@@ -229,6 +230,18 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
 
         loss_meter.update(loss.item())
        
+        # def getBack(var_grad_fn):
+        #     print(var_grad_fn)
+        #     for n in var_grad_fn.next_functions:
+        #         if n[0]:
+        #             try:
+        #                 tensor = getattr(n[0], 'variable')
+        #                 print(n[0])
+        #                 print('Tensor with grad found:', tensor)
+        #                 print(' - gradient:', tensor.grad)
+        #                 print()
+        #             except AttributeError as e:
+        #                 getBack(n[0])
         # compute gradient and do SGD step during training
         if phase == 'train':
             optimizer.zero_grad()

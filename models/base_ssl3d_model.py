@@ -21,6 +21,7 @@ except:
 
 import numpy as np
 
+from datasets.collators.sparse_collator import numpy_to_sparse_tensor, collate_points_to_sparse_tensor
 from utils import main_utils
 from third_party.OpenPCDet.pcdet.models.pretext_heads.gather_utils import *
 from third_party.OpenPCDet.pcdet.models.detectors import build_detector
@@ -78,7 +79,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             outputs_head, tb_dict, _, _ = self.det_head(output_dict['output'])
 
             output_dict['loss_det_head']= outputs_head['loss']
-            if self.config['VOX']:
+            if self.config['INPUT'] == 'voxels':
                 output_dict['loss_det_cls'] = tb_dict.get('hm_loss_head_0', 0)
                 output_dict['loss_det_reg'] = tb_dict.get('loc_loss_head_0', 0)
             else:
@@ -96,6 +97,14 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
     def pretrain_forward(self, batch_dict):
         output_dict = {}
+
+        if self.config['INPUT'] == 'sparse_tensor':
+            batch_dict['input']['sparse_points'], batch_dict['input_moco']['sparse_points'] = collate_points_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points'], 
+                                                                                batch_dict['input_moco']['voxel_coords'], batch_dict['input_moco']['points']) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+            # batch_dict['input'].pop('points')
+            # batch_dict['input'].pop('voxel_coords')
+            # batch_dict['input_moco'].pop('points')
+            # batch_dict['input_moco'].pop('voxel_coords')
 
         outputs, _, _ , _= self._single_input_forward(batch_dict['input'])
         outputs['batch_dict'].pop('points')
@@ -118,7 +127,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
                 outputs_head, tb_dict, _, _ = self.det_head(output_dict['output'])
             
             output_dict['loss_det_head']= outputs_head['loss']
-            if self.config['VOX']:
+            if self.config['INPUT'] == 'voxels':
                 output_dict['loss_det_cls'] = tb_dict.get('hm_loss_head_0', 0)
                 output_dict['loss_det_reg'] = tb_dict.get('loc_loss_head_0', 0)
             else:
@@ -149,7 +158,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             # All inputs needed only for the detection head
             #new_batch_dict['points'] = torch.cat([output['points'] for output in all_outputs], dim=0)
 
-            if self.config['VOX']:
+            if self.config['INPUT'] == 'voxels':
                 #TODO check if we need voxel_coords for other heads
                 new_batch_dict['spatial_features_2d'] = torch.cat([output['spatial_features_2d'] for output in all_outputs], dim=0)
             else:
@@ -246,7 +255,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         batch_dict['points'] = get_feats_this(idx_this, all_size, points_gather, is_ind=True) # (N1+..Nbs, bxyzi)
         batch_dict['idx_unshuffle'] = idx_unshuffle
 
-        if self.config['VOX']:
+        if self.config['INPUT'] == 'voxels':
             # Each pc has diff num voxels
             voxel_coords = batch_dict['voxel_coords'] #(N1+..+Nbs, bzyx)
             voxels = batch_dict['voxels'] #(N1+..+Nbs, 5, xyzi)
@@ -275,6 +284,81 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             batch_dict['voxel_num_points'] = get_feats_this(idx_this, all_size, voxel_num_points_gather)
             batch_dict['voxel_coords'] = get_feats_this(idx_this, all_size, voxel_coords_gather, is_ind=True)
 
+        return batch_dict
+
+
+    @torch.no_grad()
+    def _batch_shuffle_ddp_sparse(self, batch_dict):
+        """
+        Batch shuffle, for making use of BatchNorm.
+        *** Only support DistributedDataParallel (DDP) model. ***
+        """
+        # gather from all gpus
+        batch_size = []
+        x = batch_dict['sparse_points']
+        # sparse tensor should be decomposed
+        c, f = x.decomposed_coordinates_and_features #c=list of bs=8 (20k, 3=xyz vox coord), f=list of bs=8 (20k, 4=xyzi pts)
+
+        # each pcd has different size, get the biggest size as default
+        newx = list(zip(c, f)) #list of bs=8 [(c,f for pc 1),..,(c,f for pc 8)]
+        for bidx in newx:
+            batch_size.append(len(bidx[0])) #list of bs=8 [20k, ..., 20k]
+        all_size = concat_all_gather(torch.tensor(batch_size).cuda()) # get num pts in each pc from all gpus e.g. if 2 gpus with bs=8 per gpu then all_size = list of 16 =[20k, ..., 20k]
+        max_size = torch.max(all_size) #20k = max num pts in all pcs in all gpus
+
+        # create a tensor with shape (batch_size, max_size)
+        # copy each sparse tensor data to the begining of the biggest sized tensor
+        shuffle_c = [] #list of bs=8 ([max_numpts_in_any_pc=20k, 3], ..., [max_numpts_in_any_pc=20k, 3])
+        shuffle_f = [] #list of bs=8 ([max_numpts_in_any_pc=20k, 4], ..., [max_numpts_in_any_pc=20k, 4])
+        for bidx in range(len(newx)):
+            shuffle_c.append(torch.ones((max_size, newx[bidx][0].shape[-1])).cuda()) #(20k or max num pts in any pc, 3=xyz vox cooord)
+            shuffle_c[bidx][:len(newx[bidx][0]),:] = newx[bidx][0]
+
+            shuffle_f.append(torch.ones((max_size, newx[bidx][1].shape[-1])).cuda())
+            shuffle_f[bidx][:len(newx[bidx][1]),:] = newx[bidx][1]
+
+        batch_size_this = len(newx) # 8 pcs
+
+        shuffle_c = torch.stack(shuffle_c) # [8, max num pts in any pc = 20k, 3 xyz vox coord]
+        shuffle_f = torch.stack(shuffle_f) # [8, max num pts in any pc = 20k, 4 xyzi pts]
+
+        # gather all the ddp batches pcds
+        c_gather = concat_all_gather(shuffle_c) # if 2 gpus [8x2=16, max_pts=20k, 3]
+        f_gather = concat_all_gather(shuffle_f) # if 2 gpus [8x2=16, max_pts=20k, 4]
+
+        batch_size_all = c_gather.shape[0] # 16 if 2 gpus bcz bs=8 is per gpu
+
+        num_gpus = batch_size_all // batch_size_this # 16/8=2
+
+        # random shuffle index
+        idx_shuffle = torch.randperm(batch_size_all).cuda() # shuffled pc id [5,3,7,15,0,2,1,9,  8,...]
+
+        # broadcast to all gpus
+        torch.distributed.broadcast(idx_shuffle, src=0) # so that all gpus have this same idx_shuffle
+
+        # index for restoring
+        idx_unshuffle = torch.argsort(idx_shuffle) # index of shuffled pc id [4,6,5,1,.,0,....]
+
+        # shuffled index for this gpu
+        gpu_idx = torch.distributed.get_rank()
+        idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx] #(num_gpus, bs per gpu=8) ->[[5,3,7,15,0,2,1,9],[8, ...]] -> choose gpu_idx'th row of pc ids for this gpu e.g. gpu 0 will get [5,3,7,15,0,2,1,9]
+
+        c_this = []
+        f_this = []
+
+        # after shuffling we get only the actual information of each tensor
+        # :actual_size is the information, actual_size:biggest_size are just ones (ignore)
+        for idx in range(len(idx_this)):
+            c_this.append(c_gather[idx_this[idx]][:all_size[idx_this[idx]],:].cpu().numpy()) #c_gather is [16, 20k, 3] -> pick the [pc id for this gpu, actual num pts in this pc, 3] 
+            f_this.append(f_gather[idx_this[idx]][:all_size[idx_this[idx]],:].cpu().numpy())
+
+        # final shuffled coordinates and features, build back the sparse tensor
+        c_this = np.array(c_this) #(8, 20k, 3=xyz vox coord)
+        f_this = np.array(f_this) #(8, 20k, 4=xyzi pts)
+        x_this = numpy_to_sparse_tensor(c_this, f_this) # sparse tensor on gpu (C:(8x20k, 4=new_bid on this gpu, xyz vox coord), F:(8x20k, 4=xyzi pts))
+
+        batch_dict['sparse_points'] = x_this
+        batch_dict['idx_unshuffle'] = idx_unshuffle
         return batch_dict
 
     @torch.no_grad()
@@ -384,8 +468,10 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             main_utils.load_data_to_gpu(batch_dict)
 
             if torch.distributed.is_initialized():
-                if self.config['VOX']:
+                if self.config['INPUT'] == 'voxels':
                     batch_dict = self._batch_shuffle_ddp_vox(batch_dict)
+                elif self.config['INPUT'] == 'sparse_tensor':
+                    batch_dict = self._batch_shuffle_ddp_sparse(batch_dict)
                 else:
                     batch_dict = self._batch_shuffle_ddp_pts(batch_dict)
 

@@ -145,7 +145,7 @@ def write_ply_color(points, colors, out_filename):
 
 def load_data_to_gpu(batch_dict):
     for key, val in batch_dict.items():
-        if key in ['cluster_ids', 'shape_cluster_ids_is_common_mask_batch']:
+        if key in ['cluster_ids', 'shape_cluster_ids_is_common_mask_batch', 'sparse_points']:
             continue
 
         if isinstance(val, np.ndarray):
