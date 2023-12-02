@@ -21,8 +21,8 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_10' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train_short}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train_one}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
@@ -57,8 +57,8 @@ dataset:
     # - NAME: random_drop
 
   SAMPLE_NUM_POINTS: 80000
+  INPUT: points
   
-  VOX: False
   EXTRACT_SHAPE_DESCRIPTORS: esf
 
   COLLATE_FUNCTION: "moco_collator"
@@ -77,7 +77,6 @@ optimizer:
 model:
   model_dir: "checkpoints/pointrcnn"
   name: "pointrcnn_pretrain_pseudo_8_test" 
-  VOX: False
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -224,7 +223,9 @@ NCE_LOSS:
   EMBEDDING_DIM: 128
   # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
   # IOU_WEIGHT: 0.1
-  # IOU_PERCENTAGE_THRESHOLD: 0.3
-  SHAPE_DIST_TYPE: 'cosine' #'euclidean'
+  IOU_QUANTILE_THRESHOLD: 0.3
+  #SHAPE_DIST_TYPE: 'cosine' #'euclidean'
   # SHAPE_WEIGHT: 1.0
-  SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
+  #SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
+  #SHAPE_DIST_QUANTILE_THRESHOLD: 0.3
+  

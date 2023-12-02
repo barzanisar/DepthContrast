@@ -53,26 +53,34 @@ class NCELossMoco(nn.Module):
         self.embedding_dim = int(config["EMBEDDING_DIM"])
         self.dim = int(config["EMBEDDING_DIM"])
         self.iou_dist_threshold = None
-        self.iou_percentage_threshold = None
+        self.iou_quantile_threshold = None
         self.shape_dist_threshold = None
+        self.shape_dist_quantile_threshold = None
         self.iou_weight = None
+        self.shape_weight = None
         self.shape_descs_dim = None
         self.iou_guidance = False
+        self.shape_guidance = False
         self.neg_queue_filled = False
         if self.cluster:
             self.iou_dist_threshold = config.get("IOU_DIST_THRESHOLD", None)
             self.shape_dist_threshold = config.get("SHAPE_DIST_THRESHOLD", None)
-            self.iou_percentage_threshold = config.get("IOU_PERCENTAGE_THRESHOLD", None)
+
+            self.shape_dist_quantile_threshold = config.get("SHAPE_DIST_QUANTILE_THRESHOLD", None)
+            self.iou_quantile_threshold = config.get("IOU_QUANTILE_THRESHOLD", None)
+
             self.iou_weight =  config.get("IOU_WEIGHT", None)
             self.shape_weight = config.get("SHAPE_WEIGHT", None)
+
             self.shape_descs_dim = config.get("SHAPE_DESCRIPTORS_DIM", None)
             self.shape_dist_type = config.get("SHAPE_DIST_TYPE", None)
-            if self.shape_weight is not None or self.shape_dist_threshold is not None:
+
+            self.shape_guidance = self.shape_weight is not None or self.shape_dist_type is not None or self.shape_dist_quantile_threshold is not None
+            self.iou_guidance = self.iou_weight is not None or self.iou_dist_threshold is not None or self.iou_quantile_threshold is not None
+            
+            if self.shape_guidance:
                 assert self.shape_descs_dim is not None
                 assert self.shape_dist_type is not None
-            self.shape_guidance = self.shape_descs_dim is not None and self.shape_dist_type is not None
-            self.iou_guidance = self.iou_weight is not None or self.iou_dist_threshold is not None or self.iou_percentage_threshold is not None
-            
         if self.shape_guidance:
             self.dim += self.shape_descs_dim
 
@@ -194,9 +202,6 @@ class NCELossMoco(nn.Module):
 
         #TODO: class balanced contrastive loss
         if self.iou_guidance:
-            # batch_size = output_dict['gt_boxes'].shape[0]
-            #dxdydz = torch.cat([output_dict['gt_boxes'][k, output_dict['common_cluster_gtbox_idx'][k], 3:6]  for k in range(batch_size)]) #(N,3)
-            #dxdydz = torch.cat([output_dict_moco['gt_boxes'][k, output_dict_moco['common_cluster_gtbox_idx'][k],3:6]  for k in range(batch_size)])
             # Define l= max(dx,dy), w = min(dx,dy)
             l = torch.max(common_unscaled_lwhz[:,:2], dim=-1)[0].view(-1,1) #column of lenghts of positive samples
             w = torch.min(common_unscaled_lwhz[:,:2], dim=-1)[0].view(-1,1) #column of widths of positive samples 
@@ -267,18 +272,16 @@ class NCELossMoco(nn.Module):
 
             if self.shape_dist_threshold is not None:
                 l_neg=l_neg.masked_fill(shape_dist_mat<self.shape_dist_threshold, -1e9)
+            if self.shape_dist_quantile_threshold is not None:
+                row_wise_quantiles = torch.quantile(shape_dist_mat, self.shape_dist_quantile_threshold, dim=1, keepdim=True)
+                l_neg=l_neg.masked_fill(shape_dist_mat < row_wise_quantiles.repeat(1, self.K), -1e9)
+
             if self.iou_dist_threshold is not None:
                 l_neg=l_neg.masked_fill(iou_dist<self.iou_dist_threshold, -1e9)
-            if self.iou_percentage_threshold is not None:
-                idx_sort = torch.sort(iou_dist, axis=1)[1][:,:int(self.iou_percentage_threshold*self.K)] #(Npos, Nneg)
-                for i in range(N_pos):
-                    l_neg[i, idx_sort[i]] = -1e9
-                # mask = torch.zeros_like(l_neg, dtype=bool)
-                # idx_sort = torch.sort(iou_dist, axis=1)[1][:,:int(self.iou_percentage_threshold*self.K)] #(Npos, Nneg)
-                # for i in range(N_pos):
-                #     mask[i, idx_sort[i]] = True
-                # l_neg=l_neg.masked_fill(mask, -1e9)
-            
+            if self.iou_quantile_threshold is not None:
+                row_wise_quantiles = torch.quantile(iou_dist, self.iou_quantile_threshold, dim=1, keepdim=True)
+                #mask = iou_dist < row_wise_quantiles.repeat(1, self.K) #row_wise_quantiles.expand_as(iou_dist)
+                l_neg=l_neg.masked_fill(iou_dist < row_wise_quantiles.repeat(1, self.K), -1e9)
 
         # logits: Nx(1+K) i.e. N examples or clusters and K+1 class scores
         logits = torch.cat([l_pos, l_neg], dim=1)
@@ -291,10 +294,7 @@ class NCELossMoco(nn.Module):
             N_pos, device=logits.device, dtype=torch.int64
         ) # because for each pair out of N pairs, zero'th class (out of K=60000 classes) is the true class
 
-        if len(logits.shape) > 2:
-            loss = self.loss_weight * self.xe_criterion(torch.squeeze(logits), labels) #loss between pointnet query and key embedding
-        else:
-            loss = self.loss_weight * self.xe_criterion(logits, labels) # Nx(1+K) logits, N labels
+        loss = self.loss_weight * self.xe_criterion(logits, labels) # Nx(1+K) logits, N labels
         
 
         if self.cluster:

@@ -51,8 +51,7 @@ dataset:
     # - NAME: random_drop
 
   SAMPLE_NUM_POINTS: 80000
-  
-  VOX: False
+  INPUT: points
 
   COLLATE_FUNCTION: "downstream_collator"
   DROP_LAST: True
@@ -72,8 +71,6 @@ model:
   model_dir: "checkpoints/pointrcnn"
   name: "pointrcnn_pretrain_backbone_iou_thresh_0p8"
   linear_probe: true #meaning lp vs finetune
-
-  VOX: False
 
   MODEL_BASE:
     NAME: PointRCNN

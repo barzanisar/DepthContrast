@@ -57,8 +57,7 @@ dataset:
     # - NAME: random_drop
 
   SAMPLE_NUM_POINTS: 80000
-  
-  VOX: False
+  INPUT: points
 
   COLLATE_FUNCTION: "moco_collator"
   DROP_LAST: True
@@ -76,7 +75,6 @@ optimizer:
 model:
   model_dir: "checkpoints/pointrcnn"
   name: "pointrcnn_pretrain_backbone_iou_perc_0p4" #pseudo classes 8
-  VOX: False
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -105,7 +103,7 @@ NCE_LOSS:
   NUM_NEGATIVES: 65536
   EMBEDDING_DIM: 128
   # IOU_DIST_THRESHOLD: 0.5 # filter out neg samples if their iou with query is < iou_dist_thresh
-  IOU_PERCENTAGE_THRESHOLD: 0.4
+  IOU_QUANTILE_THRESHOLD: 0.4
   # RMSE_THRESHOLD: 0.25 # filter out neg samples if their shape desc rmse with query is < rmse_thresh
   # IOU_WEIGHT: 0.1
   # SHAPE_DESCRIPTORS_DIM: 640

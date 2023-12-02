@@ -57,8 +57,8 @@ dataset:
     # - NAME: random_drop
 
   SAMPLE_NUM_POINTS: 80000
-  
-  VOX: False
+  INPUT: points
+
   EXTRACT_SHAPE_DESCRIPTORS: vfh
 
   COLLATE_FUNCTION: "moco_collator"
@@ -77,7 +77,6 @@ optimizer:
 model:
   model_dir: "checkpoints/pointrcnn"
   name: "pointrcnn_pretrain_backbone_vfh_weight" #pseudo classes 8
-  VOX: False
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -107,7 +106,6 @@ NCE_LOSS:
   EMBEDDING_DIM: 128
   # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
   # IOU_WEIGHT: 0.1
-  # IOU_PERCENTAGE_THRESHOLD: 0.3
   SHAPE_DIST_TYPE: 'cosine' #'euclidean'
   SHAPE_WEIGHT: 1.0
   # SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh

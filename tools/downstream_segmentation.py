@@ -80,6 +80,7 @@ def main_worker(args, cfg):
     # Run on every GPU with args.local_rank
     # Setup environment
     args = main_utils.initialize_distributed_backend(args)
+    cfg['model']['INPUT'] = cfg['dataset']['INPUT']
     logger, _, downstream_dir, pretrain_model_dir, phase_name = main_utils.prep_environment(args, cfg, pretraining=False)
 
     checkpoints_to_eval, ckpt_record_file = main_utils.get_ckpts_to_eval(cfg, logger, 

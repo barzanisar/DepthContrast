@@ -57,9 +57,8 @@ dataset:
     # - NAME: random_drop
 
   SAMPLE_NUM_POINTS: 20000
+  INPUT: points
   
-  VOX: False
-
   COLLATE_FUNCTION: "moco_collator"
   DROP_LAST: True
 
