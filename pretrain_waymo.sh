@@ -54,11 +54,19 @@ sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_iou_s
 # sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_thresh_0p5 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19315 --cfg_file configs/waymo_pointrcnn_backbone_iou_thresh_0p5.yaml
 
 ### Gives Cuda out of memory errors on sort
-# sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19327 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p4.yaml
-# sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19326 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p3.yaml
-# sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19325 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p2.yaml
-# sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19324 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p1.yaml
-# sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=iou_perc_0p5 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19328 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p5.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=iou_perc_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19327 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p4.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=iou_perc_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19326 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p3.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=iou_perc_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19325 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p2.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=iou_perc_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19324 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p1.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=iou_perc_0p5 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19328 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p5.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=iou_perc_0p6 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19329 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p6.yaml
+
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=shape_perc_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19427 --cfg_file configs/waymo_pointrcnn_backbone_shape_perc_0p4.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=shape_perc_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19426 --cfg_file configs/waymo_pointrcnn_backbone_shape_perc_0p3.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=shape_perc_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19425 --cfg_file configs/waymo_pointrcnn_backbone_shape_perc_0p2.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=shape_perc_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19424 --cfg_file configs/waymo_pointrcnn_backbone_shape_perc_0p1.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=shape_perc_0p5 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19428 --cfg_file configs/waymo_pointrcnn_backbone_shape_perc_0p5.yaml
+sbatch --time=13:00:00 --nodes=1 --ntasks=1 --array=1-2%1 --job-name=shape_perc_0p6 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19429 --cfg_file configs/waymo_pointrcnn_backbone_shape_perc_0p6.yaml
 
 #shape backbone variations (thresh, weight)
 # sbatch --time=17:00:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=vfh_thresh_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19211 --cfg_file configs/waymo_pointrcnn_backbone_vfh_thresh_0p4.yaml
