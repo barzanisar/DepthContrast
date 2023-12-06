@@ -58,6 +58,7 @@ dataset:
 
   SAMPLE_NUM_POINTS: 80000
   INPUT: points
+  EXTRACT_SHAPE_DESCRIPTORS: esf
 
   COLLATE_FUNCTION: "moco_collator"
   DROP_LAST: True
