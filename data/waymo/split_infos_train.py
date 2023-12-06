@@ -3,8 +3,8 @@ import numpy as np
 
 import os
 
-num_splits = 8
-parent_split = 'val' #'train_short'
+num_splits = 16 #8
+parent_split = 'train' #'val'
 processed_data_tag = 'waymo_processed_data_v_1_2_0' #'waymo_processed_data_10_short'
 save_dir = '/home/barza/DepthContrast/data/waymo/cluster_info_splits'
 os.makedirs(save_dir, exist_ok=True)
