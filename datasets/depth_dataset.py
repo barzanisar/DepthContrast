@@ -14,7 +14,7 @@ from pathlib import Path
 
 from datasets.transforms import  data_augmentor, data_processor
 from datasets.features import global_descriptors
-# from datasets.collators.sparse_collator import point_set_to_coord_feats
+from datasets.collators.sparse_collator import point_set_to_coord_feats
 
 from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 # from utils.pcd_preprocess import visualize_selected_labels
@@ -308,12 +308,12 @@ class DepthContrastDataset(Dataset):
             vox_dict = self.toVox(data_dict["points_moco"])
             data_dict["vox_moco"] = vox_dict
 
-        # if cfg['INPUT'] == 'sparse_tensor':
-        #     data_dict['voxel_coords'], feats, cluster_p = point_set_to_coord_feats(data_dict["points"][:,:-1], data_dict["points"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"])
-        #     data_dict["points"] = np.hstack([feats, cluster_p[:,None]])
+        if cfg['INPUT'] == 'sparse_tensor':
+            data_dict['voxel_coords'], feats, cluster_p = point_set_to_coord_feats(data_dict["points"][:,:-1], data_dict["points"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"])
+            data_dict["points"] = np.hstack([feats, cluster_p[:,None]])
 
-        #     data_dict['voxel_coords_moco'], feats_moco, cluster_p_moco = point_set_to_coord_feats(data_dict["points"][:,:-1], data_dict["points"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"])
-        #     data_dict["points_moco"] = np.hstack([feats_moco, cluster_p_moco[:,None]])
+            data_dict['voxel_coords_moco'], feats_moco, cluster_p_moco = point_set_to_coord_feats(data_dict["points"][:,:-1], data_dict["points"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"])
+            data_dict["points_moco"] = np.hstack([feats_moco, cluster_p_moco[:,None]])
 
 
 

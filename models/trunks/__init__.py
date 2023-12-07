@@ -23,13 +23,13 @@
 #     PointNet2MSG = None
 #     UNetV2 = None
 
-from third_party.OpenPCDet.pcdet.models.detectors import build_detector
+#from third_party.OpenPCDet.pcdet.models.detectors import build_detector
 
-def build_network(model_cfg, num_class, dataset):
-    model = build_detector(
-        model_cfg=model_cfg, num_class=num_class, dataset=dataset
-    )
-    return model
+# def build_network(model_cfg, num_class, dataset):
+#     model = build_detector(
+#         model_cfg=model_cfg, num_class=num_class, dataset=dataset
+#     )
+#     return model
 
 # TRUNKS = {
 #     "pointnet": PointNet,

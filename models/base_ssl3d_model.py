@@ -12,6 +12,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from easydict import EasyDict
 
 try:
     from SparseTensor import SparseTensor
@@ -21,11 +22,13 @@ except:
 
 import numpy as np
 
-# from datasets.collators.sparse_collator import numpy_to_sparse_tensor, collate_points_to_sparse_tensor
+from datasets.collators.sparse_collator import numpy_to_sparse_tensor, collate_points_to_sparse_tensor
 from utils import main_utils
 from third_party.OpenPCDet.pcdet.models.pretext_heads.gather_utils import *
 from third_party.OpenPCDet.pcdet.models.detectors import build_detector
 from models.SegmentationHead import SegmentationClassifierHead 
+from models.trunks.minkunet import MinkUNet
+from models.seg_sparse_vox_head import SegSparseVoxHead
 def build_network(model_cfg, num_class, dataset):
     model = build_detector(
         model_cfg=model_cfg, num_class=num_class, dataset=dataset
@@ -98,21 +101,27 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     def pretrain_forward(self, batch_dict):
         output_dict = {}
 
-        # if self.config['INPUT'] == 'sparse_tensor':
-        #     batch_dict['input']['sparse_points'], batch_dict['input_moco']['sparse_points'] = collate_points_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points'], 
-        #                                                                         batch_dict['input_moco']['voxel_coords'], batch_dict['input_moco']['points']) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+        if self.config['INPUT'] == 'sparse_tensor':
+            batch_dict['input']['sparse_points'], batch_dict['input_moco']['sparse_points'] = collate_points_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points'], 
+                                                                                batch_dict['input_moco']['voxel_coords'], batch_dict['input_moco']['points']) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
             # batch_dict['input'].pop('points')
             # batch_dict['input'].pop('voxel_coords')
             # batch_dict['input_moco'].pop('points')
             # batch_dict['input_moco'].pop('voxel_coords')
 
         outputs, _, _ , _= self._single_input_forward(batch_dict['input'])
-        outputs['batch_dict'].pop('points')
-        output_dict['output'] =  outputs['batch_dict']
+        if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
+            output_dict['output'] =  outputs
+        else:
+            outputs['batch_dict'].pop('points')
+            output_dict['output'] =  outputs['batch_dict']
 
         outputs_moco, _, _, _ = self._single_input_forward_MOCO(batch_dict['input_moco'])
-        outputs_moco['batch_dict'].pop('points')
-        output_dict['output_moco'] =  outputs_moco['batch_dict']
+        if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
+            output_dict['output_moco'] =  outputs_moco
+        else:
+            outputs_moco['batch_dict'].pop('points')
+            output_dict['output_moco'] =  outputs_moco['batch_dict']
         
         concat_outputs_condition_for_det = 'MODEL_DET_HEAD' in self.config and self.config['MODEL_DET_HEAD'].get('INPUT_MOCO_FEATS', False)
         concat_outputs_condition = concat_outputs_condition_for_det or 'MODEL_AUX_HEAD' in self.config
@@ -208,7 +217,13 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     def _single_input_forward(self, batch_dict):
         
         main_utils.load_data_to_gpu(batch_dict)
-        output = self.trunk[0](batch_dict)
+
+        if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
+            batch_dict = self.trunk[0][0](batch_dict)
+            batch_dict = self.trunk[0][1](batch_dict)
+            return batch_dict, None, None, None
+        else:
+            output = self.trunk[0](batch_dict)
         return output
 
     @torch.no_grad()
@@ -287,79 +302,79 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         return batch_dict
 
 
-    # @torch.no_grad()
-    # def _batch_shuffle_ddp_sparse(self, batch_dict):
-    #     """
-    #     Batch shuffle, for making use of BatchNorm.
-    #     *** Only support DistributedDataParallel (DDP) model. ***
-    #     """
-    #     # gather from all gpus
-    #     batch_size = []
-    #     x = batch_dict['sparse_points']
-    #     # sparse tensor should be decomposed
-    #     c, f = x.decomposed_coordinates_and_features #c=list of bs=8 (20k, 3=xyz vox coord), f=list of bs=8 (20k, 4=xyzi pts)
+    @torch.no_grad()
+    def _batch_shuffle_ddp_sparse(self, batch_dict):
+        """
+        Batch shuffle, for making use of BatchNorm.
+        *** Only support DistributedDataParallel (DDP) model. ***
+        """
+        # gather from all gpus
+        batch_size = []
+        x = batch_dict['sparse_points']
+        # sparse tensor should be decomposed
+        c, f = x.decomposed_coordinates_and_features #c=list of bs=8 (20k, 3=xyz vox coord), f=list of bs=8 (20k, 4=xyzi pts)
 
-    #     # each pcd has different size, get the biggest size as default
-    #     newx = list(zip(c, f)) #list of bs=8 [(c,f for pc 1),..,(c,f for pc 8)]
-    #     for bidx in newx:
-    #         batch_size.append(len(bidx[0])) #list of bs=8 [20k, ..., 20k]
-    #     all_size = concat_all_gather(torch.tensor(batch_size).cuda()) # get num pts in each pc from all gpus e.g. if 2 gpus with bs=8 per gpu then all_size = list of 16 =[20k, ..., 20k]
-    #     max_size = torch.max(all_size) #20k = max num pts in all pcs in all gpus
+        # each pcd has different size, get the biggest size as default
+        newx = list(zip(c, f)) #list of bs=8 [(c,f for pc 1),..,(c,f for pc 8)]
+        for bidx in newx:
+            batch_size.append(len(bidx[0])) #list of bs=8 [20k, ..., 20k]
+        all_size = concat_all_gather(torch.tensor(batch_size).cuda()) # get num pts in each pc from all gpus e.g. if 2 gpus with bs=8 per gpu then all_size = list of 16 =[20k, ..., 20k]
+        max_size = torch.max(all_size) #20k = max num pts in all pcs in all gpus
 
-    #     # create a tensor with shape (batch_size, max_size)
-    #     # copy each sparse tensor data to the begining of the biggest sized tensor
-    #     shuffle_c = [] #list of bs=8 ([max_numpts_in_any_pc=20k, 3], ..., [max_numpts_in_any_pc=20k, 3])
-    #     shuffle_f = [] #list of bs=8 ([max_numpts_in_any_pc=20k, 4], ..., [max_numpts_in_any_pc=20k, 4])
-    #     for bidx in range(len(newx)):
-    #         shuffle_c.append(torch.ones((max_size, newx[bidx][0].shape[-1])).cuda()) #(20k or max num pts in any pc, 3=xyz vox cooord)
-    #         shuffle_c[bidx][:len(newx[bidx][0]),:] = newx[bidx][0]
+        # create a tensor with shape (batch_size, max_size)
+        # copy each sparse tensor data to the begining of the biggest sized tensor
+        shuffle_c = [] #list of bs=8 ([max_numpts_in_any_pc=20k, 3], ..., [max_numpts_in_any_pc=20k, 3])
+        shuffle_f = [] #list of bs=8 ([max_numpts_in_any_pc=20k, 4], ..., [max_numpts_in_any_pc=20k, 4])
+        for bidx in range(len(newx)):
+            shuffle_c.append(torch.ones((max_size, newx[bidx][0].shape[-1])).cuda()) #(20k or max num pts in any pc, 3=xyz vox cooord)
+            shuffle_c[bidx][:len(newx[bidx][0]),:] = newx[bidx][0]
 
-    #         shuffle_f.append(torch.ones((max_size, newx[bidx][1].shape[-1])).cuda())
-    #         shuffle_f[bidx][:len(newx[bidx][1]),:] = newx[bidx][1]
+            shuffle_f.append(torch.ones((max_size, newx[bidx][1].shape[-1])).cuda())
+            shuffle_f[bidx][:len(newx[bidx][1]),:] = newx[bidx][1]
 
-    #     batch_size_this = len(newx) # 8 pcs
+        batch_size_this = len(newx) # 8 pcs
 
-    #     shuffle_c = torch.stack(shuffle_c) # [8, max num pts in any pc = 20k, 3 xyz vox coord]
-    #     shuffle_f = torch.stack(shuffle_f) # [8, max num pts in any pc = 20k, 4 xyzi pts]
+        shuffle_c = torch.stack(shuffle_c) # [8, max num pts in any pc = 20k, 3 xyz vox coord]
+        shuffle_f = torch.stack(shuffle_f) # [8, max num pts in any pc = 20k, 4 xyzi pts]
 
-    #     # gather all the ddp batches pcds
-    #     c_gather = concat_all_gather(shuffle_c) # if 2 gpus [8x2=16, max_pts=20k, 3]
-    #     f_gather = concat_all_gather(shuffle_f) # if 2 gpus [8x2=16, max_pts=20k, 4]
+        # gather all the ddp batches pcds
+        c_gather = concat_all_gather(shuffle_c) # if 2 gpus [8x2=16, max_pts=20k, 3]
+        f_gather = concat_all_gather(shuffle_f) # if 2 gpus [8x2=16, max_pts=20k, 4]
 
-    #     batch_size_all = c_gather.shape[0] # 16 if 2 gpus bcz bs=8 is per gpu
+        batch_size_all = c_gather.shape[0] # 16 if 2 gpus bcz bs=8 is per gpu
 
-    #     num_gpus = batch_size_all // batch_size_this # 16/8=2
+        num_gpus = batch_size_all // batch_size_this # 16/8=2
 
-    #     # random shuffle index
-    #     idx_shuffle = torch.randperm(batch_size_all).cuda() # shuffled pc id [5,3,7,15,0,2,1,9,  8,...]
+        # random shuffle index
+        idx_shuffle = torch.randperm(batch_size_all).cuda() # shuffled pc id [5,3,7,15,0,2,1,9,  8,...]
 
-    #     # broadcast to all gpus
-    #     torch.distributed.broadcast(idx_shuffle, src=0) # so that all gpus have this same idx_shuffle
+        # broadcast to all gpus
+        torch.distributed.broadcast(idx_shuffle, src=0) # so that all gpus have this same idx_shuffle
 
-    #     # index for restoring
-    #     idx_unshuffle = torch.argsort(idx_shuffle) # index of shuffled pc id [4,6,5,1,.,0,....]
+        # index for restoring
+        idx_unshuffle = torch.argsort(idx_shuffle) # index of shuffled pc id [4,6,5,1,.,0,....]
 
-    #     # shuffled index for this gpu
-    #     gpu_idx = torch.distributed.get_rank()
-    #     idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx] #(num_gpus, bs per gpu=8) ->[[5,3,7,15,0,2,1,9],[8, ...]] -> choose gpu_idx'th row of pc ids for this gpu e.g. gpu 0 will get [5,3,7,15,0,2,1,9]
+        # shuffled index for this gpu
+        gpu_idx = torch.distributed.get_rank()
+        idx_this = idx_shuffle.view(num_gpus, -1)[gpu_idx] #(num_gpus, bs per gpu=8) ->[[5,3,7,15,0,2,1,9],[8, ...]] -> choose gpu_idx'th row of pc ids for this gpu e.g. gpu 0 will get [5,3,7,15,0,2,1,9]
 
-    #     c_this = []
-    #     f_this = []
+        c_this = []
+        f_this = []
 
-    #     # after shuffling we get only the actual information of each tensor
-    #     # :actual_size is the information, actual_size:biggest_size are just ones (ignore)
-    #     for idx in range(len(idx_this)):
-    #         c_this.append(c_gather[idx_this[idx]][:all_size[idx_this[idx]],:].cpu().numpy()) #c_gather is [16, 20k, 3] -> pick the [pc id for this gpu, actual num pts in this pc, 3] 
-    #         f_this.append(f_gather[idx_this[idx]][:all_size[idx_this[idx]],:].cpu().numpy())
+        # after shuffling we get only the actual information of each tensor
+        # :actual_size is the information, actual_size:biggest_size are just ones (ignore)
+        for idx in range(len(idx_this)):
+            c_this.append(c_gather[idx_this[idx]][:all_size[idx_this[idx]],:].cpu().numpy()) #c_gather is [16, 20k, 3] -> pick the [pc id for this gpu, actual num pts in this pc, 3] 
+            f_this.append(f_gather[idx_this[idx]][:all_size[idx_this[idx]],:].cpu().numpy())
 
-    #     # final shuffled coordinates and features, build back the sparse tensor
-    #     c_this = np.array(c_this) #(8, 20k, 3=xyz vox coord)
-    #     f_this = np.array(f_this) #(8, 20k, 4=xyzi pts)
-    #     x_this = numpy_to_sparse_tensor(c_this, f_this) # sparse tensor on gpu (C:(8x20k, 4=new_bid on this gpu, xyz vox coord), F:(8x20k, 4=xyzi pts))
+        # final shuffled coordinates and features, build back the sparse tensor
+        c_this = np.array(c_this) #(8, 20k, 3=xyz vox coord)
+        f_this = np.array(f_this) #(8, 20k, 4=xyzi pts)
+        x_this = numpy_to_sparse_tensor(c_this, f_this) # sparse tensor on gpu (C:(8x20k, 4=new_bid on this gpu, xyz vox coord), F:(8x20k, 4=xyzi pts))
 
-    #     batch_dict['sparse_points'] = x_this
-    #     batch_dict['idx_unshuffle'] = idx_unshuffle
-    #     return batch_dict
+        batch_dict['sparse_points'] = x_this
+        batch_dict['idx_unshuffle'] = idx_unshuffle
+        return batch_dict
 
     @torch.no_grad()
     def _batch_shuffle_ddp_vox(self, batch_dict):
@@ -480,8 +495,13 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             #print("Before loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
             #main_utils.load_data_to_gpu(batch_dict)
             #print("After loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
-
-            output = self.trunk[1](batch_dict)
+            if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
+                batch_dict = self.trunk[1][0](batch_dict)
+                batch_dict = self.trunk[1][1](batch_dict)
+                batch_dict.pop('idx_unshuffle', None)
+                return batch_dict, None, None, None
+            else:
+                output = self.trunk[1](batch_dict)
             
             batch_dict.pop('idx_unshuffle', None)
             return output
@@ -502,9 +522,21 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     def _get_trunk(self, dataset):
         trunks = torch.nn.ModuleList()
 
-        trunks.append(build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
-        if self.pretraining:
+        if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
+            each_trunk = torch.nn.ModuleList()
+            each_trunk.append(MinkUNet())
+            each_trunk.append(SegSparseVoxHead(EasyDict(**self.config["MODEL_BASE"]["PRETEXT_HEAD"])))
+            trunks.append(each_trunk)
+        else:
             trunks.append(build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
+        if self.pretraining:
+            if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
+                each_trunk = torch.nn.ModuleList()
+                each_trunk.append(MinkUNet())
+                each_trunk.append(SegSparseVoxHead(EasyDict(**self.config["MODEL_BASE"]["PRETEXT_HEAD"])))
+                trunks.append(each_trunk)
+            else:
+                trunks.append(build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
 
         # named_params_q = trunks[0].named_parameters()
         # named_params_k = trunks[1].named_parameters()
