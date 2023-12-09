@@ -92,7 +92,7 @@ model:
 NCE_LOSS:
   LOSS_WEIGHT: 1.0
   TEMPERATURE: 0.1
-  NUM_NEGATIVES: 1000 #65536
+  NUM_NEGATIVES: 65536
   EMBEDDING_DIM: 128
   IOU_DIST_THRESHOLD: 0.4 # filter out neg samples if their iou with query is > iou_thresh
   # IOU_WEIGHT: 0.1
