@@ -12,7 +12,6 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from easydict import EasyDict
 
 try:
     from SparseTensor import SparseTensor
@@ -27,8 +26,7 @@ from utils import main_utils
 from third_party.OpenPCDet.pcdet.models.pretext_heads.gather_utils import *
 from third_party.OpenPCDet.pcdet.models.detectors import build_detector
 from models.SegmentationHead import SegmentationClassifierHead 
-from models.trunks.minkunet import MinkUNet
-from models.seg_sparse_vox_head import SegSparseVoxHead
+
 def build_network(model_cfg, num_class, dataset):
     model = build_detector(
         model_cfg=model_cfg, num_class=num_class, dataset=dataset
@@ -73,6 +71,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
     def downstream_forward(self, batch_dict): 
         output_dict = {}
+        if self.config['INPUT'] == 'sparse_tensor':
+            batch_dict['input']['sparse_points'] = numpy_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points']) # sparse gpu tensors -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
 
         outputs, _, _, _ = self._single_input_forward(batch_dict['input'])
         # outputs['batch_dict'].pop('points')
@@ -110,18 +110,14 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             # batch_dict['input_moco'].pop('voxel_coords')
 
         outputs, _, _ , _= self._single_input_forward(batch_dict['input'])
-        if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
-            output_dict['output'] =  outputs
-        else:
-            outputs['batch_dict'].pop('points')
-            output_dict['output'] =  outputs['batch_dict']
+
+        outputs['batch_dict'].pop('points')
+        output_dict['output'] =  outputs['batch_dict']
 
         outputs_moco, _, _, _ = self._single_input_forward_MOCO(batch_dict['input_moco'])
-        if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
-            output_dict['output_moco'] =  outputs_moco
-        else:
-            outputs_moco['batch_dict'].pop('points')
-            output_dict['output_moco'] =  outputs_moco['batch_dict']
+
+        outputs_moco['batch_dict'].pop('points')
+        output_dict['output_moco'] =  outputs_moco['batch_dict']
         
         concat_outputs_condition_for_det = 'MODEL_DET_HEAD' in self.config and self.config['MODEL_DET_HEAD'].get('INPUT_MOCO_FEATS', False)
         concat_outputs_condition = concat_outputs_condition_for_det or 'MODEL_AUX_HEAD' in self.config
@@ -218,12 +214,7 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         
         main_utils.load_data_to_gpu(batch_dict)
 
-        if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
-            batch_dict = self.trunk[0][0](batch_dict)
-            batch_dict = self.trunk[0][1](batch_dict)
-            return batch_dict, None, None, None
-        else:
-            output = self.trunk[0](batch_dict)
+        output = self.trunk[0](batch_dict)
         return output
 
     @torch.no_grad()
@@ -495,13 +486,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             #print("Before loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
             #main_utils.load_data_to_gpu(batch_dict)
             #print("After loading to gpu: device: {}, batch_size: {}, shape: {}".format(batch_dict["points"].device, batch_dict["batch_size"], batch_dict["points"].shape))
-            if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
-                batch_dict = self.trunk[1][0](batch_dict)
-                batch_dict = self.trunk[1][1](batch_dict)
-                batch_dict.pop('idx_unshuffle', None)
-                return batch_dict, None, None, None
-            else:
-                output = self.trunk[1](batch_dict)
+
+            output = self.trunk[1](batch_dict)
             
             batch_dict.pop('idx_unshuffle', None)
             return output
@@ -522,21 +508,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     def _get_trunk(self, dataset):
         trunks = torch.nn.ModuleList()
 
-        if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
-            each_trunk = torch.nn.ModuleList()
-            each_trunk.append(MinkUNet())
-            each_trunk.append(SegSparseVoxHead(EasyDict(**self.config["MODEL_BASE"]["PRETEXT_HEAD"])))
-            trunks.append(each_trunk)
-        else:
-            trunks.append(build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
+        trunks.append(build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
         if self.pretraining:
-            if self.config["MODEL_BASE"]['NAME'] == 'Segmentor':
-                each_trunk = torch.nn.ModuleList()
-                each_trunk.append(MinkUNet())
-                each_trunk.append(SegSparseVoxHead(EasyDict(**self.config["MODEL_BASE"]["PRETEXT_HEAD"])))
-                trunks.append(each_trunk)
-            else:
-                trunks.append(build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
+            trunks.append(build_network(model_cfg=self.config["MODEL_BASE"], num_class=len(dataset.class_names), dataset=dataset))
 
         # named_params_q = trunks[0].named_parameters()
         # named_params_k = trunks[1].named_parameters()

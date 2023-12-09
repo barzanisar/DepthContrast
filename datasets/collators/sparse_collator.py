@@ -55,13 +55,13 @@ def numpy_to_sparse_tensor(p_coord, p_feats, p_label=None):
                 features=p_feats,
                 coordinates=p_coord,
                 device=device,
-            ), p_label.cuda()
+            ), p_label.cuda() #sparse gpu tensor and seg_labels in gpu
 
     return ME.SparseTensor(
                 features=p_feats,
                 coordinates=p_coord,
                 device=device,
-            )
+            ) # sparse tensor in gpu
 
 def point_set_to_coord_feats(point_set, labels, resolution, num_points, deterministic=False):
     p_feats = point_set.copy() #xyzi for each pt
@@ -84,6 +84,36 @@ def collate_points_to_sparse_tensor(pi_coord, pi_feats, pj_coord, pj_feats):
     # ptsi is a sparse tensor: C=coordinates= (bs=8x20k pts, 4=b_id,xyz voox coords), F=features=(8x20k, xyzi pt coord and intensity)
     return points_i, points_j
 
+def sparse_downstream_collator(batch):
+    batch_size = len(batch)
+    
+    points = np.asarray([x['points'][:,:-1] for x in batch]) # (bs, 20k, xyzi)
+    voxel_coords = np.asarray([x['voxel_coords'] for x in batch]) # (bs, 20k, xyz vox coord)
+    seg_labels = np.concatenate([x["points"][:,-1] for x in batch], axis=0) # (N1, N2, ..., Nbs)
+    
+    output_batch = {'input': 
+                    {'points': points,
+                     'voxel_coords': voxel_coords,
+                     'seg_labels': seg_labels,
+                     'batch_size': batch_size}
+                     }
+    
+    # if downstream task is detection:
+    if 'gt_boxes' in batch[0]:
+        pt_wise_gtbox_idxs = np.concatenate([x["pt_wise_gtbox_idxs"] for x in batch], axis=0) # (N1, N2, ..., Nbs)
+        
+        # make gt boxes in shape (batch size, max gt box len, 8) (xyz, lwh, rz, class label)
+        max_gt = max([len(x['gt_boxes']) for x in batch])
+        batch_gt_boxes3d = np.zeros((batch_size, max_gt, batch[0]['gt_boxes'].shape[-1]), dtype=np.float32) # (batch size = 2, max_gt_boxes in a pc in this batch = 67, 8)
+        for k in range(batch_size):
+            batch_gt_boxes3d[k, :batch[k]['gt_boxes'].__len__(), :] = batch[k]['gt_boxes']
+
+
+        output_batch['input'].update(
+                        {'gt_boxes': batch_gt_boxes3d,
+                        'pt_wise_gtbox_idxs': pt_wise_gtbox_idxs})
+
+    return output_batch
 
 def sparse_moco_collator(batch):
     batch_size = len(batch)

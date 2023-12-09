@@ -1,12 +1,12 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/downstream_segmentation.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_lpseg_test.yaml
 # python tools/downstream_segmentation.py --cfg configs/waymo_pointrcnn_lpseg_test.yaml
-wb_extra_tags: ['pointrcnn', 'linearprobe_segmentation_waymo']
+wb_extra_tags: ['minkunet', 'linearprobe_segmentation_waymo']
 resume: false
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 load_pretrained_checkpoint: 'all'
 
 log2tb: false
-log2wb: false
+log2wb: true
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
@@ -14,7 +14,7 @@ ckpt_save_interval: 1 #save only models to finetune for object detection
 save_ckpt_after_epochs: 0
 
 WANDB:
-  ENABLED: False 
+  ENABLED: True 
   PROJECT: SSL3dObject
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
@@ -51,10 +51,10 @@ dataset:
     # - NAME: random_drop
 
   SAMPLE_NUM_POINTS: 80000
-  INPUT: points
+  INPUT: sparse_tensor
+  RESOLUTION: 0.05
 
-
-  COLLATE_FUNCTION: "downstream_collator"
+  COLLATE_FUNCTION: "sparse_downstream_collator"
   DROP_LAST: True
 
 optimizer:
@@ -69,27 +69,18 @@ optimizer:
     base_lr: 0.012 #0.1 for linear_probe #0.12
 
 model:
-  model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_pseudo_8_test"
+  model_dir: "checkpoints/minkunet"
+  name: "minkunet_pretrain_test"
   linear_probe: true #meaning lp vs finetune
 
   MODEL_BASE:
-    NAME: PointRCNN
+    NAME: Segmentor
 
     BACKBONE_3D:
-      NAME: PointNet2MSG
-      SA_CONFIG:
-        NPOINTS: [4096, 1024, 256, 64]
-        RADIUS: [[0.1, 0.5], [0.5, 1.0], [1.0, 2.0], [2.0, 4.0]]
-        NSAMPLE: [[16, 32], [16, 32], [16, 32], [16, 32]]
-        MLPS: [[[16, 16, 32], [32, 32, 64]],
-                [[64, 64, 128], [64, 96, 128]],
-                [[128, 196, 256], [128, 196, 256]],
-                [[256, 256, 512], [256, 384, 512]]]
-      FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
+      NAME: MinkUNet
 
   SEGMENTATION_HEAD:
-    CLS_FC: [128, 23]
+    CLS_FC: [96, 23]
     loss_types: ['CELoss', 'LovLoss']
     loss_weights: [1.0, 1.0]
     # label_smoothing: 0.1

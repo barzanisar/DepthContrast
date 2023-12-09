@@ -16,7 +16,7 @@ class SegmentationClassifierHead(nn.Module):
         self.in_channels = cfg["CLS_FC"][0]
         self.out_channels = cfg["CLS_FC"][-1]
         self.ignore_index = 0
-        self.fc = MLP(cfg["CLS_FC"], use_bn=True)
+        self.fc = MLP(cfg["CLS_FC"])
         self.loss_types = cfg['loss_types']
         self.loss_weights =  cfg['loss_weights']
         
@@ -63,6 +63,8 @@ class SegmentationClassifierHead(nn.Module):
         # Get pt-wise features
         if 'point_features' in batch_dict:
             x=batch_dict['point_features'].permute(0, 2, 1).reshape(-1, self.in_channels)
+        elif 'sparse_point_feats' in batch_dict:
+            x=batch_dict['sparse_point_feats'].F #(80k x bs = numpts,  96)
         else:
             backbone_3d_bev_feats = batch_dict['spatial_features'] # (6,256,188,188) # unshuffled (B=2, C=128, N num points = 20000)
             backbone_2d_bev_feats = batch_dict['spatial_features_2d'] # (6,512,188,188)

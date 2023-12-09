@@ -220,8 +220,6 @@ def get_ckpts_to_eval(cfg, logger, pretrain_model_dir, eval_list_dir):
     else:
         checkpoints_to_eval.append(cfg['load_pretrained_checkpoint'])
     
-    logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
-    logger.add_line(f'{checkpoints_to_eval}')
     return checkpoints_to_eval, ckpt_record_file
 
 def prep_environment(args, cfg, pretraining=True):
@@ -439,63 +437,36 @@ class CheckpointManager(object):
         start_epoch = ckp['epoch']
         for k in kwargs:
             if (k == 'model'):
-                try:
-                    kwargs[k].load_state_dict(ckp[k])
-                except:
-                    ckpt_state_dict = ckp[k]
-                    new_model_state_dict = kwargs[k].state_dict()
-                    model_init_layers = {param_name: False for param_name in new_model_state_dict}
-                    # new_state_dict = {} # make ckpt state_stict same as model_state_dict
-                    not_found, not_init = [], []
-                    for param_name in model_init_layers:
-                        if skip_model_layers is not None and len(skip_model_layers) > 0:
-                            for sl in skip_model_layers:
-                                if param_name.find(sl) >=0:
-                                    # self.logger.add_line(f"Ignored layer:\t{param_name}")
-                                    not_init.append(param_name)
-                                    break
-                            if len(not_init) and not_init[-1] == param_name:        
-                                continue
+                ckpt_state_dict = ckp[k]
+                new_model_state_dict = kwargs[k].state_dict()
+                model_init_layers = {param_name: False for param_name in new_model_state_dict}
+                # new_state_dict = {} # make ckpt state_stict same as model_state_dict
+                not_found, not_init = [], []
+                for param_name in model_init_layers:
+                    if skip_model_layers is not None and len(skip_model_layers) > 0:
+                        for sl in skip_model_layers:
+                            if param_name.find(sl) >=0:
+                                # self.logger.add_line(f"Ignored layer:\t{param_name}")
+                                not_init.append(param_name)
+                                break
+                        if len(not_init) and not_init[-1] == param_name:        
+                            continue
 
-                        if "module."+param_name in ckpt_state_dict:
-                            new_model_state_dict[param_name].copy_(ckpt_state_dict["module."+param_name])
-                            model_init_layers[param_name] = True
-                            # self.logger.add_line(f"Init layer:\t{param_name}")
+                    if "module."+param_name in ckpt_state_dict:
+                        new_model_state_dict[param_name].copy_(ckpt_state_dict["module."+param_name])
+                        model_init_layers[param_name] = True
+                        # self.logger.add_line(f"Init layer:\t{param_name}")
 
-                        elif param_name in ckpt_state_dict:
-                            new_model_state_dict[param_name].copy_(ckpt_state_dict[param_name]) 
-                            model_init_layers[param_name] = True
-                            # self.logger.add_line(f"Init layer:\t{param_name}")
-                        else:
-                            not_found.append(param_name)
-                            # self.logger.add_line(f"Not found:\t{param_name}")
-                    
-                    kwargs[k].load_state_dict(new_model_state_dict)
-                    
-                    # if skip_model_layers is None:
-                    #     # ckpt state_dict is same as model_state_dict so it can be loaded
-                    #     kwargs[k].load_state_dict(state_dict) 
-                    # else:
-                    #     # skip_model_layers have been removed from ckpt state_dict so load each param in ckpt individually 
-                    #     for param_name in new_model_state_dict:
-                    #         if param_name in state_dict:
-                    #             param = state_dict[param_name]
-                    #             if not isinstance(param, torch.Tensor):
-                    #                 param = torch.from_numpy(param)
-                    #             new_model_state_dict[param_name].copy_(param)
-                    #             model_init_layers[param_name] = True
-                    #             self.logger.add_line(f"Init layer:\t{param_name}")
-                    #         else:
-                    #             self.logger.add_line(f"Not found:\t{param_name}")
+                    elif param_name in ckpt_state_dict:
+                        new_model_state_dict[param_name].copy_(ckpt_state_dict[param_name]) 
+                        model_init_layers[param_name] = True
+                        # self.logger.add_line(f"Init layer:\t{param_name}")
+                    else:
+                        not_found.append(param_name)
+                        # self.logger.add_line(f"Not found:\t{param_name}")
+                
+                kwargs[k].load_state_dict(new_model_state_dict)
 
-                    # newparam = {}
-                    # for tempk in ckp[k]:
-                    #     if tempk[:7] == 'module.':
-                    #         newparam[tempk[7:]] = ckp[k][tempk]
-                    #     else:
-                    #         newparam[tempk] = ckp[k][tempk]
-                    # ### Fix the module issue
-                    # kwargs[k].load_state_dict(newparam)
             else:
                 kwargs[k].load_state_dict(ckp[k])
         return start_epoch

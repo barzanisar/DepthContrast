@@ -32,7 +32,7 @@ class EvalMetrics:
       for metric in self.eval_metrics:
           key = f'{phase}/{metric}'
           if metric == 'loss':
-             ret_dict[key] = np.min(self.eval_dict_ckpt[key])
+            ret_dict[key] = np.min(self.eval_dict_ckpt[key])
           else:
             ret_dict[key] = np.max(self.eval_dict_ckpt[key])
       for class_name in self.class_names:

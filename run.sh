@@ -69,7 +69,7 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --volume $PROJ_DIR/lib:/DepthContrast/lib \
         $PCDET_VOLUMES \
         --rm \
-        ssl:conda bash
+        ssl:minkunet_fixed bash
 
 #--volume $WAYMO_PROCESSED \
 # --volume $DENSE_LIDAR \

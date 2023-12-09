@@ -30,6 +30,7 @@ import numpy as np
 from utils.ioueval import iouEval, EvalMetrics
 from utils.data_map import WAYMO_LABELS
 from models.base_ssl3d_model import parameter_description
+import MinkowskiEngine as ME
 
 
 parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training in 3D')
@@ -81,13 +82,19 @@ def main_worker(args, cfg):
     # Setup environment
     args = main_utils.initialize_distributed_backend(args)
     cfg['model']['INPUT'] = cfg['dataset']['INPUT']
+    downstream_task = 'segmentation' if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
+    cfg['dataset']['downstream_task'] = downstream_task
+
     logger, _, downstream_dir, pretrain_model_dir, phase_name = main_utils.prep_environment(args, cfg, pretraining=False)
 
     checkpoints_to_eval, ckpt_record_file = main_utils.get_ckpts_to_eval(cfg, logger, 
                                                                          pretrain_model_dir=pretrain_model_dir, 
                                                                          eval_list_dir=downstream_dir)
 
-    checkpoints_to_eval.sort()
+    checkpoints_to_eval = [x for x in checkpoints_to_eval if x != 'checkpoint.pth.tar']
+    checkpoints_to_eval = sorted(checkpoints_to_eval, key=lambda x: int(x.split('-ep')[1].split('.')[0]))
+    logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
+    logger.add_line(f'{checkpoints_to_eval}')
     cfg['checkpoints_to_eval'] = checkpoints_to_eval
     wandb_utils.init(cfg, args, job_type=phase_name)
 
@@ -95,13 +102,25 @@ def main_worker(args, cfg):
     train_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='train', logger=logger)  
     val_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='val', logger=logger) 
 
-    # Define model
-    model = main_utils.build_model(cfg['model'], pretraining=False, dataset=train_loader.dataset, logger=logger) 
-
     # configuration
     linear_probe = cfg['model']['linear_probe']
-    downstream_task = 'segmentation' if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
 
+    # Define model bcz we dont want to carry forward num batches tracked and classifier params from previous checkpt training
+    model = main_utils.build_model(cfg['model'], pretraining=False, dataset=train_loader.dataset, logger=logger) 
+
+    if args.multiprocessing_distributed:
+        if cfg['model']['MODEL_BASE']['BACKBONE_3D']['NAME'] == 'MinkUNet':
+            model = ME.MinkowskiSyncBatchNorm.convert_sync_batchnorm(model)
+        else:
+            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
+    # Save initial model for lp so that all checkpts lp_training/val starts from 
+    # the same initial params of the classifier
+    if linear_probe:
+        init_model_fn = f'{downstream_dir}/initial_linear_probe_model.pth.tar'
+        if args.rank == 0 and not os.path.isfile(init_model_fn):
+            torch.save(model.state_dict(), init_model_fn)
+    
     for ckpt in checkpoints_to_eval:
         if ckpt == 'checkpoint.pth.tar':
             continue
@@ -113,13 +132,14 @@ def main_worker(args, cfg):
 
         downstream_ckpt_dir = Path(downstream_dir) / ckpt_name
         downstream_ckpt_dir.mkdir(parents=True, exist_ok=True)
+        if linear_probe:
+            init_model = torch.load(init_model_fn, map_location='cpu')
+            model.load_state_dict(init_model)
         eval_one_ckpt(args, cfg, logger, 
                                   downstream_dir = str(downstream_ckpt_dir), 
                                   pretrain_model_dir=pretrain_model_dir, 
-                                  train_loader=train_loader, val_loader=val_loader,
-                                  model=model,
-                                  linear_probe=linear_probe,
-                                  downstream_task=downstream_task)
+                                  train_loader=train_loader, val_loader=val_loader, model=model,
+                                  linear_probe=linear_probe)
 
         # record this epoch which has been evaluated
         with open(ckpt_record_file, 'a') as f:
@@ -132,15 +152,13 @@ def main_worker(args, cfg):
 def eval_one_ckpt(args, cfg, logger, 
                   downstream_dir, pretrain_model_dir, 
                   train_loader, val_loader, model,
-                  linear_probe, downstream_task,
+                  linear_probe, 
                   tb_writter=None):
     ckp_manager_pretrained_model = main_utils.CheckpointManager(pretrain_model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
     ckp_manager_linear = main_utils.CheckpointManager(downstream_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
 
     # Load model state dict i.e. load checkpoint
     base_model_epoch = ckp_manager_pretrained_model.restore(fn=cfg['pretrain_checkpoint'], skip_model_layers=['global_step', 'num_batches_tracked'], model=model)
-        
-    logger.add_line(f"Downstream Epoch {base_model_epoch-1}")
 
 
     if linear_probe:
@@ -148,19 +166,9 @@ def eval_one_ckpt(args, cfg, logger,
         for param in model.trunk[0].parameters():
             param.requires_grad = False
 
-
-    if args.multiprocessing_distributed:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-    
     # model To cuda
     model, args = main_utils.distribute_model_to_cuda(model, args)
 
-    # Define segmentation criterion TODO
-    # train_criterion = None
-    # if downstream_task == 'segmentation':
-    #     train_criterion =  main_utils.build_criterion(cfg['loss'], cfg['cluster'], logger=logger) 
-    #     train_criterion = train_criterion.cuda()
-    
     if not linear_probe:
         params_to_optimize = [model.parameters()]
     else:
@@ -170,7 +178,7 @@ def eval_one_ckpt(args, cfg, logger,
         else:
             model.trunk[0].eval()     
 
-    # logger.add_line(parameter_description(model))
+    #logger.add_line(parameter_description(model))
 
     optimizer, scheduler = main_utils.build_optimizer(
             params=params_to_optimize,
@@ -376,8 +384,8 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
         evaluator.reset()
 
 
-        logger.add_line(f'\n {phase} Accuracy: {accuracy}')
-        logger.add_line(f'{phase} mIoU: {mean_iou}, IoU per class: {class_iou}')
+        logger.add_line(f'\n{phase} Accuracy: {accuracy}')
+        logger.add_line(f'{phase} mIoU: {mean_iou}')
 
 
     # wandb_utils.log(cfg, args, eval_metrics_dict, epoch)

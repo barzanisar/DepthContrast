@@ -82,9 +82,6 @@ RUN echo "source activate ssl" > ~/.bashrc
 # Make RUN commands use the new environment:
 SHELL ["conda", "run", "--no-capture-output", "-n", "ssl", "/bin/bash", "-c"]
 
-RUN conda install -c conda-forge/label/gcc7 qhull
-RUN conda install -c conda-forge -c davidcaron pclpy
-RUN pip install werkzeug==2.2.3
 
 # ==================================================================
 # config & cleanup
@@ -130,30 +127,31 @@ ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPA
 # ------------------------------------------------------------------
 
 WORKDIR /DepthContrast
+#cuda home env needed for minkowski
+ENV CUDA_HOME="/usr/local/cuda-11.1" 
 COPY requirements.txt requirements.txt
-RUN python -m pip install --upgrade pip
-RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
 RUN apt-get update && apt-get install -y libgl1
-RUN pip install -U urllib3 requests
 
 RUN apt-get update -y
 RUN apt-get install -y libeigen3-dev
-RUN pip install numpy open3d hdbscan
+RUN pip install pip==22.1.2
+RUN python -m pip --no-cache-dir install -r requirements.txt
+
 
 COPY third_party third_party
 ENV TORCH_CUDA_ARCH_LIST="Kepler;Kepler+Tesla;Maxwell;Maxwell+Tegra;Pascal;Volta;Turing"
 ENV PYTHONPATH="/usr/lib/python3.8/site-packages/:${PYTHONPATH}"
 
-RUN python -m pip --no-cache-dir install --upgrade -r ./third_party/OpenPCDet/requirements.txt
-RUN python -m pip --no-cache-dir install torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
-RUN python ./third_party/OpenPCDet/setup.py develop
-
 WORKDIR /DepthContrast
-RUN python -m pip --no-cache-dir install --upgrade -r requirements.txt
-# RUN rm /usr/local/lib/python3.8/dist-packages/spconv/pytorch/utils.py
-# COPY spconv/utils.py /usr/local/lib/python3.8/dist-packages/spconv/pytorch/utils.py
+RUN conda install openblas-devel -c anaconda
 RUN python -m pip --no-cache-dir install torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
-RUN pip3 install -U MinkowskiEngine==0.5.4 --install-option="--blas=openblas" -v --no-deps
+RUN apt install libopenblas-dev -y
+RUN pip install -U git+https://github.com/NVIDIA/MinkowskiEngine -v --no-deps --install-option="--blas_include_dirs=${CONDA_PREFIX}/include" --install-option="--blas=openblas"
+RUN pip install -U git+https://github.com/NVIDIA/MinkowskiEngine -v --no-deps --install-option="--blas_include_dirs=${CONDA_PREFIX}/include" --install-option="--blas=openblas"
+RUN python ./third_party/OpenPCDet/setup.py develop
+RUN conda install -c conda-forge/label/gcc7 qhull
+RUN conda install -c conda-forge -c davidcaron pclpy
+
 RUN mkdir checkpoints &&  \
     mkdir configs &&  \
     mkdir criterions &&  \

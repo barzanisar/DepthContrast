@@ -94,7 +94,43 @@
             },
             "args": [
                 "--cfg",
-                "configs/waymo_minkunet_pseudo8_test.yaml"
+                "configs/waymo_minkunet_test.yaml"
+            ]
+        },
+        {
+            "name": "Waymo: lpseg minkunet",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/downstream_segmentation.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/waymo_minkunet_lpseg_test.yaml"
+            ]
+        },
+        {
+            "name": "Waymo: lpseg-dist-minkunet",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--nproc_per_node=1",
+                "--max_restarts=0",
+                "${workspaceFolder}/tools/downstream_segmentation.py",
+                "--launcher",
+                "pytorch",
+                "--multiprocessing-distributed",
+                "--cfg",
+                "configs/waymo_minkunet_lpseg_test.yaml"
             ]
         },
         {
@@ -115,7 +151,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_minkunet_pseudo8_test.yaml"
+                "configs/waymo_minkunet_test.yaml"
             ]
         },
         {
@@ -140,7 +176,7 @@
             ]
         },
         {
-            "name": "Waymo: downstream_segmentation",
+            "name": "Waymo: lpseg dist pts",
             "type": "python",
             "request": "launch",
             "module": "torch.distributed.launch",

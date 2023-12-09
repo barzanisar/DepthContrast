@@ -1,7 +1,5 @@
-import pclpy
 from pclpy import pcl
 import numpy as np
-import sys
 import matplotlib.pyplot as plt
 import pickle
 from sklearn.manifold import TSNE

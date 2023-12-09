@@ -111,3 +111,22 @@ sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=shape_perc_0
 sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=shape_perc_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19424 --cfg_file configs/waymo_pointrcnn_backbone_shape_perc_0p1.yaml
 sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=shape_perc_0p5 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19428 --cfg_file configs/waymo_pointrcnn_backbone_shape_perc_0p5.yaml
 sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=shape_perc_0p6 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19429 --cfg_file configs/waymo_pointrcnn_backbone_shape_perc_0p6.yaml
+
+
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_esf_perc_0p05 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19521 --cfg_file configs/waymo_minkunet_esf_perc_0p05.yaml
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_esf_perc_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19522 --cfg_file configs/waymo_minkunet_esf_perc_0p1.yaml
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_esf_perc_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19523 --cfg_file configs/waymo_minkunet_esf_perc_0p2.yaml
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_esf_perc_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19524 --cfg_file configs/waymo_minkunet_esf_perc_0p3.yaml
+
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_esf_thres_0p05 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19525 --cfg_file configs/waymo_minkunet_esf_thresh_0p05.yaml
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_esf_thres_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19526 --cfg_file configs/waymo_minkunet_esf_thresh_0p1.yaml
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_esf_thres_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19527 --cfg_file configs/waymo_minkunet_esf_thresh_0p2.yaml
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_esf_thres_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19528 --cfg_file configs/waymo_minkunet_esf_thresh_0p3.yaml
+
+
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_iou_perc_0p05 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19529 --cfg_file configs/waymo_minkunet_iou_perc_0p05.yaml
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_iou_perc_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19530 --cfg_file configs/waymo_minkunet_iou_perc_0p1.yaml
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_iou_perc_0p2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19531 --cfg_file configs/waymo_minkunet_iou_perc_0p2.yaml
+
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_iou_thres_0p6 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19532 --cfg_file configs/waymo_minkunet_iou_thresh_0p6.yaml
+sbatch --time=6:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=mink_iou_thres_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19533 --cfg_file configs/waymo_minkunet_iou_thresh_0p4.yaml

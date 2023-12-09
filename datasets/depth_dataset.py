@@ -119,8 +119,10 @@ class DepthContrastDataset(Dataset):
         if self.mode == 'train':
             gt_classes_idx = data_dict["gt_boxes"][:,-1].reshape(-1,1)
             data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7])
-            #Reappend class_idx
-            data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx])
+            
+            if self.cfg['downstream_task'] == 'detection':
+                #Reappend class_idx
+                data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx])
         
         if cfg['INPUT'] == 'points':
             data_dict['points'] = data_processor.sample_points(data_dict['points'], self.cfg["SAMPLE_NUM_POINTS"] )
@@ -128,16 +130,25 @@ class DepthContrastDataset(Dataset):
         if self.mode == 'train':
             data_dict['points'] = data_processor.shuffle_points(data_dict['points'])
             
-            #Only needed if augmentation removes points
-            # If augmentor removes a patch with gt box, remove its gt box 
-            data_dict['points'], data_dict['gt_boxes'], data_dict['pt_wise_gtbox_idxs'] = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'],  numpts=20)
-        else:
-            data_dict['pt_wise_gtbox_idxs'] = data_processor.find_pt_wise_gtbox_idx(data_dict['points'], data_dict['gt_boxes'])
         if cfg['INPUT'] == 'voxels':
             vox_dict = self.toVox(data_dict["points"]) # xyzil=seg label 
             data_dict["vox"] = vox_dict
 
+        if cfg['INPUT'] == 'sparse_tensor':
+            data_dict['voxel_coords'], sampled_pts_feats_xyzi, seg_labels = point_set_to_coord_feats(data_dict["points"][:,:-1], data_dict["points"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"])
+            data_dict["points"] = np.hstack([sampled_pts_feats_xyzi, seg_labels[:,None]])
 
+        
+        #Only needed this when downstream task is detection
+        # Remove gt box if not enough pts but points stay the same
+        # If augmentor removes a patch with gt box, remove its gt box
+        if self.cfg['downstream_task'] == 'detection':
+            if self.mode == 'train':
+                data_dict['points'], data_dict['gt_boxes'], data_dict['pt_wise_gtbox_idxs'] = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'],  numpts=20)
+            else: 
+                data_dict['pt_wise_gtbox_idxs'] = data_processor.find_pt_wise_gtbox_idx(data_dict['points'], data_dict['gt_boxes'])
+        else:
+             data_dict.pop('gt_boxes')   
         return data_dict
     def prepare_data_pretrain(self, data_dict):
         

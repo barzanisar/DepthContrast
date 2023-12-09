@@ -1,11 +1,11 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_pseudo8_test.yaml
 # python tools/main_dist.py --cfg configs/waymo_pointrcnn_pseudo8_test.yaml
-wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
-resume: false
-num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
+wb_extra_tags: ['minkunet', 'waymo', 'pretrain_segmentation']
+resume: true
+num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
-log2wb: false
+log2wb: true
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
@@ -13,7 +13,7 @@ ckpt_save_interval: 1 #save only models to finetune for object detection
 save_ckpt_after_epochs: 0
 
 WANDB:
-  ENABLED: False 
+  ENABLED: True 
   PROJECT: SSL3dObject
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
@@ -21,12 +21,12 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train_one}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
-  BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
-  POINT_CLOUD_RANGE:  [-75, -75 ,  -3 ,  75 ,  75 ,   3 ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
+  FRAME_SAMPLING_INTERVAL: {'train': 30} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  BATCHSIZE_PER_REPLICA: 10 #Change to 14, if input moco feats is false, use 8
+  POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
                 [0.91, 0.86, 1.73],
@@ -59,7 +59,7 @@ dataset:
   SAMPLE_NUM_POINTS: 80000
   INPUT: sparse_tensor
   RESOLUTION: 0.05
-  # EXTRACT_SHAPE_DESCRIPTORS: esf
+  EXTRACT_SHAPE_DESCRIPTORS: esf
 
   COLLATE_FUNCTION: "sparse_moco_collator"
   DROP_LAST: True
@@ -69,14 +69,14 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 10
+  num_epochs: 50
   lr:
     name: "cosine"
-    base_lr: 0.012 #0.1 for linear_probe #0.12
+    base_lr: 0.12 #0.1 for linear_probe #0.12
 
 model:
-  model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_pseudo_8_test" 
+  model_dir: "checkpoints/minkunet"
+  name: "minkunet_pretrain_esf_thresh_0p2" 
 
   MODEL_BASE:
     NAME: Segmentor
@@ -98,7 +98,7 @@ NCE_LOSS:
   # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
   # IOU_WEIGHT: 0.1
   # IOU_QUANTILE_THRESHOLD: 0.3
-  # SHAPE_DIST_TYPE: 'cosine' #'euclidean'
+  SHAPE_DIST_TYPE: 'cosine' #'euclidean'
   # SHAPE_WEIGHT: 1.0
-  # SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
+  SHAPE_DIST_THRESHOLD: 0.2 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
   #SHAPE_DIST_QUANTILE_THRESHOLD: 0.3
