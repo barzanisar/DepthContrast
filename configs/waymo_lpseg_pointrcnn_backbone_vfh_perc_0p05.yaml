@@ -1,8 +1,9 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
 # python tools/main_dist.py --cfg configs/waymo.yaml
-wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
+wb_extra_tags: ['pointrcnn', 'linearprobe_segmentation_waymo']
 resume: true
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
+load_pretrained_checkpoint: 'all'
 
 log2tb: false
 log2wb: true
@@ -22,20 +23,13 @@ WANDB:
 dataset:
   DATASET_NAMES: [WaymoDataset]
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train}
+  DATA_SPLIT: {'train': train, 'val': val}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 30} #5% waymo 
-  BATCHSIZE_PER_REPLICA: 10
+  FRAME_SAMPLING_INTERVAL: {'train': 10, 'val': 10} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  BATCHSIZE_PER_REPLICA: 20 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
-  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
-  MEAN_SIZES: [[4.7, 2.1, 1.7],
-                [0.91, 0.86, 1.73],
-                [1.78, 0.84, 1.78],
-                [0.5, 0.5, 1.0],
-                [3, 2, 1.5],
-                [10, 2.5, 1.7],
-                [20, 2.5, 1.7],
-                [20, 20, 1.7]]
+  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist'] #['Vehicle', 'Pedestrian', 'Cyclist']
+ 
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
     - NAME: random_world_flip
@@ -59,7 +53,7 @@ dataset:
   SAMPLE_NUM_POINTS: 80000
   INPUT: points
 
-  COLLATE_FUNCTION: "moco_collator"
+  COLLATE_FUNCTION: "downstream_collator"
   DROP_LAST: True
 
 optimizer:
@@ -67,14 +61,16 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 50
+  num_epochs: 12
+  warmup_epochs: 1
   lr:
-    name: "cosine"
-    base_lr: 0.12
+    name: "cosine_warm_up"
+    base_lr: 0.24 #0.1 for linear_probe #0.12
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_backbone_iou_perc_0p05" #pseudo classes 8
+  name: "pointrcnn_pretrain_backbone_vfh_perc_0p05"
+  linear_probe: true #meaning lp vs finetune
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -91,19 +87,8 @@ model:
                 [[256, 256, 512], [256, 384, 512]]]
       FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
 
-    PRETEXT_HEAD: 
-      NAME: SegHead
-      use_mlp: True
-      mlp_dim: [128, 128, 128]
-
-
-NCE_LOSS:
-  LOSS_WEIGHT: 1.0
-  TEMPERATURE: 0.1
-  NUM_NEGATIVES: 65536
-  EMBEDDING_DIM: 128
-  # IOU_DIST_THRESHOLD: 0.5 # filter out neg samples if their iou with query is < iou_dist_thresh
-  IOU_QUANTILE_THRESHOLD: 0.05
-  # RMSE_THRESHOLD: 0.25 # filter out neg samples if their shape desc rmse with query is < rmse_thresh
-  # IOU_WEIGHT: 0.1
-  # SHAPE_DESCRIPTORS_DIM: 640
+  SEGMENTATION_HEAD:
+    CLS_FC: [128, 23]
+    loss_types: ['CELoss', 'LovLoss']
+    loss_weights: [1.0, 1.0]
+    label_smoothing: 0.1

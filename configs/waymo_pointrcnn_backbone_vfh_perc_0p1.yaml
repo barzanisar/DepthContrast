@@ -24,7 +24,7 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 20} #5% waymo 
+  FRAME_SAMPLING_INTERVAL: {'train': 30} #5% waymo 
   BATCHSIZE_PER_REPLICA: 10
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
@@ -58,7 +58,7 @@ dataset:
 
   SAMPLE_NUM_POINTS: 80000
   INPUT: points
-  EXTRACT_SHAPE_DESCRIPTORS: esf
+  EXTRACT_SHAPE_DESCRIPTORS: vfh
 
 
   COLLATE_FUNCTION: "moco_collator"
@@ -76,7 +76,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_backbone_shape_perc_0p05" #pseudo classes 8
+  name: "pointrcnn_pretrain_backbone_vfh_perc_0p1" #pseudo classes 8
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -106,7 +106,7 @@ NCE_LOSS:
   EMBEDDING_DIM: 128
   # IOU_DIST_THRESHOLD: 0.5 # filter out neg samples if their iou with query is < iou_dist_thresh
   SHAPE_DIST_TYPE: 'cosine'
-  SHAPE_QUANTILE_THRESHOLD: 0.05
+  SHAPE_QUANTILE_THRESHOLD: 0.1
   # RMSE_THRESHOLD: 0.25 # filter out neg samples if their shape desc rmse with query is < rmse_thresh
   # IOU_WEIGHT: 0.1
   # SHAPE_DESCRIPTORS_DIM: 640

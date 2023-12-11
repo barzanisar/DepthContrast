@@ -69,7 +69,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_backbone_iou_thresh_0p6"
+  name: "pointrcnn_pretrain_backbone_iou_thresh_0p6_lower_bs_epochs_data"
   linear_probe: true #meaning lp vs finetune
 
   MODEL_BASE:
