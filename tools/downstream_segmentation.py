@@ -120,7 +120,9 @@ def main_worker(args, cfg):
         init_model_fn = f'{downstream_dir}/initial_linear_probe_model.pth.tar'
         if args.rank == 0 and not os.path.isfile(init_model_fn):
             torch.save(model.state_dict(), init_model_fn)
-    
+        
+        if args.multiprocessing_distributed:
+            torch.distributed.barrier()
     for ckpt in checkpoints_to_eval:
         if ckpt == 'checkpoint.pth.tar':
             continue
