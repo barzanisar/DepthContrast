@@ -24,8 +24,8 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 20} #5% waymo 
-  BATCHSIZE_PER_REPLICA: 22 #24 and 22 works
+  FRAME_SAMPLING_INTERVAL: {'train': 30} #5% waymo 
+  BATCHSIZE_PER_REPLICA: 10 #24 and 22 works
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
@@ -67,7 +67,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 100
+  num_epochs: 50
   lr:
     name: "cosine"
     base_lr: 0.12
