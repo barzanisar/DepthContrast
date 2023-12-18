@@ -59,7 +59,7 @@ dataset:
   SAMPLE_NUM_POINTS: 80000
   INPUT: sparse_tensor
   RESOLUTION: 0.05
-  EXTRACT_SHAPE_DESCRIPTORS: esf
+  EXTRACT_SHAPE_DESCRIPTORS: vfh
 
   COLLATE_FUNCTION: "sparse_moco_collator"
   DROP_LAST: True
@@ -76,7 +76,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_esf_perc_0p1" 
+  name: "minkunet_pretrain_vfh_perc_0p1" 
 
   MODEL_BASE:
     NAME: Segmentor

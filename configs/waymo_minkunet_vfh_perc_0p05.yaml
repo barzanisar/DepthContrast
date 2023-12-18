@@ -59,7 +59,7 @@ dataset:
   SAMPLE_NUM_POINTS: 80000
   INPUT: sparse_tensor
   RESOLUTION: 0.05
-  EXTRACT_SHAPE_DESCRIPTORS: esf
+  EXTRACT_SHAPE_DESCRIPTORS: vfh
 
   COLLATE_FUNCTION: "sparse_moco_collator"
   DROP_LAST: True
@@ -76,7 +76,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_esf_perc_0p1" 
+  name: "minkunet_pretrain_vfh_perc_0p05" 
 
   MODEL_BASE:
     NAME: Segmentor
@@ -100,5 +100,5 @@ NCE_LOSS:
   # IOU_QUANTILE_THRESHOLD: 0.3
   SHAPE_DIST_TYPE: 'cosine' #'euclidean'
   # SHAPE_WEIGHT: 1.0
-  #SHAPE_DIST_THRESHOLD: 0.2 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
-  SHAPE_DIST_QUANTILE_THRESHOLD: 0.1
+  # SHAPE_DIST_THRESHOLD: 0.2 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
+  SHAPE_DIST_QUANTILE_THRESHOLD: 0.05
