@@ -149,7 +149,11 @@ def load_data_to_gpu(batch_dict):
             continue
 
         if isinstance(val, np.ndarray):
-            batch_dict[key] = torch.from_numpy(val).float().cuda(non_blocking=True)
+            try:
+                batch_dict[key] = torch.from_numpy(val).float().cuda(non_blocking=True)
+            except:
+                print(f"ERROR: {key}, {val.shape}, {val.dtype}")
+                raise ValueError
         elif torch.is_tensor(val):
             val.cuda(non_blocking=True)
 
