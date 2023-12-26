@@ -144,8 +144,9 @@ def main_worker(args, cfg):
                                   linear_probe=linear_probe)
 
         # record this epoch which has been evaluated
-        with open(ckpt_record_file, 'a') as f:
-            print('%s' % ckpt, file=f)
+        if args.rank == 0:
+            with open(ckpt_record_file, 'a') as f:
+                print('%s' % ckpt, file=f)
         logger.add_line('\n'+'='*30 + f'Ckpt {ckpt} has been evaluated'+ '='*30)
 
     if args.multiprocessing_distributed:
