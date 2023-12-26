@@ -76,7 +76,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_esf_perc_0p1_bs8" 
+  name: "minkunet_pretrain_esf_perc_0p1" 
 
   MODEL_BASE:
     NAME: Segmentor
