@@ -179,7 +179,8 @@ def sparse_moco_collator(batch):
 
     #sparse_points, sparse_points_moco = collate_points_to_sparse_tensor(voxel_coords, points, voxel_coords_moco, points_moco) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
 
-
+    assert points.dtype == 'float32'
+    assert len(points.shape) == 3
     output_batch = {'input': 
                     {'points': points,
                      'voxel_coords': voxel_coords,

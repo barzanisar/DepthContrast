@@ -325,7 +325,8 @@ class DepthContrastDataset(Dataset):
 
             data_dict['voxel_coords_moco'], feats_moco, cluster_p_moco = point_set_to_coord_feats(data_dict["points"][:,:-1], data_dict["points"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"])
             data_dict["points_moco"] = np.hstack([feats_moco, cluster_p_moco[:,None]])
-
+            assert len(data_dict["points"]) == self.cfg["SAMPLE_NUM_POINTS"], f'data_dict["points"] shape: {data_dict["points"].shape}'
+            assert data_dict["points"].dtype=='float32', f'points dtype is not float32, dtype is {data_dict["points"].dtype}'
 
 
         data_dict['gt_boxes_cluster_ids'] = data_dict['gt_boxes'][:,-1]

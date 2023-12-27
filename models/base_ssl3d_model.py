@@ -108,6 +108,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             # batch_dict['input'].pop('voxel_coords')
             # batch_dict['input_moco'].pop('points')
             # batch_dict['input_moco'].pop('voxel_coords')
+            assert batch_dict['input']['points'].dtype == 'float32'
+            assert len(batch_dict['input']['points'].shape) == 3
 
         outputs, _, _ , _= self._single_input_forward(batch_dict['input'])
 
