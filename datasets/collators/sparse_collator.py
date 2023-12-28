@@ -63,17 +63,22 @@ def numpy_to_sparse_tensor(p_coord, p_feats, p_label=None):
                 device=device,
             ) # sparse tensor in gpu
 
-def point_set_to_coord_feats(point_set, labels, resolution, num_points, deterministic=False):
+def point_set_to_coord_feats(point_set, labels, resolution, num_points, deterministic=False, frame_id=None):
     p_feats = point_set.copy() #xyzi for each pt
     p_coord = np.round(point_set[:, :3] / resolution)
     p_coord -= p_coord.min(0, keepdims=1) #[xmin, ymin, zmin] -> p_coord = voxel_coords for each pt
 
     _, mapping = ME.utils.sparse_quantize(coordinates=p_coord, return_index=True)
+    
     if len(mapping) > num_points:
         if deterministic:
             # for reproducibility we set the seed
             np.random.seed(42)
         mapping = np.random.choice(mapping, num_points, replace=False)
+    else:
+        print(f'len mapping is less than 80k: {len(mapping)} pts in {frame_id}')
+        extra_choice = np.random.choice(mapping, num_points - len(mapping), replace=False)
+        mapping = np.concatenate((mapping, extra_choice), axis=0)
 
     return p_coord[mapping], p_feats[mapping], labels[mapping] #(20K, 3=xyz voxel coord), (20K, 4=xyzi pt coord), (20K,)
 
