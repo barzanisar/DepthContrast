@@ -73,9 +73,9 @@ class NCELossMoco(nn.Module):
             self.shape_weight = config.get("SHAPE_WEIGHT", None)
 
             self.shape_descs_dim = config.get("SHAPE_DESCRIPTORS_DIM", None)
-            self.shape_dist_type = config.get("SHAPE_DIST_TYPE", None)
+            self.shape_dist_type = config.get("SHAPE_DIST_TYPE", 'cosine')
 
-            self.shape_guidance = self.shape_weight is not None or self.shape_dist_type is not None or self.shape_dist_quantile_threshold is not None
+            self.shape_guidance = self.shape_weight is not None or self.shape_dist_threshold is not None or self.shape_dist_quantile_threshold is not None
             self.iou_guidance = self.iou_weight is not None or self.iou_dist_threshold is not None or self.iou_quantile_threshold is not None
             
             if self.shape_guidance:
