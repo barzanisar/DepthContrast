@@ -59,7 +59,7 @@ dataset:
   SAMPLE_NUM_POINTS: 80000
   INPUT: points
   
-  EXTRACT_SHAPE_DESCRIPTORS: esf
+  # EXTRACT_SHAPE_DESCRIPTORS: esf
 
   COLLATE_FUNCTION: "moco_collator"
   DROP_LAST: True
@@ -76,7 +76,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_pseudo_8_test" 
+  name: "pointrcnn_pretrain_iouperc_weight" 
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -222,9 +222,9 @@ NCE_LOSS:
   NUM_NEGATIVES: 1000 #65536
   EMBEDDING_DIM: 128
   # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
-  # IOU_WEIGHT: 0.1
+  IOU_WEIGHT: 0.1
   IOU_QUANTILE_THRESHOLD: 0.3
-  #SHAPE_DIST_TYPE: 'cosine' #'euclidean'
+  # SHAPE_DIST_TYPE: 'cosine' #'euclidean'
   # SHAPE_WEIGHT: 1.0
   #SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
   #SHAPE_DIST_QUANTILE_THRESHOLD: 0.3
