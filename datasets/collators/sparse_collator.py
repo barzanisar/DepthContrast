@@ -100,11 +100,13 @@ def sparse_downstream_collator(batch):
     points = [x['points'][:,:-1] for x in batch] # (bs, 20k, xyzi)
     voxel_coords = [x['voxel_coords'] for x in batch] # (bs, 20k, xyz vox coord)
 
-    sparse_points = numpy_to_sparse_tensor(voxel_coords, points) # sparse gpu tensors -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+    # sparse_points = numpy_to_sparse_tensor(voxel_coords, points) # sparse gpu tensors -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
 
     output_batch = {'input': 
-                    {'sparse_points': sparse_points,
-                    #  'voxel_coords': voxel_coords,
+                    {
+                    #  'sparse_points': sparse_points,
+                     'points': points, 
+                     'voxel_coords': voxel_coords,
                      'seg_labels': seg_labels,
                      'batch_size': batch_size}
                      }

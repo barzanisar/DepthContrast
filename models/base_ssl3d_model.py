@@ -71,11 +71,12 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
     def downstream_forward(self, batch_dict): 
         output_dict = {}
-        # if self.config['INPUT'] == 'sparse_tensor':
-        #     batch_dict['input']['sparse_points'] = numpy_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points']) # sparse gpu tensors -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+        if self.config['INPUT'] == 'sparse_tensor':
+            batch_dict['input']['sparse_points'] = numpy_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points']) # sparse gpu tensors -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
 
         outputs, _, _, _ = self._single_input_forward(batch_dict['input'])
-        # outputs['batch_dict'].pop('points')
+        if 'points' in outputs['batch_dict']:
+            outputs['batch_dict'].pop('points')
         output_dict['output'] =  outputs['batch_dict']
         
         if 'MODEL_DET_HEAD' in self.config:
