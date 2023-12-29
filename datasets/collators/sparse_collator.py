@@ -218,18 +218,18 @@ def sparse_moco_collator(batch):
         shape_cluster_ids_is_common_mask_batch = np.concatenate(shape_cluster_ids_is_common_mask_batch, axis=0).reshape(-1)
         shape_descs = np.concatenate([x["shape_descs"] for x in batch], axis=0)
 
-    sparse_points, sparse_points_moco = collate_points_to_sparse_tensor(voxel_coords, points, voxel_coords_moco, points_moco) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+    # sparse_points, sparse_points_moco = collate_points_to_sparse_tensor(voxel_coords, points, voxel_coords_moco, points_moco) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
 
     output_batch = {'input': 
-                    {'sparse_points': sparse_points,
-                    #  'voxel_coords': voxel_coords,
+                    {'points': points,
+                     'voxel_coords': voxel_coords,
                      'cluster_ids': cluster_ids,
                     'common_unscaled_lwhz': common_unscaled_lwhz,
                      'batch_size': batch_size},
                     
                     'input_moco': 
-                    {'sparse_points': sparse_points_moco,
-                    #  'voxel_coords': voxel_coords_moco,
+                    {'points': points_moco,
+                     'voxel_coords': voxel_coords_moco,
                      'cluster_ids': cluster_ids_moco,
                      'batch_size': batch_size}
                     

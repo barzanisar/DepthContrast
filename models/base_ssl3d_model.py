@@ -73,7 +73,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         output_dict = {}
         if self.config['INPUT'] == 'sparse_tensor':
             batch_dict['input']['sparse_points'] = numpy_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points']) # sparse gpu tensors -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
-
+            batch_dict['input'].pop('points')
+            batch_dict['input'].pop('voxel_coords')
+            
         outputs, _, _, _ = self._single_input_forward(batch_dict['input'])
         if 'points' in outputs['batch_dict']:
             outputs['batch_dict'].pop('points')
@@ -102,15 +104,15 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     def pretrain_forward(self, batch_dict):
         output_dict = {}
 
-        # if self.config['INPUT'] == 'sparse_tensor':
-        #     batch_dict['input']['sparse_points'], batch_dict['input_moco']['sparse_points'] = collate_points_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points'], 
-        #                                                                         batch_dict['input_moco']['voxel_coords'], batch_dict['input_moco']['points']) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
-        #     # batch_dict['input'].pop('points')
-        #     # batch_dict['input'].pop('voxel_coords')
-        #     # batch_dict['input_moco'].pop('points')
-        #     # batch_dict['input_moco'].pop('voxel_coords')
-        #     assert batch_dict['input']['points'].dtype == 'float32'
-        #     #assert len(batch_dict['input']['points'].shape) == 3
+        if self.config['INPUT'] == 'sparse_tensor':
+            batch_dict['input']['sparse_points'], batch_dict['input_moco']['sparse_points'] = collate_points_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points'], 
+                                                                                batch_dict['input_moco']['voxel_coords'], batch_dict['input_moco']['points']) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+            batch_dict['input'].pop('points')
+            batch_dict['input'].pop('voxel_coords')
+            batch_dict['input_moco'].pop('points')
+            batch_dict['input_moco'].pop('voxel_coords')
+            # assert batch_dict['input']['points'].dtype == 'float32'
+            #assert len(batch_dict['input']['points'].shape) == 3
 
         outputs, _, _ , _= self._single_input_forward(batch_dict['input'])
 

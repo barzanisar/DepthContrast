@@ -32,7 +32,6 @@ from utils.data_map import WAYMO_LABELS
 from models.base_ssl3d_model import parameter_description
 import MinkowskiEngine as ME
 
-
 parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training in 3D')
 
 parser.add_argument('--cfg', type=str, default=None, help='specify the config for training')
