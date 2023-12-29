@@ -3,10 +3,16 @@ import MinkowskiEngine as ME
 import torch
 
 def array_to_sequence(batch_data):
-        return [ row for row in batch_data ]
+    return [ row for row in batch_data]
 
 def array_to_torch_sequence(batch_data):
     return [ torch.from_numpy(row).float() for row in batch_data ]
+
+# def array_to_sequence(batch_data, batch_size):
+#     return [batch_data[batch_data[:,0] == bidx][:, 1:] for bidx in range(batch_size) ]
+
+# def array_to_torch_sequence(batch_data, batch_size):
+#     return [ torch.from_numpy(batch_data[batch_data[:,0] == bidx][:, 1:]).float() for bidx in range(batch_size) ]
 
 def list_segments_points(p_coord, p_feats, labels):
     c_coord = []
@@ -14,7 +20,7 @@ def list_segments_points(p_coord, p_feats, labels):
 
     seg_batch_count = 0
 
-    for batch_num in range(labels.shape[0]):
+    for batch_num in range(len(labels)):
         for segment_lbl in np.unique(labels[batch_num]):
             if segment_lbl == -1:
                 continue
@@ -69,16 +75,11 @@ def point_set_to_coord_feats(point_set, labels, resolution, num_points, determin
     p_coord -= p_coord.min(0, keepdims=1) #[xmin, ymin, zmin] -> p_coord = voxel_coords for each pt
 
     _, mapping = ME.utils.sparse_quantize(coordinates=p_coord, return_index=True)
-    
     if len(mapping) > num_points:
         if deterministic:
             # for reproducibility we set the seed
             np.random.seed(42)
         mapping = np.random.choice(mapping, num_points, replace=False)
-    else:
-        print(f'len mapping is less than 80k: {len(mapping)} pts in {frame_id}')
-        extra_choice = np.random.choice(mapping, num_points - len(mapping), replace=False)
-        mapping = np.concatenate((mapping, extra_choice), axis=0)
 
     return p_coord[mapping], p_feats[mapping], labels[mapping] #(20K, 3=xyz voxel coord), (20K, 4=xyzi pt coord), (20K,)
 
@@ -92,13 +93,18 @@ def collate_points_to_sparse_tensor(pi_coord, pi_feats, pj_coord, pj_feats):
 def sparse_downstream_collator(batch):
     batch_size = len(batch)
     
-    points = np.asarray([x['points'][:,:-1] for x in batch]) # (bs, 20k, xyzi)
-    voxel_coords = np.asarray([x['voxel_coords'] for x in batch]) # (bs, 20k, xyz vox coord)
+    # points = np.asarray([x['points'][:,:-1] for x in batch]) # (bs, 20k, xyzi)
+    # voxel_coords = np.asarray([x['voxel_coords'] for x in batch]) # (bs, 20k, xyz vox coord)
     seg_labels = np.concatenate([x["points"][:,-1] for x in batch], axis=0) # (N1, N2, ..., Nbs)
     
+    points = [x['points'][:,:-1] for x in batch] # (bs, 20k, xyzi)
+    voxel_coords = [x['voxel_coords'] for x in batch] # (bs, 20k, xyz vox coord)
+
+    sparse_points = numpy_to_sparse_tensor(voxel_coords, points) # sparse gpu tensors -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+
     output_batch = {'input': 
-                    {'points': points,
-                     'voxel_coords': voxel_coords,
+                    {'sparse_points': sparse_points,
+                    #  'voxel_coords': voxel_coords,
                      'seg_labels': seg_labels,
                      'batch_size': batch_size}
                      }
@@ -124,11 +130,39 @@ def sparse_moco_collator(batch):
     batch_size = len(batch)
     shape_descs_required = 'shape_desc_cluster_ids' in batch[0]
     
-    points = np.asarray([x['points'][:,:-1] for x in batch]) # (bs, 20k, xyzi)
-    points_moco = np.asarray([x['points_moco'][:,:-1] for x in batch]) # (bs, 20k, xyzi)
+    # #append batchidx, x,y,z,i
+    # coords = []
+    # coords_moco = []
+    # for bidx, x in enumerate(batch):
+    #     coor_pad = np.pad(x['points'][:,:4], ((0, 0), (1, 0)), mode='constant', constant_values=bidx) 
+    #     coor_pad_moco = np.pad(x['points_moco'][:,:4], ((0, 0), (1, 0)), mode='constant', constant_values=bidx) 
+    #     coords.append(coor_pad)
+    #     coords_moco.append(coor_pad_moco)
+    # points = np.concatenate(coords, axis=0) #(N1 + ... Nbs, 5=bxyzi)
+    # points_moco = np.concatenate(coords_moco, axis=0) #(N1 + ... Nbs, 5=bxyzi)
 
-    voxel_coords = np.asarray([x['voxel_coords'] for x in batch]) # (bs, 20k, xyz vox coord)
-    voxel_coords_moco = np.asarray([x['voxel_coords_moco'] for x in batch]) # (bs, 20k, xyz vox coord)
+    # #append batchidx, x,y,z vox coord
+    # coords = []
+    # coords_moco = []
+    # for bidx, x in enumerate(batch):
+    #     coor_pad = np.pad(x['voxel_coords'][:,:4], ((0, 0), (1, 0)), mode='constant', constant_values=bidx) 
+    #     coor_pad_moco = np.pad(x['voxel_coords_moco'][:,:4], ((0, 0), (1, 0)), mode='constant', constant_values=bidx) 
+    #     coords.append(coor_pad)
+    #     coords_moco.append(coor_pad_moco)
+    # voxel_coords = np.concatenate(coords, axis=0) #(N1 + ... Nbs, 5=bxyz vox coord)
+    # voxel_coords_moco = np.concatenate(coords_moco, axis=0) #(N1 + ... Nbs, 5=bxyz vox coord)
+
+    points = [x['points'][:,:-1] for x in batch] # (bs, 20k, xyzi)
+    points_moco = [x['points_moco'][:,:-1] for x in batch] # (bs, 20k, xyzi)
+
+    voxel_coords = [x['voxel_coords'] for x in batch] # (bs, 20k, xyz vox coord)
+    voxel_coords_moco = [x['voxel_coords_moco'] for x in batch] # (bs, 20k, xyz vox coord)
+
+    # points = np.asarray([x['points'][:,:-1] for x in batch]) # (bs, 20k, xyzi)
+    # points_moco = np.asarray([x['points_moco'][:,:-1] for x in batch]) # (bs, 20k, xyzi)
+
+    # voxel_coords = np.asarray([x['voxel_coords'] for x in batch]) # (bs, 20k, xyz vox coord)
+    # voxel_coords_moco = np.asarray([x['voxel_coords_moco'] for x in batch]) # (bs, 20k, xyz vox coord)
 
     cluster_ids = [x["points"][:,-1] for x in batch] # ([N1], [N2], ..., [Nbs])
     gt_boxes_cluster_ids = [x["gt_boxes_cluster_ids"] for x in batch]
@@ -182,20 +216,18 @@ def sparse_moco_collator(batch):
         shape_cluster_ids_is_common_mask_batch = np.concatenate(shape_cluster_ids_is_common_mask_batch, axis=0).reshape(-1)
         shape_descs = np.concatenate([x["shape_descs"] for x in batch], axis=0)
 
-    #sparse_points, sparse_points_moco = collate_points_to_sparse_tensor(voxel_coords, points, voxel_coords_moco, points_moco) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+    sparse_points, sparse_points_moco = collate_points_to_sparse_tensor(voxel_coords, points, voxel_coords_moco, points_moco) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
 
-    assert points.dtype == 'float32'
-    assert len(points.shape) == 3
     output_batch = {'input': 
-                    {'points': points,
-                     'voxel_coords': voxel_coords,
+                    {'sparse_points': sparse_points,
+                    #  'voxel_coords': voxel_coords,
                      'cluster_ids': cluster_ids,
                     'common_unscaled_lwhz': common_unscaled_lwhz,
                      'batch_size': batch_size},
                     
                     'input_moco': 
-                    {'points': points_moco,
-                     'voxel_coords': voxel_coords_moco,
+                    {'sparse_points': sparse_points_moco,
+                    #  'voxel_coords': voxel_coords_moco,
                      'cluster_ids': cluster_ids_moco,
                      'batch_size': batch_size}
                     

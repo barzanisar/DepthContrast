@@ -71,8 +71,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
 
     def downstream_forward(self, batch_dict): 
         output_dict = {}
-        if self.config['INPUT'] == 'sparse_tensor':
-            batch_dict['input']['sparse_points'] = numpy_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points']) # sparse gpu tensors -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+        # if self.config['INPUT'] == 'sparse_tensor':
+        #     batch_dict['input']['sparse_points'] = numpy_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points']) # sparse gpu tensors -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
 
         outputs, _, _, _ = self._single_input_forward(batch_dict['input'])
         # outputs['batch_dict'].pop('points')
@@ -101,24 +101,26 @@ class BaseSSLMultiInputOutputModel(nn.Module):
     def pretrain_forward(self, batch_dict):
         output_dict = {}
 
-        if self.config['INPUT'] == 'sparse_tensor':
-            batch_dict['input']['sparse_points'], batch_dict['input_moco']['sparse_points'] = collate_points_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points'], 
-                                                                                batch_dict['input_moco']['voxel_coords'], batch_dict['input_moco']['points']) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
-            # batch_dict['input'].pop('points')
-            # batch_dict['input'].pop('voxel_coords')
-            # batch_dict['input_moco'].pop('points')
-            # batch_dict['input_moco'].pop('voxel_coords')
-            assert batch_dict['input']['points'].dtype == 'float32'
-            assert len(batch_dict['input']['points'].shape) == 3
+        # if self.config['INPUT'] == 'sparse_tensor':
+        #     batch_dict['input']['sparse_points'], batch_dict['input_moco']['sparse_points'] = collate_points_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points'], 
+        #                                                                         batch_dict['input_moco']['voxel_coords'], batch_dict['input_moco']['points']) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+        #     # batch_dict['input'].pop('points')
+        #     # batch_dict['input'].pop('voxel_coords')
+        #     # batch_dict['input_moco'].pop('points')
+        #     # batch_dict['input_moco'].pop('voxel_coords')
+        #     assert batch_dict['input']['points'].dtype == 'float32'
+        #     #assert len(batch_dict['input']['points'].shape) == 3
 
         outputs, _, _ , _= self._single_input_forward(batch_dict['input'])
 
-        outputs['batch_dict'].pop('points')
+        if 'points' in outputs['batch_dict']:
+            outputs['batch_dict'].pop('points')
         output_dict['output'] =  outputs['batch_dict']
 
         outputs_moco, _, _, _ = self._single_input_forward_MOCO(batch_dict['input_moco'])
 
-        outputs_moco['batch_dict'].pop('points')
+        if 'points' in outputs_moco['batch_dict']:
+            outputs_moco['batch_dict'].pop('points')
         output_dict['output_moco'] =  outputs_moco['batch_dict']
         
         concat_outputs_condition_for_det = 'MODEL_DET_HEAD' in self.config and self.config['MODEL_DET_HEAD'].get('INPUT_MOCO_FEATS', False)
@@ -361,8 +363,8 @@ class BaseSSLMultiInputOutputModel(nn.Module):
             f_this.append(f_gather[idx_this[idx]][:all_size[idx_this[idx]],:].cpu().numpy())
 
         # final shuffled coordinates and features, build back the sparse tensor
-        c_this = np.array(c_this) #(8, 20k, 3=xyz vox coord)
-        f_this = np.array(f_this) #(8, 20k, 4=xyzi pts)
+        # c_this = np.array(c_this) #(8, 20k, 3=xyz vox coord)
+        # f_this = np.array(f_this) #(8, 20k, 4=xyzi pts)
         x_this = numpy_to_sparse_tensor(c_this, f_this) # sparse tensor on gpu (C:(8x20k, 4=new_bid on this gpu, xyz vox coord), F:(8x20k, 4=xyzi pts))
 
         batch_dict['sparse_points'] = x_this
