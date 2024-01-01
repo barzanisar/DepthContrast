@@ -141,7 +141,7 @@ def main_worker(args, cfg):
         else:
             logger.add_line("No checkpoint found at '{}'".format(ckp_manager.last_checkpoint_fn()))
 
-    cudnn.benchmark = True
+    # cudnn.benchmark = True
     # cudnn.enabled = False
 
     ############################ TRAIN #########################################
