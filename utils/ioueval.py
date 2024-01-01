@@ -44,7 +44,6 @@ class EvalMetrics:
     if global_rank == 0:
         fn= f'{self.save_dir}/downstream_results.pkl'
         pickle.dump(self.eval_dict_ckpt, open(fn, 'wb'))
-        b=1
      
 
 

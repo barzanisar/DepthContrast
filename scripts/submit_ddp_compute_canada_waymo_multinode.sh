@@ -20,6 +20,8 @@ die() { echo "$*" 1>&2 ; exit 1; }
 CFG_FILE=configs/waymo.yaml
 TCP_PORT=18888
 DOWNSTREAM=false
+PRETRAINED_CKPT='default'
+EVAL_FROM_CKPT_N=0
 
 # Additional parameters
 DATA_DIR=/home/$USER/scratch/Datasets/Waymo #/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
@@ -65,6 +67,23 @@ while :; do
     -d|--downstream)       # Takes an option argument; ensure it has been specified.
         DOWNSTREAM="true"
         ;;
+    -p|--pretrained_ckpt)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            PRETRAINED_CKPT=$2
+            shift
+        else
+            die 'ERROR: "--pretrained_ckpt" requires a non-empty option argument.'
+        fi
+        ;;
+    -p|--eval_from_ckpt_n)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            EVAL_FROM_CKPT_N=$2
+            shift
+        else
+            die 'ERROR: "--eval_from_ckpt_n" requires a non-empty option argument.'
+        fi
+        ;;
+        
     # Additional parameters
     -?*)
         printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
@@ -89,6 +108,8 @@ export CFG_FILE=$CFG_FILE
 export SING_IMG=$SING_IMG
 export DATA_DIR=$DATA_DIR
 export DOWNSTREAM=$DOWNSTREAM
+export PRETRAINED_CKPT=$PRETRAINED_CKPT
+export EVAL_FROM_CKPT_N=$EVAL_FROM_CKPT_N
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
 

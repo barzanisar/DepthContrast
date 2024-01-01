@@ -46,7 +46,7 @@ def reinit(cfg, args, job_type='train'):
     
     run_name = cfg['model']['name']
     if job_type != 'train':
-        ckpt_name = cfg['checkpoint'].split('.')[0]
+        ckpt_name = cfg['pretrain_checkpoint'].split('.')[0]
         run_name += '-' + job_type + '-'+ckpt_name
 
     run = wandb.init(name=run_name,

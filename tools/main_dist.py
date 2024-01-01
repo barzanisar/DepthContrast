@@ -112,8 +112,13 @@ def main_worker(args, cfg):
         if 'MODEL_AUX_HEAD' in cfg['model']:
             model.aux_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.aux_head)
 
-    model, args = main_utils.distribute_model_to_cuda(model, args) #, find_unused_params=CLUSTER
+    # Optionally load any pretrained ckpt
+    if 'pretrain_model_dir' in cfg:
+        ckp_manager_pretrained_model = main_utils.CheckpointManager(cfg['pretrain_model_dir'], logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
+        # ckp_manager_pretrained_model.restore(fn=args.pretrained_ckpt, model=model)
+        ckp_manager_pretrained_model.restore(restore_last=True, model=model)
 
+    model, args = main_utils.distribute_model_to_cuda(model, args) #, find_unused_params=CLUSTER
 
     # Define criterion    
     train_criterion = main_utils.build_criterion(cfg['NCE_LOSS'], logger=logger)
@@ -137,6 +142,7 @@ def main_worker(args, cfg):
             logger.add_line("No checkpoint found at '{}'".format(ckp_manager.last_checkpoint_fn()))
 
     cudnn.benchmark = True
+    # cudnn.enabled = False
 
     ############################ TRAIN #########################################
     test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1

@@ -55,6 +55,8 @@ parser.add_argument('--multiprocessing-distributed', action='store_true', defaul
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
+parser.add_argument('--pretrained_ckpt', type=str, default=None, help='load single pretrained ckpt for linear probing or finetuning')
+parser.add_argument('--eval_from_ckpt_n', type=int, default=0, help='evall al ckpts after and including this ckpt')
 
 def main():
     args = parser.parse_args()
@@ -82,10 +84,15 @@ def main_worker(args, cfg):
     args = main_utils.initialize_distributed_backend(args)
     cfg['model']['INPUT'] = cfg['dataset']['INPUT']
     downstream_task = 'segmentation' if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
-    cfg['dataset']['downstream_task'] = downstream_task
-
+    cfg['dataset']['downstream_task'] = downstream_task # needed in dataset
+    # configuration
+    linear_probe = cfg['model']['linear_probe']
     logger, _, downstream_dir, pretrain_model_dir, phase_name = main_utils.prep_environment(args, cfg, pretraining=False)
 
+    if args.pretrained_ckpt is not None:
+        cfg['load_pretrained_checkpoint'] = args.pretrained_ckpt
+    if not linear_probe:
+        assert cfg['load_pretrained_checkpoint'] != 'all'
     checkpoints_to_eval, ckpt_record_file = main_utils.get_ckpts_to_eval(cfg, logger, 
                                                                          pretrain_model_dir=pretrain_model_dir, 
                                                                          eval_list_dir=downstream_dir)
@@ -94,59 +101,66 @@ def main_worker(args, cfg):
     checkpoints_to_eval = sorted(checkpoints_to_eval, key=lambda x: int(x.split('-ep')[1].split('.')[0]))
     logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
     logger.add_line(f'{checkpoints_to_eval}')
+    if args.eval_from_ckpt_n > 0:
+        checkpoints_to_eval = [x for x in checkpoints_to_eval if int(x.split('-ep')[1].split('.')[0]) >= args.eval_from_ckpt_n]
+
     cfg['checkpoints_to_eval'] = checkpoints_to_eval
-    wandb_utils.init(cfg, args, job_type=phase_name)
 
-    # Define dataloaders once
-    train_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='train', logger=logger)  
-    val_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='val', logger=logger) 
-
-    # configuration
-    linear_probe = cfg['model']['linear_probe']
-
-    # Define model bcz we dont want to carry forward num batches tracked and classifier params from previous checkpt training
-    model = main_utils.build_model(cfg['model'], pretraining=False, dataset=train_loader.dataset, logger=logger) 
-
-    if args.multiprocessing_distributed:
-        if cfg['model']['MODEL_BASE']['BACKBONE_3D']['NAME'] == 'MinkUNet':
-            model = ME.MinkowskiSyncBatchNorm.convert_sync_batchnorm(model)
-        else:
-            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-
-    # Save initial model for lp so that all checkpts lp_training/val starts from 
-    # the same initial params of the classifier
-    if linear_probe:
-        init_model_fn = f'{downstream_dir}/initial_linear_probe_model.pth.tar'
-        if args.rank == 0 and not os.path.isfile(init_model_fn):
-            torch.save(model.state_dict(), init_model_fn)
-        
-        if args.multiprocessing_distributed:
-            torch.distributed.barrier()
-    for ckpt in checkpoints_to_eval:
-        if ckpt == 'checkpoint.pth.tar':
-            continue
-        logger.add_line('\n'+'='*30 + f'Evaluating ckpt: {ckpt}' +'='*30)
-        cfg['pretrain_checkpoint'] = ckpt
-        cfg['pretrain_ckpt_epoch'] = int(ckpt.split('-ep')[1].split('.')[0])
-        ckpt_name = ckpt.split('.')[0]
-        # _, run = wandb_utils.reinit(cfg, args, job_type=phase_name) #TODO
-
-        downstream_ckpt_dir = Path(downstream_dir) / ckpt_name
-        downstream_ckpt_dir.mkdir(parents=True, exist_ok=True)
+    if len(checkpoints_to_eval):
         if linear_probe:
-            init_model = torch.load(init_model_fn, map_location='cpu')
-            model.load_state_dict(init_model)
-        eval_one_ckpt(args, cfg, logger, 
-                                  downstream_dir = str(downstream_ckpt_dir), 
-                                  pretrain_model_dir=pretrain_model_dir, 
-                                  train_loader=train_loader, val_loader=val_loader, model=model,
-                                  linear_probe=linear_probe)
+            wandb_utils.init(cfg, args, job_type=phase_name)
 
-        # record this epoch which has been evaluated
-        if args.rank == 0:
-            with open(ckpt_record_file, 'a') as f:
-                print('%s' % ckpt, file=f)
-        logger.add_line('\n'+'='*30 + f'Ckpt {ckpt} has been evaluated'+ '='*30)
+        # Define dataloaders once
+        train_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='train', logger=logger)  
+        val_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=False, mode='val', logger=logger) 
+
+        # Define model bcz we dont want to carry forward num batches tracked and classifier params from previous checkpt training
+        model = main_utils.build_model(cfg['model'], pretraining=False, dataset=train_loader.dataset, logger=logger) 
+
+        if args.multiprocessing_distributed:
+            if cfg['model']['MODEL_BASE']['BACKBONE_3D']['NAME'] == 'MinkUNet':
+                model = ME.MinkowskiSyncBatchNorm.convert_sync_batchnorm(model)
+            else:
+                model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
+        # Save initial model for lp so that all checkpts lp_training/val starts from 
+        # the same initial params of the classifier
+        if linear_probe:
+            init_model_fn = f'{downstream_dir}/initial_linear_probe_model.pth.tar'
+            if args.rank == 0 and not os.path.isfile(init_model_fn):
+                torch.save(model.state_dict(), init_model_fn)
+            
+            if args.multiprocessing_distributed:
+                torch.distributed.barrier()
+        for ckpt in checkpoints_to_eval:
+            logger.add_line('\n'+'='*30 + f'Evaluating ckpt: {ckpt}' +'='*30)
+            cfg['pretrain_checkpoint'] = ckpt
+            cfg['pretrain_ckpt_epoch'] = int(ckpt.split('-ep')[1].split('.')[0])
+            ckpt_name = ckpt.split('.')[0]
+
+            downstream_ckpt_dir = Path(downstream_dir) / ckpt_name
+            downstream_ckpt_dir.mkdir(parents=True, exist_ok=True)
+            if linear_probe:
+                init_model = torch.load(init_model_fn, map_location='cpu')
+                model.load_state_dict(init_model)
+            
+            # # if finetune more than one ckpt
+            if not linear_probe:
+                _, run = wandb_utils.reinit(cfg, args, job_type='finetune')
+            eval_one_ckpt(args, cfg, logger, 
+                                    downstream_dir = str(downstream_ckpt_dir), 
+                                    pretrain_model_dir=pretrain_model_dir, 
+                                    train_loader=train_loader, val_loader=val_loader, model=model,
+                                    linear_probe=linear_probe)
+
+            # # if finetune more than one ckpt
+            if not linear_probe and run is not None:
+                run.finish()
+            # record this epoch which has been evaluated
+            if args.rank == 0:
+                with open(ckpt_record_file, 'a') as f:
+                    print('%s' % ckpt, file=f)
+            logger.add_line('\n'+'='*30 + f'Ckpt {ckpt} has been evaluated'+ '='*30)
 
     if args.multiprocessing_distributed:
         dist.destroy_process_group()
@@ -157,7 +171,7 @@ def eval_one_ckpt(args, cfg, logger,
                   linear_probe, 
                   tb_writter=None):
     ckp_manager_pretrained_model = main_utils.CheckpointManager(pretrain_model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
-    ckp_manager_linear = main_utils.CheckpointManager(downstream_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
+    ckp_manager_downstream = main_utils.CheckpointManager(downstream_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
 
     # Load model state dict i.e. load checkpoint
     base_model_epoch = ckp_manager_pretrained_model.restore(fn=cfg['pretrain_checkpoint'], skip_model_layers=['global_step', 'num_batches_tracked'], model=model)
@@ -172,7 +186,15 @@ def eval_one_ckpt(args, cfg, logger,
     model, args = main_utils.distribute_model_to_cuda(model, args)
 
     if not linear_probe:
-        params_to_optimize = [model.parameters()]
+        if 'head_lr' in cfg['optimizer']['lr']:
+            if args.multiprocessing_distributed:
+                params_to_optimize = [{"params": model.module.trunk[0].parameters(), "lr": cfg['optimizer']['lr']['base_lr']},
+                                      {"params": model.module.segmentation_head.parameters(), "lr": cfg['optimizer']['lr']['head_lr']}]
+            else:
+                params_to_optimize = [{"params": model.trunk[0].parameters(), "lr": cfg['optimizer']['lr']['base_lr']},
+                                      {"params": model.segmentation_head.parameters(), "lr": cfg['optimizer']['lr']['head_lr']}]
+        else:    
+            params_to_optimize = [model.parameters()]
     else:
         params_to_optimize = [param for key, param in model.named_parameters() if param.requires_grad]
         if args.multiprocessing_distributed:
@@ -201,14 +223,14 @@ def eval_one_ckpt(args, cfg, logger,
     
     start_epoch, end_epoch = 0, cfg['optimizer']['num_epochs']
 
-    # # Optionally resume from a checkpoint
-    # if cfg['resume']:
-    #     if ckp_manager_linear.checkpoint_exists(last=True):
-    #         start_epoch = ckp_manager_linear.restore(restore_last=True, model=model, optimizer=optimizer)
-    #         scheduler.step(start_epoch)
-    #         logger.add_line("Checkpoint loaded: '{}' (epoch {})".format(ckp_manager_linear.last_checkpoint_fn(), start_epoch))
-    #     else:
-    #         logger.add_line("No checkpoint found at '{}'".format(ckp_manager_linear.last_checkpoint_fn()))
+    # # Optionally resume from the last downstream checkpoint
+    if not linear_probe and cfg['resume']:
+        if ckp_manager_downstream.checkpoint_exists(last=True):
+            start_epoch = ckp_manager_downstream.restore(restore_last=True, model=model, optimizer=optimizer)
+            scheduler.step(start_epoch)
+            logger.add_line("Checkpoint loaded: '{}' (epoch {})".format(ckp_manager_downstream.last_checkpoint_fn(), start_epoch))
+        else:
+            logger.add_line("No checkpoint found at '{}'".format(ckp_manager_downstream.last_checkpoint_fn()))
 
     cudnn.benchmark = True
 
@@ -216,7 +238,9 @@ def eval_one_ckpt(args, cfg, logger,
     test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
     
     evaluator = iouEval(n_classes=cfg['num_classes'], ignore=0)
-    eval_dict_ckpt = EvalMetrics(class_names, cfg['pretrain_ckpt_epoch'], save_dir=downstream_dir)
+
+    if linear_probe:
+        eval_dict_ckpt = EvalMetrics(class_names, cfg['pretrain_ckpt_epoch'], save_dir=downstream_dir)
     for epoch in range(start_epoch, end_epoch):
         if args.multiprocessing_distributed:
             train_loader.sampler.set_epoch(epoch)
@@ -231,16 +255,22 @@ def eval_one_ckpt(args, cfg, logger,
 
         #Save linear probe ckpt
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
-            ckp_manager_linear.save(epoch+1, model=model, optimizer=optimizer)
-            logger.add_line(f'Saved linear_probe checkpoint {ckp_manager_linear.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
+            ckp_manager_downstream.save(epoch+1, model=model, optimizer=optimizer)
+            logger.add_line(f'Saved downstream checkpoint {ckp_manager_downstream.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
         
+        if linear_probe:
+            eval_dict_ckpt.push_back_single_epoch('train', epoch, train_eval_metrics_dict_single_downstream_epoch)
+            eval_dict_ckpt.push_back_single_epoch('val', epoch, val_eval_metrics_dict_single_downstream_epoch)
+        else:
+            #finetune
+            results_dict = train_eval_metrics_dict_single_downstream_epoch
+            results_dict.update(val_eval_metrics_dict_single_downstream_epoch)
+            wandb_utils.log(cfg, args, results_dict,  step=epoch)
 
-        eval_dict_ckpt.push_back_single_epoch('train', epoch, train_eval_metrics_dict_single_downstream_epoch)
-        eval_dict_ckpt.push_back_single_epoch('val', epoch, val_eval_metrics_dict_single_downstream_epoch)
-
-    ckpt_best_downstream_results = eval_dict_ckpt.get_best_dict()
-    wandb_utils.log(cfg, args, ckpt_best_downstream_results,  step=cfg['pretrain_ckpt_epoch'])
-    eval_dict_ckpt.save(args.rank)
+    if linear_probe:
+        ckpt_best_downstream_results = eval_dict_ckpt.get_best_dict()
+        wandb_utils.log(cfg, args, ckpt_best_downstream_results,  step=cfg['pretrain_ckpt_epoch'])
+        eval_dict_ckpt.save(args.rank)
 
     
 def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator=None):
@@ -249,20 +279,20 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
     batch_time = metrics_utils.AverageMeter(f'Avg Batch Process Time', ':6.3f', window_size=100)
     data_time = metrics_utils.AverageMeter(f'Avg Batch Load Time', ':6.3f', window_size=100)
     loss_meter = metrics_utils.AverageMeter(f'Total Loss', ':.3e') # total loss
-    det_cls_loss_meter = metrics_utils.AverageMeter(f'det_cls_loss', ':.3e')
-    det_reg_loss_meter = metrics_utils.AverageMeter(f'det_reg_loss', ':.3e')
-    det_cls_rcnn_loss_meter = metrics_utils.AverageMeter(f'det_cls_rcnn_loss', ':.3e')
-    det_reg_rcnn_loss_meter = metrics_utils.AverageMeter(f'det_reg_rcnn_loss', ':.3e')
+    # det_cls_loss_meter = metrics_utils.AverageMeter(f'det_cls_loss', ':.3e')
+    # det_reg_loss_meter = metrics_utils.AverageMeter(f'det_reg_loss', ':.3e')
+    # det_cls_rcnn_loss_meter = metrics_utils.AverageMeter(f'det_cls_rcnn_loss', ':.3e')
+    # det_reg_rcnn_loss_meter = metrics_utils.AverageMeter(f'det_reg_rcnn_loss', ':.3e')
     seg_celoss_meter = metrics_utils.AverageMeter(f'seg_celoss', ':.3e')
     seg_lovloss_meter = metrics_utils.AverageMeter(f'seg_lovloss', ':.3e')
 
    
     list_of_meters = [batch_time, data_time, loss_meter]
     
-    if 'MODEL_DET_HEAD' in cfg.model:
-        list_of_meters += [det_cls_loss_meter, det_reg_loss_meter]
-        if 'ROI_HEAD' in cfg.model.MODEL_DET_HEAD:
-            list_of_meters += [det_cls_rcnn_loss_meter, det_reg_rcnn_loss_meter]
+    # if 'MODEL_DET_HEAD' in cfg.model:
+    #     list_of_meters += [det_cls_loss_meter, det_reg_loss_meter]
+    #     if 'ROI_HEAD' in cfg.model.MODEL_DET_HEAD:
+    #         list_of_meters += [det_cls_rcnn_loss_meter, det_reg_rcnn_loss_meter]
     
     if 'SEGMENTATION_HEAD' in cfg['model']:
         list_of_meters += [seg_celoss_meter, seg_lovloss_meter]
@@ -282,7 +312,7 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
     # switch to train mode
     model.train(phase == 'train')
     end = time.time()
-    lr = scheduler.get_last_lr()[0]
+    lr = scheduler.get_last_lr()
     for i, sample in enumerate(loader):
         torch.cuda.empty_cache()
 
@@ -295,8 +325,6 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
             with torch.no_grad():
                 output_dict = model(sample)
 
-         # contrastive loss
-        #loss = criterion(output_dict['output'], output_dict['output_moco'])
         # Segmentation loss
         loss = 0
         if 'SEGMENTATION_HEAD' in cfg['model']:
@@ -304,14 +332,14 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
             seg_celoss_meter.update(output_dict['loss_seg_CELoss'])
             seg_lovloss_meter.update(output_dict['loss_seg_LovLoss'])
 
-        # detection loss
-        if 'MODEL_DET_HEAD' in cfg['model']:
-            loss += output_dict['loss_det_head']
-            det_cls_loss_meter.update(output_dict['loss_det_cls'])
-            det_reg_loss_meter.update(output_dict['loss_det_reg'])
-            if 'ROI_HEAD' in cfg.model:
-                det_cls_rcnn_loss_meter.update(output_dict['loss_det_cls_rcnn'])
-                det_reg_rcnn_loss_meter.update(output_dict['loss_det_reg_rcnn'])
+        # # detection loss
+        # if 'MODEL_DET_HEAD' in cfg['model']:
+        #     loss += output_dict['loss_det_head']
+        #     det_cls_loss_meter.update(output_dict['loss_det_cls'])
+        #     det_reg_loss_meter.update(output_dict['loss_det_reg'])
+        #     if 'ROI_HEAD' in cfg.model:
+        #         det_cls_rcnn_loss_meter.update(output_dict['loss_det_cls_rcnn'])
+        #         det_reg_rcnn_loss_meter.update(output_dict['loss_det_reg_rcnn'])
 
         loss_meter.update(loss.item())
        
@@ -354,7 +382,11 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
     eval_metrics_dict = {f'{phase}/epoch': epoch}
 
     if phase == 'train':
-        eval_metrics_dict[f'{phase}/lr'] =lr
+        if len(optimizer.param_groups) > 1:
+            eval_metrics_dict[f'{phase}/lr_backbone'] = lr[0] #optimizer.param_groups[0]['lr']
+            eval_metrics_dict[f'{phase}/lr_head'] = lr[1] #optimizer.param_groups[1]['lr']
+        else:
+            eval_metrics_dict[f'{phase}/lr']=lr[0]
     for meter in progress.meters:
         eval_metrics_dict[phase + '/' + meter.name +'-epoch'] = meter.avg
 
