@@ -62,7 +62,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 12
+  num_epochs: 8
   warmup_epochs: 1
   lr:
     name: "cosine_warm_up"
