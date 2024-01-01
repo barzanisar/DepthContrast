@@ -153,7 +153,7 @@
                 "--cfg",
                 "configs/waymo_finetune_minkunet_test.yaml",
                 "--pretrained_ckpt",
-                "checkpoint-ep7.pth.tar"
+                "checkpoint.pth.tar"
             ]
         },
         {

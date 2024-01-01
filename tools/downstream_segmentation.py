@@ -56,7 +56,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true', defaul
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
 parser.add_argument('--pretrained_ckpt', type=str, default=None, help='load single pretrained ckpt for linear probing or finetuning')
-parser.add_argument('--eval_from_ckpt_n', type=int, default=0, help='evall al ckpts after and including this ckpt')
+parser.add_argument('--linear_probe_last_n_ckpts', type=int, default=-1, help='last num ckpts to linear probe')
 
 def main():
     args = parser.parse_args()
@@ -97,14 +97,18 @@ def main_worker(args, cfg):
                                                                          pretrain_model_dir=pretrain_model_dir, 
                                                                          eval_list_dir=downstream_dir)
 
-    checkpoints_to_eval = [x for x in checkpoints_to_eval if x != 'checkpoint.pth.tar']
-    checkpoints_to_eval = sorted(checkpoints_to_eval, key=lambda x: int(x.split('-ep')[1].split('.')[0]))
-    logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
-    logger.add_line(f'{checkpoints_to_eval}')
-    if args.eval_from_ckpt_n > 0:
-        checkpoints_to_eval = [x for x in checkpoints_to_eval if int(x.split('-ep')[1].split('.')[0]) >= args.eval_from_ckpt_n]
+    if linear_probe:
+        checkpoints_to_eval = [x for x in checkpoints_to_eval if x != 'checkpoint.pth.tar']
+        checkpoints_to_eval = sorted(checkpoints_to_eval, key=lambda x: int(x.split('-ep')[1].split('.')[0]))
+
+        if args.linear_probe_last_n_ckpts > 0:
+            last_ckpt_num = int(checkpoints_to_eval[-1].split('-ep')[1].split('.')[0]) 
+            eval_ckpts_after_ckpt_n = last_ckpt_num - args.linear_probe_last_n_ckpts
+            checkpoints_to_eval = [x for x in checkpoints_to_eval if int(x.split('-ep')[1].split('.')[0]) >= eval_ckpts_after_ckpt_n]
 
     cfg['checkpoints_to_eval'] = checkpoints_to_eval
+    logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
+    logger.add_line(f'{checkpoints_to_eval}')
 
     if len(checkpoints_to_eval):
         if linear_probe:

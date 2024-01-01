@@ -3,6 +3,7 @@
 wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
 resume: true
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
+pretrain_model_dir: 'checkpoints/pointrcnn/pointrcnn_pretrain_iou_perc_0p3_waymo10/pretrain_waymo'
 
 log2tb: false
 log2wb: true
@@ -25,7 +26,7 @@ dataset:
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: {'train': 10} #5% waymo 
-  BATCHSIZE_PER_REPLICA: 10
+  BATCHSIZE_PER_REPLICA: 4
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
@@ -67,14 +68,14 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 100
+  num_epochs: 50
   lr:
     name: "cosine"
     base_lr: 0.12
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_iou_perc_0p3_waymo10" #pseudo classes 8
+  name: "pointrcnn_pretrain_iou_perc_0p3_waymo10_stage2" #pseudo classes 8
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -96,6 +97,108 @@ model:
       use_mlp: True
       mlp_dim: [128, 128, 128]
 
+  MODEL_DET_HEAD:
+    NAME: PointRCNN
+
+    INPUT_MOCO_FEATS: True
+
+    POINT_HEAD:
+      NAME: PointHeadBox
+      CLS_FC: [256, 256]
+      REG_FC: [256, 256]
+      CLASS_AGNOSTIC: False
+      USE_POINT_FEATURES_BEFORE_FUSION: False
+      TARGET_CONFIG:
+        GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
+        BOX_CODER: PointResidualCoder
+        BOX_CODER_CONFIG: {
+            'use_mean_size': True,
+            'mean_size': [
+                [4.7, 2.1, 1.7],
+                [0.91, 0.86, 1.73],
+                [1.78, 0.84, 1.78],
+                [0.5, 0.5, 1.0],
+                [3, 2, 1.5],
+                [10, 2.5, 1.7],
+                [20, 2.5, 1.7],
+                [20, 20, 1.7]
+            ]
+          }
+
+      LOSS_CONFIG:
+        LOSS_REG: WeightedSmoothL1Loss
+        LOSS_WEIGHTS: {
+            'point_cls_weight': 0.5,
+            'point_box_weight': 0.5,
+            'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
+            'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
+        }
+    
+
+    ROI_HEAD:
+      NAME: PointRCNNHead
+      num_point_features: 128
+      CLASS_AGNOSTIC: True
+
+      ROI_POINT_POOL:
+          POOL_EXTRA_WIDTH: [0.0, 0.0, 0.0]
+          NUM_SAMPLED_POINTS: 512
+          DEPTH_NORMALIZER: 70.0
+
+      XYZ_UP_LAYER: [128, 128]
+      CLS_FC: [256, 256]
+      REG_FC: [256, 256]
+      DP_RATIO: 0.0
+      USE_BN: False
+
+      SA_CONFIG:
+          NPOINTS: [128, 32, -1]
+          RADIUS: [0.2, 0.4, 100]
+          NSAMPLE: [16, 16, 16]
+          MLPS: [[128, 128, 128],
+                  [128, 128, 256],
+                  [256, 256, 512]]
+
+      NMS_CONFIG:
+          TRAIN:
+              NMS_TYPE: nms_gpu
+              MULTI_CLASSES_NMS: False
+              NMS_PRE_MAXSIZE: 9000
+              NMS_POST_MAXSIZE: 512
+              NMS_THRESH: 0.8
+          TEST:
+              NMS_TYPE: nms_gpu
+              MULTI_CLASSES_NMS: False
+              NMS_PRE_MAXSIZE: 9000
+              NMS_POST_MAXSIZE: 100
+              NMS_THRESH: 0.85
+
+      TARGET_CONFIG:
+          BOX_CODER: ResidualCoder
+          ROI_PER_IMAGE: 128
+          FG_RATIO: 0.5
+
+          SAMPLE_ROI_BY_EACH_CLASS: True
+          CLS_SCORE_TYPE: cls
+
+          CLS_FG_THRESH: 0.6
+          CLS_BG_THRESH: 0.45
+          CLS_BG_THRESH_LO: 0.1
+          HARD_BG_RATIO: 0.8
+
+          REG_FG_THRESH: 0.55
+
+      LOSS_CONFIG:
+          CLS_LOSS: BinaryCrossEntropy
+          REG_LOSS: smooth-l1
+          CORNER_LOSS_REGULARIZATION: True
+          LOSS_WEIGHTS: {
+              'rcnn_cls_weight': 0.5,
+              'rcnn_reg_weight': 0.5,
+              'rcnn_corner_weight': 1.0,
+              'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+          }
 
 NCE_LOSS:
   LOSS_WEIGHT: 1.0

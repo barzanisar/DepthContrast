@@ -108,13 +108,40 @@ sbatch --time=12:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G -
 
 ##################### Final ###############
 
+#narval
 sbatch --time=10:00:00 --nodes=1 --ntasks=1 --array=1-5%1 --job-name=ptrcnn_iou_perc_0p3_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19325 --cfg_file configs/waymo_pointrcnn_iou_perc_0p3_waymo10.yaml
 sbatch --time=10:00:00 --nodes=1 --ntasks=1 --array=1-5%1 --job-name=ptrcnn_segcontrast_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19326 --cfg_file configs/waymo_pointrcnn_segcontrast_waymo10.yaml
 
 #cedar
 #adjust batchsize to fit in cedar
+# Pointrcnn pretrain stage1
 sbatch --time=1:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=ptrcnn_iou_perc_0p3_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19325 --cfg_file configs/waymo_pointrcnn_iou_perc_0p3_waymo10.yaml
 sbatch --time=1:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=ptrcnn_segcontrast_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19326 --cfg_file configs/waymo_pointrcnn_segcontrast_waymo10.yaml
 
-sbatch --time=15:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=2 --ntasks=2 --array=1-5%1 --job-name=mink_segcontrast_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19631 --cfg_file configs/waymo_minkunet_segcontrast.yaml
+# Pointrcnn pretrain stage2
+sbatch --time=1:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=ptrcnn_iou_perc_0p3_w10_stage2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19325 --cfg_file configs/waymo_pointrcnn_iou_perc_0p3_waymo10_stage2.yaml
+sbatch --time=1:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=ptrcnn_segcontrast_w10_stage2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19326 --cfg_file configs/waymo_pointrcnn_segcontrast_waymo10_stage2.yaml
+
+# Pointrcnn linear probe stage1
+sbatch --time=1:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_ptrcnn_iou_perc_0p3_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19325 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_iou_perc_0p3_waymo10.yaml --linear_probe_last_n_ckpts 10
+sbatch --time=1:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_ptrcnn_segcontrast_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19326 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_segcontrast_waymo10.yaml --linear_probe_last_n_ckpts 10
+
+# Pointrcnn linear probe stage2
+sbatch --time=1:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_ptrcnn_iou_perc_0p3_w10_stage2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19325 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_iou_perc_0p3_waymo10_stage2.yaml --linear_probe_last_n_ckpts 10
+sbatch --time=1:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_ptrcnn_segcontrast_w10_stage2 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19326 --downstream --cfg_file configs/waymo_lpseg_pointrcnn_segcontrast_waymo10_stage2.yaml --linear_probe_last_n_ckpts 10
+
+#minkunet pretrain
+sbatch --time=15:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=2 --ntasks=2 --array=1-5%1 --job-name=mink_segcontrast_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19631 --cfg_file configs/waymo_minkunet_segcontrast_waymo10.yaml
 sbatch --time=15:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=2 --ntasks=2 --array=1-5%1 --job-name=mink_iou_perc_0p3_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19621 --cfg_file configs/waymo_minkunet_iou_perc_0p3_waymo10.yaml
+
+#minkunet linear probe
+sbatch --time=15:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-5%1 --job-name=lpseg_mink_segcontrast_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19631 --downstream --cfg_file configs/waymo_lpseg_minkunet_segcontrast_waymo10.yaml --linear_probe_last_n_ckpts 10
+sbatch --time=15:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-5%1 --job-name=lpseg_mink_iou_perc_0p3_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19621 --downstream --cfg_file configs/waymo_lpseg_minkunet_iou_perc_0p3_waymo10.yaml --linear_probe_last_n_ckpts 10
+
+#minkunet finetune one lr
+sbatch --time=15:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=2 --ntasks=2 --array=1-5%1 --job-name=fine_1lr_mink_segcontrast_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19631 --downstream --cfg_file configs/waymo_fine1lr_minkunet_segcontrast_waymo10.yaml --pretrained_ckpt checkpoint.pth.tar
+sbatch --time=15:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=2 --ntasks=2 --array=1-5%1 --job-name=fine_1lr_mink_iou_perc_0p3_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19621 --downstream --cfg_file configs/waymo_fine1lr_minkunet_iou_perc_0p3_waymo10.yaml --pretrained_ckpt checkpoint.pth.tar
+
+#minkunet finetune two lrs
+sbatch --time=15:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=2 --ntasks=2 --array=1-5%1 --job-name=fine_2lrs_mink_segcontrast_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19631 --downstream --cfg_file configs/waymo_fine2lrs_minkunet_segcontrast_waymo10.yaml --pretrained_ckpt checkpoint.pth.tar
+sbatch --time=15:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=2 --ntasks=2 --array=1-5%1 --job-name=fine_2lrs_mink_iou_perc_0p3_w10 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19621 --downstream --cfg_file configs/waymo_fine2lrs_minkunet_iou_perc_0p3_waymo10.yaml --pretrained_ckpt checkpoint.pth.tar
