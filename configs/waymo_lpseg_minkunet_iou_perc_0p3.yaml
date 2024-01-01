@@ -70,7 +70,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_esf_perc_0p3"
+  name: "minkunet_pretrain_iou_perc_0p3"
   linear_probe: true #meaning lp vs finetune
 
   MODEL_BASE:
