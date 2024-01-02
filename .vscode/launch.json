@@ -130,7 +130,9 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_lpseg_minkunet_test.yaml"
+                "configs/waymo_lpseg_minkunet_test.yaml",
+                "--linear_probe_last_n_ckpts", 
+                "3"
             ]
         },
         {

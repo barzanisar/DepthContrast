@@ -104,7 +104,7 @@ def main_worker(args, cfg):
         if args.linear_probe_last_n_ckpts > 0:
             last_ckpt_num = int(checkpoints_to_eval[-1].split('-ep')[1].split('.')[0]) 
             eval_ckpts_after_ckpt_n = last_ckpt_num - args.linear_probe_last_n_ckpts
-            checkpoints_to_eval = [x for x in checkpoints_to_eval if int(x.split('-ep')[1].split('.')[0]) >= eval_ckpts_after_ckpt_n]
+            checkpoints_to_eval = [x for x in checkpoints_to_eval if int(x.split('-ep')[1].split('.')[0]) > eval_ckpts_after_ckpt_n]
 
     cfg['checkpoints_to_eval'] = checkpoints_to_eval
     logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
