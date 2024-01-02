@@ -96,7 +96,9 @@ TRAIN_CMD+="python -m torch.distributed.launch
 --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
 /DepthContrast/tools/main_dist.py
 --launcher pytorch
---multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE --dist-url tcp://$MASTER_ADDR:$TCP_PORT
+--multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+--epochs $EPOCHS
+--batchsize_per_gpu $BATCHSIZE_PER_GPU
 "
 
 TEST_CMD=$BASE_CMD
@@ -107,7 +109,9 @@ TEST_CMD+="python -m torch.distributed.launch
 --launcher pytorch
 --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE 
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
---linear_probe_last_n_ckpts $LINEAR_PROBE_LAST_N_CKPTS 
+--linear_probe_last_n_ckpts $LINEAR_PROBE_LAST_N_CKPTS
+--epochs $EPOCHS
+--batchsize_per_gpu $BATCHSIZE_PER_GPU
 "
 
 

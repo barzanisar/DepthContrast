@@ -50,6 +50,10 @@ parser.add_argument('--seed', default=1000, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--local_rank', default=0, type=int,
                     help='local process id i.e. GPU id to use.') #local_rank = 0
+parser.add_argument('--batchsize_per_gpu', default=-1, type=int,
+                    help='batchsize_per_gpu')
+parser.add_argument('--epochs', default=-1, type=int,
+                    help='num epochs')
 parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
@@ -61,6 +65,10 @@ parser.add_argument('--linear_probe_last_n_ckpts', type=int, default=-1, help='l
 def main():
     args = parser.parse_args()
     cfg_from_yaml_file(args.cfg, cfg)
+    if args.batchsize_per_gpu > 0:
+        cfg['dataset']['BATCHSIZE_PER_REPLICA']=args.batchsize_per_gpu
+    if args.epochs > 0:
+        cfg['optimizer']['num_epochs']=args.epochs
 
     if args.seed is not None:
         random.seed(args.seed)

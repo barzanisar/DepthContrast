@@ -22,6 +22,9 @@ TCP_PORT=18888
 DOWNSTREAM=false
 PRETRAINED_CKPT="default"
 LINEAR_PROBE_LAST_N_CKPTS=-1
+BATCHSIZE_PER_GPU=-1
+EPOCHS=-1
+
 
 # Additional parameters
 DATA_DIR=/home/$USER/scratch/Datasets/Waymo #/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
@@ -67,7 +70,7 @@ while :; do
     -d|--downstream)       # Takes an option argument; ensure it has been specified.
         DOWNSTREAM="true"
         ;;
-    -p|--pretrained_ckpt)       # Takes an option argument; ensure it has been specified.
+    -l|--pretrained_ckpt)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             PRETRAINED_CKPT=$2
             shift
@@ -81,6 +84,22 @@ while :; do
             shift
         else
             die 'ERROR: "--linear_probe_last_n_ckpts" requires a non-empty option argument.'
+        fi
+        ;;
+    -b|--batchsize_per_gpu)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            BATCHSIZE_PER_GPU=$2
+            shift
+        else
+            die 'ERROR: "--batchsize_per_gpu" requires a non-empty option argument.'
+        fi
+        ;;
+    -e|--epochs)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            EPOCHS=$2
+            shift
+        else
+            die 'ERROR: "--epochs" requires a non-empty option argument.'
         fi
         ;;
         
@@ -110,6 +129,8 @@ export DATA_DIR=$DATA_DIR
 export DOWNSTREAM=$DOWNSTREAM
 export PRETRAINED_CKPT=$PRETRAINED_CKPT
 export LINEAR_PROBE_LAST_N_CKPTS=$LINEAR_PROBE_LAST_N_CKPTS
+export BATCHSIZE_PER_GPU=$BATCHSIZE_PER_GPU
+export EPOCHS=$EPOCHS
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
 
