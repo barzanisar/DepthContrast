@@ -20,7 +20,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 CFG_FILE=configs/waymo.yaml
 TCP_PORT=18888
 DOWNSTREAM=false
-PRETRAINED_CKPT=default
+PRETRAINED_CKPT="default"
 LINEAR_PROBE_LAST_N_CKPTS=-1
 
 # Additional parameters
