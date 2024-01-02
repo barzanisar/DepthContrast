@@ -114,10 +114,8 @@ TEST_CMD+="python -m torch.distributed.launch
 
 if [ $DOWNSTREAM == "true" ]
 then
-    echo "$PRETRAINED_CKPT"
-    if ["$PRETRAINED_CKPT" != "default"]
+    if [ "$PRETRAINED_CKPT" != "default" ]
     then
-        echo "here"
         TEST_CMD+=" --pretrained_ckpt $PRETRAINED_CKPT"
     fi
 
