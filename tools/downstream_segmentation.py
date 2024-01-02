@@ -96,7 +96,7 @@ def main_worker(args, cfg):
     checkpoints_to_eval, ckpt_record_file = main_utils.get_ckpts_to_eval(cfg, logger, 
                                                                          pretrain_model_dir=pretrain_model_dir, 
                                                                          eval_list_dir=downstream_dir)
-
+    logger.add_line(f'Before ckpts to eval: {checkpoints_to_eval}')
     if linear_probe:
         checkpoints_to_eval = [x for x in checkpoints_to_eval if x != 'checkpoint.pth.tar']
         checkpoints_to_eval = sorted(checkpoints_to_eval, key=lambda x: int(x.split('-ep')[1].split('.')[0]))
@@ -108,7 +108,7 @@ def main_worker(args, cfg):
 
     cfg['checkpoints_to_eval'] = checkpoints_to_eval
     logger.add_line('\n'+'='*30 + '     Checkpoints to Eval     '+ '='*30)
-    logger.add_line(f'{checkpoints_to_eval}')
+    logger.add_line(f'After ckpts to eval: {checkpoints_to_eval}')
 
     if len(checkpoints_to_eval):
         if linear_probe:
