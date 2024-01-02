@@ -108,7 +108,6 @@ TEST_CMD+="python -m torch.distributed.launch
 --multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE 
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
 --linear_probe_last_n_ckpts $LINEAR_PROBE_LAST_N_CKPTS 
---pretrained_ckpt $PRETRAINED_CKPT
 "
 
 
