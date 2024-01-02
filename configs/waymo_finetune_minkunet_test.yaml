@@ -60,7 +60,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 15
+  num_epochs: 10
   warmup_epochs: 0
   lr:
     name: "cosine_warm_up"
@@ -69,8 +69,9 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_test"
+  name: "minkunet_scratch"
   linear_probe: false #meaning lp vs finetune
+  downstream_model_dir: "scratch"
 
   MODEL_BASE:
     NAME: Segmentor

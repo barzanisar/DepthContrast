@@ -23,8 +23,8 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train, 'val': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 10, 'val': 15} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
-  BATCHSIZE_PER_REPLICA: 4 #Change to 14, if input moco feats is false, use 8
+  FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 15} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
+  BATCHSIZE_PER_REPLICA: 10 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist'] #['Vehicle', 'Pedestrian', 'Cyclist']
  
@@ -60,7 +60,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 15
+  num_epochs: 30
   warmup_epochs: 0
   lr:
     name: "cosine_warm_up"
@@ -69,8 +69,9 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_iou_perc_0p3_waymo10"
+  name: "minkunet_pretrain_segcontrast_waymo10"
   linear_probe: false #meaning lp vs finetune
+  downstream_model_dir: "finetune_seg_waymo_2lrs"
 
   MODEL_BASE:
     NAME: Segmentor
