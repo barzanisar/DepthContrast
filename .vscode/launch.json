@@ -155,7 +155,7 @@
                 "--cfg",
                 "configs/waymo_finetune_minkunet_test.yaml",
                 "--pretrained_ckpt",
-                "checkpoint.pth.tar"
+                "checkpoint-ep0.pth.tar"
             ]
         },
         {
@@ -239,9 +239,9 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_pointrcnn_lpseg_test.yaml"
+                "configs/waymo_lpseg_pointrcnn_test.yaml"
             ]
-        }
+        },
         // {
         //     "name": "Waymo: pretrain vox v1",
         //     "type": "python",

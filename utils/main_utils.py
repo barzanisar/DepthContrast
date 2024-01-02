@@ -234,10 +234,13 @@ def prep_environment(args, cfg, pretraining=True):
         phase_name = f'pretrain_waymo'
     else:
         downstream_task = 'segmentation' if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
-        if cfg['model']['linear_probe']:
-            phase_name = f'linearprobe_{downstream_task}_{dataset_name}'
+        if 'downstream_model_dir' in cfg['model']:
+            phase_name = cfg['model']['downstream_model_dir']
         else:
-            phase_name = f'finetune_{downstream_task}_{dataset_name}'
+            if cfg['model']['linear_probe']:
+                phase_name = f'linearprobe_{downstream_task}_{dataset_name}'
+            else:
+                phase_name = f'finetune_{downstream_task}_{dataset_name}'
 
     # Prepare loggers (must be configured after initialize_distributed_backend())
     model_dir = '{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], phase_name)

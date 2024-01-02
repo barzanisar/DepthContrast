@@ -139,7 +139,8 @@ def main_worker(args, cfg):
         for ckpt in checkpoints_to_eval:
             logger.add_line('\n'+'='*30 + f'Evaluating ckpt: {ckpt}' +'='*30)
             cfg['pretrain_checkpoint'] = ckpt
-            cfg['pretrain_ckpt_epoch'] = int(ckpt.split('-ep')[1].split('.')[0])
+            if linear_probe:
+                cfg['pretrain_ckpt_epoch'] = int(ckpt.split('-ep')[1].split('.')[0])
             ckpt_name = ckpt.split('.')[0]
 
             downstream_ckpt_dir = Path(downstream_dir) / ckpt_name
@@ -150,7 +151,7 @@ def main_worker(args, cfg):
             
             # # if finetune more than one ckpt
             if not linear_probe:
-                _, run = wandb_utils.reinit(cfg, args, job_type='finetune')
+                _, run = wandb_utils.reinit(cfg, args, job_type=phase_name)
             eval_one_ckpt(args, cfg, logger, 
                                     downstream_dir = str(downstream_ckpt_dir), 
                                     pretrain_model_dir=pretrain_model_dir, 
