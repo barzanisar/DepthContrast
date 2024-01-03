@@ -250,7 +250,8 @@ def eval_one_ckpt(args, cfg, logger,
         else:
             logger.add_line("No checkpoint found at '{}'".format(ckp_manager_downstream.last_checkpoint_fn()))
 
-    cudnn.benchmark = True
+    # cudnn.benchmark = True
+    cudnn.enabled = False
 
     ############################ TRAIN Linear classifier head #########################################
     test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
