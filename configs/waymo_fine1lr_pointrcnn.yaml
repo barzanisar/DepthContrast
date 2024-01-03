@@ -69,7 +69,7 @@ model:
   model_dir: "checkpoints/pointrcnn"
   name: "from_cmd_line"
   linear_probe: false #meaning lp vs finetune
-  downstream_model_dir: "finetune_seg_waymo_2lrs"
+  downstream_model_dir: "finetune_seg_waymo_1lr"
 
   MODEL_BASE:
     NAME: PointRCNN
