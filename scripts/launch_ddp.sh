@@ -132,10 +132,8 @@ then
 else
     echo "Running training"
     echo "Node $SLURM_NODEID says: Launching python script..."
-    echo "Epochs $EPOCHS"
-    echo "BATCHSIZE_PER_GPU $BATCHSIZE_PER_GPU"
 
     echo "$TRAIN_CMD"
-    #eval $TRAIN_CMD
+    eval $TRAIN_CMD
     echo "Done training"
 fi
