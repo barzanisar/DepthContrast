@@ -1,6 +1,6 @@
-# python -m torch.distributed.launch --nproc_per_node=1 tools/downstream_segmentation.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_lpseg_test.yaml
-# python tools/downstream_segmentation.py --cfg configs/waymo_pointrcnn_lpseg_test.yaml
-wb_extra_tags: ['pointrcnn', 'finetune_segmentation_waymo']
+# python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo.yaml
+# python tools/main_dist.py --cfg configs/waymo.yaml
+wb_extra_tags: ['pointrcnn', 'linearprobe_segmentation_waymo']
 resume: true
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 load_pretrained_checkpoint: 'all'
@@ -10,6 +10,8 @@ log2wb: true
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
+ckpt_save_interval: 1 #save only models to finetune for object detection
+save_ckpt_after_epochs: 0
 
 WANDB:
   ENABLED: True 
@@ -20,11 +22,11 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train_one, 'val': train_one}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train, 'val': val}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 15} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
-  BATCHSIZE_PER_REPLICA: 10 #Change to 14, if input moco feats is false, use 8
+  BATCHSIZE_PER_REPLICA: 20 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist'] #['Vehicle', 'Pedestrian', 'Cyclist']
  
@@ -59,18 +61,16 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 15
-  warmup_epochs: 0
+  num_epochs: 10
+  warmup_epochs: 1
   lr:
     name: "cosine_warm_up"
-    base_lr: 0.024 #0.1 for linear_probe #0.12
-    head_lr: 0.24
+    base_lr: 0.24 #0.1 for linear_probe #0.12
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_backbone_iou_perc_0p3"
-  linear_probe: false #meaning lp vs finetune
-  downstream_model_dir: "finetune_seg_waymo_2lrs"
+  name: "from_cmd_line"
+  linear_probe: true #meaning lp vs finetune
 
   MODEL_BASE:
     NAME: PointRCNN

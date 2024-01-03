@@ -24,6 +24,7 @@ PRETRAINED_CKPT="default"
 LINEAR_PROBE_LAST_N_CKPTS=-1
 BATCHSIZE_PER_GPU=-1
 EPOCHS=-1
+MODEL_NAME="default"
 
 
 # Additional parameters
@@ -73,6 +74,14 @@ while :; do
     -l|--pretrained_ckpt)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             PRETRAINED_CKPT=$2
+            shift
+        else
+            die 'ERROR: "--pretrained_ckpt" requires a non-empty option argument.'
+        fi
+        ;;
+    -m|--model_name)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            MODEL_NAME=$2
             shift
         else
             die 'ERROR: "--pretrained_ckpt" requires a non-empty option argument.'
@@ -131,6 +140,7 @@ export PRETRAINED_CKPT=$PRETRAINED_CKPT
 export LINEAR_PROBE_LAST_N_CKPTS=$LINEAR_PROBE_LAST_N_CKPTS
 export BATCHSIZE_PER_GPU=$BATCHSIZE_PER_GPU
 export EPOCHS=$EPOCHS
+export MODEL_NAME=$MODEL_NAME
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
 

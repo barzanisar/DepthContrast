@@ -123,6 +123,11 @@ then
         TEST_CMD+=" --pretrained_ckpt $PRETRAINED_CKPT"
     fi
 
+    if [ "$MODEL_NAME" != "default" ]
+    then
+        TEST_CMD+=" --model_name $MODEL_NAME"
+    fi
+
     echo "Running ONLY downstream"
     echo "Node $SLURM_NODEID says: Launching python script..."
 

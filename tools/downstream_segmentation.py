@@ -61,6 +61,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true', defaul
                          'multi node data parallel training')
 parser.add_argument('--pretrained_ckpt', type=str, default=None, help='load single pretrained ckpt for linear probing or finetuning')
 parser.add_argument('--linear_probe_last_n_ckpts', type=int, default=-1, help='last num ckpts to linear probe')
+parser.add_argument('--model_name', type=str, default=None, help='pretrained model name')
 
 def main():
     args = parser.parse_args()
@@ -69,6 +70,8 @@ def main():
         cfg['dataset']['BATCHSIZE_PER_REPLICA']=args.batchsize_per_gpu
     if args.epochs > 0:
         cfg['optimizer']['num_epochs']=args.epochs
+    if args.model_name is not None:
+        cfg['model']['name'] = args.model_name
 
     if args.seed is not None:
         random.seed(args.seed)

@@ -20,8 +20,8 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train_one, 'val': train_one}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train, 'val': train}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 15} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 10 #Change to 14, if input moco feats is false, use 8
@@ -68,7 +68,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_backbone_esf_perc_0p3"
+  name: "from_cmd_line"
   linear_probe: false #meaning lp vs finetune
   downstream_model_dir: "finetune_seg_waymo_2lrs"
 
