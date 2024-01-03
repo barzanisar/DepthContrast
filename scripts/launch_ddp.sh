@@ -96,8 +96,9 @@ TRAIN_CMD+="python -m torch.distributed.launch
 --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
 /DepthContrast/tools/main_dist.py
 --launcher pytorch
---multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
---epochs $EPOCHS
+--multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE 
+--dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+--epochs $EPOCHS 
 --batchsize_per_gpu $BATCHSIZE_PER_GPU
 "
 
@@ -131,8 +132,10 @@ then
 else
     echo "Running training"
     echo "Node $SLURM_NODEID says: Launching python script..."
+    echo "Epochs $EPOCHS"
+    echo "BATCHSIZE_PER_GPU $BATCHSIZE_PER_GPU"
 
     echo "$TRAIN_CMD"
-    eval $TRAIN_CMD
+    #eval $TRAIN_CMD
     echo "Done training"
 fi
