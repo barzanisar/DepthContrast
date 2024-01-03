@@ -25,6 +25,7 @@ LINEAR_PROBE_LAST_N_CKPTS=-1
 BATCHSIZE_PER_GPU=-1
 EPOCHS=-1
 MODEL_NAME="default"
+DOWNSTREAM_MODEL_DIR="default"
 
 
 # Additional parameters
@@ -87,6 +88,14 @@ while :; do
             die 'ERROR: "--pretrained_ckpt" requires a non-empty option argument.'
         fi
         ;;
+    -w|--downstream_model_dir)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            DOWNSTREAM_MODEL_DIR=$2
+            shift
+        else
+            die 'ERROR: "--downstream_model_dir" requires a non-empty option argument.'
+        fi
+        ;;
     -p|--linear_probe_last_n_ckpts)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             LINEAR_PROBE_LAST_N_CKPTS=$2
@@ -141,6 +150,7 @@ export LINEAR_PROBE_LAST_N_CKPTS=$LINEAR_PROBE_LAST_N_CKPTS
 export BATCHSIZE_PER_GPU=$BATCHSIZE_PER_GPU
 export EPOCHS=$EPOCHS
 export MODEL_NAME=$MODEL_NAME
+export DOWNSTREAM_MODEL_DIR=$DOWNSTREAM_MODEL_DIR
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
 

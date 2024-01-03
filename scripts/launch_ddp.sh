@@ -128,6 +128,11 @@ then
         TEST_CMD+=" --model_name $MODEL_NAME"
     fi
 
+    if [ "$DOWNSTREAM_MODEL_DIR" != "default" ]
+    then
+        TEST_CMD+=" --downstream_model_dir $DOWNSTREAM_MODEL_DIR"
+    fi
+
     echo "Running ONLY downstream"
     echo "Node $SLURM_NODEID says: Launching python script..."
 

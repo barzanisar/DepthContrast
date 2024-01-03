@@ -62,6 +62,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true', defaul
 parser.add_argument('--pretrained_ckpt', type=str, default=None, help='load single pretrained ckpt for linear probing or finetuning')
 parser.add_argument('--linear_probe_last_n_ckpts', type=int, default=-1, help='last num ckpts to linear probe')
 parser.add_argument('--model_name', type=str, default=None, help='pretrained model name')
+parser.add_argument('--downstream_model_dir', type=str, default=None, help='downstream_model_dir name')
 
 def main():
     args = parser.parse_args()
@@ -72,6 +73,8 @@ def main():
         cfg['optimizer']['num_epochs']=args.epochs
     if args.model_name is not None:
         cfg['model']['name'] = args.model_name
+    if args.downstream_model_dir is not None:
+        cfg['model']['downstream_model_dir'] = args.downstream_model_dir
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -245,7 +248,7 @@ def eval_one_ckpt(args, cfg, logger,
     if not linear_probe and cfg['resume']:
         if ckp_manager_downstream.checkpoint_exists(last=True):
             start_epoch = ckp_manager_downstream.restore(restore_last=True, model=model, optimizer=optimizer)
-            scheduler.step(start_epoch)
+            scheduler.step(start_epoch*len(train_loader))
             logger.add_line("Checkpoint loaded: '{}' (epoch {})".format(ckp_manager_downstream.last_checkpoint_fn(), start_epoch))
         else:
             logger.add_line("No checkpoint found at '{}'".format(ckp_manager_downstream.last_checkpoint_fn()))
