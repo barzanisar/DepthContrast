@@ -106,6 +106,8 @@
 # sbatch --time=10:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=lpseg_mink_iou_perc_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19522 --downstream --cfg_file configs/waymo_lpseg_minkunet_iou_perc_0p3.yaml --linear_probe_last_n_ckpts 10
 
 ### pretrained on 5% waymo
+sbatch --time=00:10:00 --nodes=1 --ntasks=1 --array=1-1%1 --job-name=esf_thresh_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19211 --cfg_file configs/waymo_pointrcnn_backbone_esf_thresh_0p1.yaml
+
 sbatch --time=3:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=esf_thresh_0p1 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19211 --cfg_file configs/waymo_pointrcnn_backbone_esf_thresh_0p1.yaml
 sbatch --time=3:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=esf_thresh_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19212 --cfg_file configs/waymo_pointrcnn_backbone_esf_thresh_0p3.yaml
 sbatch --time=3:00:00 --nodes=1 --ntasks=1 --array=1-6%1 --job-name=esf_thresh_0p4 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19213 --cfg_file configs/waymo_pointrcnn_backbone_esf_thresh_0p4.yaml
@@ -137,6 +139,9 @@ sbatch --time=5:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --
 # sbatch --time=5:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-5%1 --job-name=fine2lrs_e100_mink_segcontrast scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19661 --downstream --cfg_file configs/waymo_fine2lrs_minkunet_segcontrast.yaml --pretrained_ckpt checkpoint-ep99.pth.tar --epochs 100
 # sbatch --time=5:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-5%1 --job-name=fine2lrs_e100_mink_iou_perc_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19671 --downstream --cfg_file configs/waymo_fine2lrs_minkunet_iou_perc_0p3.yaml --pretrained_ckpt checkpoint-ep99.pth.tar --epochs 100
 
+sbatch --time=2:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=fine2lrs_ptrcnn_segcontrast scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19661 --downstream --cfg_file configs/waymo_fine2lrs_pointrcnn_segcontrast.yaml --pretrained_ckpt checkpoint-ep49.pth.tar
+sbatch --time=2:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=fine2lrs_ptrcnn_iou_perc_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19671 --downstream --cfg_file configs/waymo_fine2lrs_pointrcnn_iou_perc_0p3.yaml --pretrained_ckpt checkpoint-ep49.pth.tar
+sbatch --time=2:00:00 --account=def-swasland-ab --gres=gpu:v100l:4 --mem=180G --nodes=1 --ntasks=1 --array=1-1%1 --job-name=fine2lrs_ptrcnn_esf_perc_0p3 scripts/submit_ddp_compute_canada_waymo_multinode.sh --tcp_port 19681 --downstream --cfg_file configs/waymo_fine2lrs_pointrcnn_esf_perc_0p3.yaml --pretrained_ckpt checkpoint-ep49.pth.tar
 
 ##################### Final ###############
 

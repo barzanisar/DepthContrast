@@ -1,0 +1,94 @@
+# python -m torch.distributed.launch --nproc_per_node=1 tools/downstream_segmentation.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_lpseg_test.yaml
+# python tools/downstream_segmentation.py --cfg configs/waymo_pointrcnn_lpseg_test.yaml
+wb_extra_tags: ['pointrcnn', 'finetune_segmentation_waymo']
+resume: true
+num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
+load_pretrained_checkpoint: 'all'
+
+log2tb: false
+log2wb: true
+
+test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
+print_freq: 1 #print progress after processing every <freq> iters or batches
+
+WANDB:
+  ENABLED: True 
+  PROJECT: SSL3dObject
+  ENTITY: trailab
+  SUMMARY_HIGHEST_METRIC: None
+  dir: '/DepthContrast/output'
+
+dataset:
+  DATASET_NAMES: [WaymoDataset]
+  PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train_one, 'val': train_one}
+  DATA_PATH: 'data/waymo'
+  FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 15} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  BATCHSIZE_PER_REPLICA: 10 #Change to 14, if input moco feats is false, use 8
+  POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
+  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist'] #['Vehicle', 'Pedestrian', 'Cyclist']
+ 
+
+  POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
+    - NAME: random_world_flip
+      ALONG_AXIS_LIST: ['x', 'y']
+    - NAME: random_world_rotation
+      WORLD_ROT_ANGLE: [-0.78539816, 0.78539816] #-45deg, + 45deg
+    - NAME: random_world_scaling
+      WORLD_SCALE_RANGE: [0.95, 1.05]
+    - NAME: random_local_translation
+      LOCAL_TRANSLATION_RANGE: [-0.3, 0.3]
+      ALONG_AXIS_LIST: ['x', 'y']
+    - NAME: random_local_rotation
+      LOCAL_ROT_ANGLE: [-0.78539816, 0.78539816]
+    - NAME: random_local_scaling
+      LOCAL_SCALE_RANGE: [0.95, 1.05]
+
+    # - NAME: random_cuboid_lidar
+    #   npoints: 10000
+    # - NAME: random_drop
+
+  SAMPLE_NUM_POINTS: 80000
+  INPUT: points
+
+  COLLATE_FUNCTION: "downstream_collator"
+  DROP_LAST: True
+
+optimizer:
+  name: "sgd"
+  weight_decay: 0.0001
+  momentum: 0.9
+  nesterov: True
+  num_epochs: 15
+  warmup_epochs: 0
+  lr:
+    name: "cosine_warm_up"
+    base_lr: 0.024 #0.1 for linear_probe #0.12
+    head_lr: 0.24
+
+model:
+  model_dir: "checkpoints/pointrcnn"
+  name: "pointrcnn_pretrain_backbone_esf_perc_0p3"
+  linear_probe: false #meaning lp vs finetune
+  downstream_model_dir: "finetune_seg_waymo_2lrs"
+
+  MODEL_BASE:
+    NAME: PointRCNN
+
+    BACKBONE_3D:
+      NAME: PointNet2MSG
+      SA_CONFIG:
+        NPOINTS: [4096, 1024, 256, 64]
+        RADIUS: [[0.1, 0.5], [0.5, 1.0], [1.0, 2.0], [2.0, 4.0]]
+        NSAMPLE: [[16, 32], [16, 32], [16, 32], [16, 32]]
+        MLPS: [[[16, 16, 32], [32, 32, 64]],
+                [[64, 64, 128], [64, 96, 128]],
+                [[128, 196, 256], [128, 196, 256]],
+                [[256, 256, 512], [256, 384, 512]]]
+      FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
+
+  SEGMENTATION_HEAD:
+    CLS_FC: [128, 23]
+    loss_types: ['CELoss', 'LovLoss']
+    loss_weights: [1.0, 1.0]
+    label_smoothing: 0.1
