@@ -204,7 +204,7 @@ def recursive_copy_to_gpu(value, non_blocking=True, max_depth=3, curr_depth=0):
 def get_ckpts_to_eval(cfg, logger, pretrain_model_dir, eval_list_dir):
     checkpoints_to_eval = []
     assert os.path.isdir(pretrain_model_dir) 
-    assert os.path.isdir(eval_list_dir) 
+    assert os.path.isdir(eval_list_dir), f'Eval list dir: {eval_list_dir} does not exist!'
     
     # evaluated ckpt record
     ckpt_record_file = Path(eval_list_dir) / 'eval_list.txt'

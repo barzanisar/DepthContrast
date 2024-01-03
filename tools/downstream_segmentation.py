@@ -97,6 +97,8 @@ def main_worker(args, cfg):
     linear_probe = cfg['model']['linear_probe']
     logger, _, downstream_dir, pretrain_model_dir, phase_name = main_utils.prep_environment(args, cfg, pretraining=False)
 
+    if args.multiprocessing_distributed:
+        torch.distributed.barrier()
     if args.pretrained_ckpt is not None:
         cfg['load_pretrained_checkpoint'] = args.pretrained_ckpt
     if not linear_probe:
@@ -201,13 +203,13 @@ def eval_one_ckpt(args, cfg, logger,
     if not linear_probe:
         if 'head_lr' in cfg['optimizer']['lr']:
             if args.multiprocessing_distributed:
-                params_to_optimize = [{"params": model.module.trunk[0].parameters(), "lr": cfg['optimizer']['lr']['base_lr']},
-                                      {"params": model.module.segmentation_head.parameters(), "lr": cfg['optimizer']['lr']['head_lr']}]
+                params_to_optimize = [{"params": list(model.module.trunk[0].parameters()), "lr": cfg['optimizer']['lr']['base_lr']},
+                                      {"params": list(model.module.segmentation_head.parameters()), "lr": cfg['optimizer']['lr']['head_lr']}]
             else:
-                params_to_optimize = [{"params": model.trunk[0].parameters(), "lr": cfg['optimizer']['lr']['base_lr']},
-                                      {"params": model.segmentation_head.parameters(), "lr": cfg['optimizer']['lr']['head_lr']}]
-        else:    
-            params_to_optimize = [model.parameters()]
+                params_to_optimize = [{"params": list(model.trunk[0].parameters()), "lr": cfg['optimizer']['lr']['base_lr']},
+                                      {"params": list(model.segmentation_head.parameters()), "lr": cfg['optimizer']['lr']['head_lr']}]
+        else:
+            params_to_optimize = list(model.parameters())
     else:
         params_to_optimize = [param for key, param in model.named_parameters() if param.requires_grad]
         if args.multiprocessing_distributed:
