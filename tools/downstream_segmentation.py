@@ -73,7 +73,7 @@ def main():
         cfg['optimizer']['num_epochs']=args.epochs
     if args.model_name is not None:
         cfg['model']['name'] = args.model_name
-    if args.downstream_model_dir is not None:
+    if args.downstream_model_dir is not None and args.downstream_model_dir != 'default':
         cfg['model']['downstream_model_dir'] = args.downstream_model_dir
 
     if args.seed is not None:
