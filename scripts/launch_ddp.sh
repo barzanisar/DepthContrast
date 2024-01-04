@@ -112,7 +112,8 @@ TEST_CMD+="python -m torch.distributed.launch
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
 --linear_probe_last_n_ckpts $LINEAR_PROBE_LAST_N_CKPTS
 --epochs $EPOCHS
---batchsize_per_gpu $BATCHSIZE_PER_GPU
+--batchsize_per_gpu $BATCHSIZE_PER_GPU 
+--downstream_model_dir $DOWNSTREAM_MODEL_DIR
 "
 
 
@@ -128,10 +129,10 @@ then
         TEST_CMD+=" --model_name $MODEL_NAME"
     fi
 
-    if [ "$DOWNSTREAM_MODEL_DIR" != "default" ]
-    then
-        TEST_CMD+=" --downstream_model_dir $DOWNSTREAM_MODEL_DIR"
-    fi
+    # if [ "$DOWNSTREAM_MODEL_DIR" != "default" ]
+    # then
+    #     TEST_CMD+=" --downstream_model_dir $DOWNSTREAM_MODEL_DIR"
+    # fi
 
     echo "Running ONLY downstream"
     echo "Node $SLURM_NODEID says: Launching python script..."
