@@ -56,10 +56,16 @@ dataset:
     #   npoints: 10000
     # - NAME: random_drop
 
+  LIDAR_AUG:
+    method: 'before'
+    cuts: 2
+    samples: 2
+    lidars: ['v32', 'v64'] # 'v16', 'o64', 'o128', 
+
   SAMPLE_NUM_POINTS: 80000
   INPUT: points
   
-  # EXTRACT_SHAPE_DESCRIPTORS: esf
+  EXTRACT_SHAPE_DESCRIPTORS: esf
 
   COLLATE_FUNCTION: "moco_collator"
   DROP_LAST: True
@@ -224,6 +230,7 @@ NCE_LOSS:
   # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
   IOU_WEIGHT: 0.1
   IOU_QUANTILE_THRESHOLD: 0.3
+  # CLASS_BALANCING: 'shape' # high weight for positive sample if its sum iou or shape distance with negative samples is high meaning it is a rare sample
   # SHAPE_DIST_TYPE: 'cosine' #'euclidean'
   # SHAPE_WEIGHT: 1.0
   #SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
