@@ -159,6 +159,29 @@
             ]
         },
         {
+            "name": "Waymo: finetune-dist-pt",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--nproc_per_node=1",
+                "--max_restarts=0",
+                "${workspaceFolder}/tools/downstream_segmentation.py",
+                "--launcher",
+                "pytorch",
+                "--multiprocessing-distributed",
+                "--cfg",
+                "configs/waymo_finetune_pointrcnn_test.yaml",
+                "--pretrained_ckpt",
+                "checkpoint-ep1.pth.tar"
+            ]
+        },
+        {
             "name": "Waymo: pretrain-dist-minkunet",
             "type": "python",
             "request": "launch",
