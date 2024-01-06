@@ -62,6 +62,7 @@ class NCELossMoco(nn.Module):
         self.iou_guidance = False
         self.shape_guidance = False
         self.neg_queue_filled = False
+        self.pos_sample_weighting = None
         if self.cluster:
             self.iou_dist_threshold = config.get("IOU_DIST_THRESHOLD", None)
             self.shape_dist_threshold = config.get("SHAPE_DIST_THRESHOLD", None)
@@ -75,8 +76,16 @@ class NCELossMoco(nn.Module):
             self.shape_descs_dim = config.get("SHAPE_DESCRIPTORS_DIM", None)
             self.shape_dist_type = config.get("SHAPE_DIST_TYPE", 'cosine')
 
-            self.shape_guidance = self.shape_weight is not None or self.shape_dist_threshold is not None or self.shape_dist_quantile_threshold is not None
-            self.iou_guidance = self.iou_weight is not None or self.iou_dist_threshold is not None or self.iou_quantile_threshold is not None
+            self.pos_sample_weighting = config.get("CLASS_BALANCING", None)
+
+            self.shape_guidance = self.shape_weight is not None or \
+                self.shape_dist_threshold is not None or \
+                self.shape_dist_quantile_threshold is not None or \
+                self.pos_sample_weighting == 'shape'
+            self.iou_guidance = self.iou_weight is not None or \
+                self.iou_dist_threshold is not None or \
+                self.iou_quantile_threshold is not None or \
+                self.pos_sample_weighting == 'iou'
             
             if self.shape_guidance:
                 assert self.shape_descs_dim is not None
@@ -103,7 +112,7 @@ class NCELossMoco(nn.Module):
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
         
         # cross-entropy loss. Also called InfoNCE
-        self.xe_criterion = nn.CrossEntropyLoss()
+        self.xe_criterion = nn.CrossEntropyLoss(reduction='none')
         self.loss_weight = config['LOSS_WEIGHT']
 
 
@@ -282,7 +291,19 @@ class NCELossMoco(nn.Module):
                 row_wise_quantiles = torch.quantile(iou_dist, self.iou_quantile_threshold, dim=1, keepdim=True)
                 #mask = iou_dist < row_wise_quantiles.repeat(1, self.K) #row_wise_quantiles.expand_as(iou_dist)
                 l_neg=l_neg.masked_fill(iou_dist < row_wise_quantiles.repeat(1, self.K), -1e9)
+            if self.pos_sample_weighting is not None:
+                if self.pos_sample_weighting == 'iou':
+                    pos_w = iou_dist.sum(dim=1) #rowwisesum to get a col of Nrows
+                elif self.pos_sample_weighting == 'shape':
+                    pos_w = shape_dist_mat.sum(dim=1) #rowwisesum to get a col of Nrows
+                min_pos_w = pos_w.min()
+                #scale to between 0 and 1
+                pos_w = (pos_w - min_pos_w) / (pos_w.max() -  min_pos_w)
+                #high total distance with neg samples, 
+                #low total similarity with neg samples, low freq, low weight
+                pos_w = pos_w/pos_w.sum()
 
+                
         # logits: Nx(1+K) i.e. N examples or clusters and K+1 class scores
         logits = torch.cat([l_pos, l_neg], dim=1)
         
@@ -294,7 +315,14 @@ class NCELossMoco(nn.Module):
             N_pos, device=logits.device, dtype=torch.int64
         ) # because for each pair out of N pairs, zero'th class (out of K=60000 classes) is the true class
 
-        loss = self.loss_weight * self.xe_criterion(logits, labels) # Nx(1+K) logits, N labels
+        if self.neg_queue_filled and self.pos_sample_weighting is not None:
+            loss = self.xe_criterion(logits, labels) * pos_w
+            loss = loss.sum() * self.loss_weight
+        else:
+            loss = self.xe_criterion(logits, labels)
+            loss = torch.mean(loss) * self.loss_weight
+
+        # loss = self.loss_weight * self.xe_criterion(logits, labels) # Nx(1+K) logits, N labels
         
 
         if self.cluster:
