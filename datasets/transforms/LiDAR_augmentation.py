@@ -2,9 +2,7 @@
 import yaml
 import numpy as np
 import torch
-# import open3d as o3d
 from torch_scatter import scatter_min
-# from third_party.OpenPCDet.pcdet.utils import box_utils
     
 class LiDAR_aug_manager:
     def __init__(self, root_path, lidar_aug_cfg):
@@ -17,55 +15,42 @@ class LiDAR_aug_manager:
             aug_cfg_path = root_path / 'configs' / 'Lidar_configs' / f'LiDAR_config_{lidar}.yaml' 
             self.lidar_augs[lidar] = LiDAR_aug(aug_cfg_path)
     
-    # def denoise_labels(pts, labels, src_pc, src_labels, gt_boxes_lidar, gt_box_labels):
-    #     src_pcd = o3d.geometry.PointCloud()
-    #     src_pcd.points = o3d.utility.Vector3dVector(src_pc)
-
-    #     query_pts = pts[labels>-1]
-    #     query_labels = labels[labels>-1]
-    #     corners_lidar = box_utils.boxes_to_corners_3d(gt_boxes_lidar[:,:7])
-    #     #nboxes, 8 corners, 3coords
-
-    #     labeled_tree = o3d.geometry.KDTreeFlann(src_pcd)
-    #     for i in range(query_pts.shape[0]):
-    #         pt = query_pts[i]
-    #         #Find its neighbors with distance less than 0.2
-    #         [_, idx, _] = labeled_tree.search_knn_vector_3d(pt, 10)
-    #         if len(idx):
-    #             nearest_labels = src_labels[np.asarray(idx)]
-    #             label_of_majority = np.bincount(nearest_labels.astype(int)).argmax()
-    #             gt_box_of_majority_label = corners_lidar[gt_box_labels == label_of_majority]
-    #             in_box = box_utils.in_hull(pt.reshape(1, -1), gt_box_of_majority_label)
-    #             if in_box:
-    #                 query_labels[i] = label_of_majority
-    #             else:
-    #                 query_labels[i] = -1
+    # def generate_frame(self, src_pc, src_labels, gt_boxes_lidar, lidar=None, readjust_height=True):
+    #     if lidar is None:
+    #         lidar = np.random.choice(self.lidars, p=self.cfg['prob'])
         
-    #     pts[labels>-1] = query_pts
-    #     labels[labels>-1] = query_labels
-    #     return pts, labels
+    #     # shift pc down by the height of a car 
+    #     # bcz waymo dataset has lidar origin on the ground
+    #     shifted_pc = np.copy(src_pc)
+    #     shifted_pc[:, 2] -= self.lidar_height
+        
+        # TODO: Project gt boxes on range image and inverse project
+    #     pts, labels, src_p, src_l = self.lidar_augs[lidar].generate_frame(shifted_pc, src_labels)
+    #     pts[:,2] += self.lidar_height
+    #     src_p[:,2] += self.lidar_height
+            
+    #     if not readjust_height:
+    #         pts[:,2] -= self.lidar_height
+    #         src_p[:,2] -= self.lidar_height
+
+    #     return pts, labels, src_p, src_l
     
-    def generate_frame(self, src_pc, src_labels, gt_boxes_lidar, gt_box_labels, lidar=None, readjust_height=True):
+    def generate_frame(self, src_pc, src_labels, lidar=None, readjust_height=True):
         if lidar is None:
-            lidar = np.random.choice(self.lidars)
+            lidar = np.random.choice(self.lidars, p=self.cfg['prob'])
         
         # shift pc down by the height of a car 
         # bcz waymo dataset has lidar origin on the ground
         shifted_pc = np.copy(src_pc)
         shifted_pc[:, 2] -= self.lidar_height
-        pts, labels, src_p, src_l = self.lidar_augs[lidar].generate_frame(shifted_pc, src_labels)
-        pts[:,2] += self.lidar_height
-        src_p[:,2] += self.lidar_height
+        src_p, src_l = self.lidar_augs[lidar].generate_frame_src(shifted_pc, src_labels)
 
-        # pts, labels = self.denoise_labels(pts, labels, src_pc, src_labels, gt_boxes_lidar, gt_box_labels)
+        if readjust_height:
+            src_p[:,2] += self.lidar_height
 
-        if not readjust_height:
-            pts[:,2] -= self.lidar_height
-            src_p[:,2] -= self.lidar_height
-
-        return pts, labels, src_p, src_l
+        return src_p, src_l
     
-    def generate_lidar_mix_frame(self, src_pc, src_labels, gt_boxes_lidar, gt_box_labels, lidars=None):
+    def generate_lidar_mix_frame(self, src_pc, src_labels, lidars=None):
         if lidars is None:
             lidars = self.lidars
         
@@ -74,7 +59,7 @@ class LiDAR_aug_manager:
         all_labels = []
 
         for lidar in self.lidars:
-            pts, labels = self.generate_frame(src_pc, src_labels, gt_boxes_lidar, gt_box_labels, lidar, readjust_height=False)
+            pts, labels = self.generate_frame(src_pc, src_labels, lidar, readjust_height=False)
             all_frames.append(pts)
             all_labels.append(labels)
         
@@ -85,11 +70,10 @@ class LiDAR_aug_manager:
         azimuth_min_bounds = np.min((azimuth_bound_1,azimuth_bound_2), axis=0)
         delta_azimuths = azimuth_max_bounds - azimuth_min_bounds
 
-        x_src = src_pc[:,0]
-        y_src = src_pc[:,1]
-        z_src = src_pc[:,2] - self.lidar_height
+        pc = np.copy(src_pc)
+        pc[:,2] -= self.lidar_height
         l_src = np.copy(src_labels)
-        azimuth_src = np.arctan2(y_src, x_src)
+        azimuth_src = np.arctan2(pc[:,1], pc[:,0])
         azimuth_src[azimuth_src < 0] += 2*np.pi
 
         for i in range(delta_azimuths.shape[0]):
@@ -109,17 +93,14 @@ class LiDAR_aug_manager:
                 cond_src = np.logical_and(azimuth_src < max_azimuth, azimuth_src > min_azimuth)
 
             cond_src = np.logical_not(cond_src)
-            x_src = np.concatenate((x_src[cond_src], pts[cond,0]))
-            y_src = np.concatenate((y_src[cond_src], pts[cond,1]))
-            z_src = np.concatenate((z_src[cond_src], pts[cond,2]))
+            pc = np.vstack([pc[cond_src], pts[cond]])
             l_src = np.concatenate((l_src[cond_src], labels[cond]))
-            azimuth_src = np.arctan2(y_src, x_src)
+            azimuth_src = np.arctan2(pc[:,1], pc[:,0])
             azimuth_src[azimuth_src < 0] += 2*np.pi
 
-        pts = np.vstack((x_src, y_src, z_src)).T
-        pts[:,2] += self.lidar_height
+        pc[:,2] += self.lidar_height
 
-        return pts, l_src
+        return pc, l_src
 
 
 class LiDAR_aug:
@@ -236,7 +217,6 @@ class LiDAR_aug:
         return point, label
 
 
-
     def generate_frame(self, pc, labels):
 
         dist, label, filled_inds_dst, selected_src_inds = self.spherical_projection(pc, labels)
@@ -250,6 +230,12 @@ class LiDAR_aug:
         src_pc_selected = pc[selected_src_inds]
  
         return point, label, src_pc_selected, labels[selected_src_inds]
+    
+    def generate_frame_src(self, pc, labels):
+
+        _, _, _, selected_src_inds = self.spherical_projection(pc, labels)
+         
+        return pc[selected_src_inds], labels[selected_src_inds]
 
 
     

@@ -211,7 +211,7 @@ class WaymoDataset(DepthContrastDataset):
             if lbl not in gt_cluster_ids:
                 pt_cluster_labels[pt_cluster_labels==lbl] = -1
 
-        points = np.hstack([points, pt_cluster_labels.reshape(-1, 1)]) #xyzi
+        points = np.hstack([points, pt_cluster_labels.reshape(-1, 1)]) #xyzil
 
         input_dict = {
             'points': points,

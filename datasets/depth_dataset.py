@@ -83,11 +83,6 @@ class DepthContrastDataset(Dataset):
 
         if 'LIDAR_AUG' in cfg:
             self.lidar_aug = LiDAR_aug_manager(self.root_path, cfg['LIDAR_AUG'])
-            # self.lidars = cfg['LIDAR_AUG']['lidars']
-            # self.lidar_augs = {}
-            # for lidar in self.lidars:
-            #     aug_cfg_path = self.root_path / 'configs' / 'Lidar_configs' / f'LiDAR_config_{lidar}.yaml' 
-            #     self.lidar_augs[lidar] = LiDAR_aug(aug_cfg_path)
     
         self.data_augmentor = data_augmentor.DataAugmentor(self.cfg["POINT_TRANSFORMS"])
 
@@ -292,80 +287,18 @@ class DepthContrastDataset(Dataset):
         #     visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], cluster_ids_for_shape_descs[idx_knn])
          #######################################################
 
-        # if 'LIDAR_AUG' in cfg and cfg['LIDAR_AUG']['method'] == 'before':
-        #     x_src = data_dict["points"][:,0]
-        #     y_src = data_dict["points"][:,1]
-        #     z_src = data_dict["points"][:,2] - 1.73
-        #     l_src = data_dict["points"][:,-1]
-
-        #     visualize_pcd_clusters(np.vstack((x_src, y_src, z_src)).T, l_src)
-            
-        #     azimuth_bounds = np.array([[0, np.pi/4], [3*np.pi/4, np.pi]])#np.random.uniform(0, 2*np.pi, (cfg['LIDAR_AUG']['cuts'],2))
-        #     delta_azimuth = azimuth_bounds.max(axis=1) - azimuth_bounds.min(axis=1)
-        #     azimuth_bounds = azimuth_bounds[delta_azimuth>0]
-        #     azimuth_src = np.arctan2(y_src, x_src)
-        #     azimuth_src[azimuth_src < 0] += 2*np.pi
-
-        #     sample_pts = []
-        #     sample_labels = []
-        #     for i in range(cfg['LIDAR_AUG']['samples']):
-        #         lidar_pattern = 'o128' #self.lidars[i] #np.random.choice(self.lidars)
-        #         print(lidar_pattern, ' chosen')
-        #         pts, labels = self.lidar_augs[lidar_pattern].generate_frame(np.vstack((x_src, y_src, z_src)).T, l_src)
-        #         visualize_pcd_clusters(pts, labels)
-        #         sample_pts.append(pts)
-        #         sample_labels.append(labels)
-            
-        #     for i in range(azimuth_bounds.shape[0]):
-        #         lidar_ind = i%len(sample_pts)
-        #         pts = sample_pts[lidar_ind]
-        #         labels = sample_labels[lidar_ind]
-        #         azimuth = np.arctan2(pts[:,1], pts[:,0])
-        #         azimuth[azimuth < 0] += 2*np.pi
-                
-        #         min_azimuth = azimuth_bounds[i].min()
-        #         max_azimuth = azimuth_bounds[i].max()
-        #         delta_azimuth = max_azimuth - min_azimuth
-
-        #         if delta_azimuth > np.pi:
-        #             cond = np.logical_or(azimuth < min_azimuth, azimuth > max_azimuth)
-        #             cond_src = np.logical_or(azimuth_src < min_azimuth, azimuth_src > max_azimuth)
-        #         else:
-        #             cond = np.logical_and(azimuth < max_azimuth, azimuth > min_azimuth)
-        #             cond_src = np.logical_and(azimuth_src < max_azimuth, azimuth_src > min_azimuth)
-
-        #         cond_src = np.logical_not(cond_src)
-        #         x_src = np.concatenate((x_src[cond_src], pts[cond,0]))
-        #         y_src = np.concatenate((y_src[cond_src], pts[cond,1]))
-        #         z_src = np.concatenate((z_src[cond_src], pts[cond,2]))
-        #         l_src = np.concatenate((l_src[cond_src], labels[cond]))
-        #         azimuth_src = np.arctan2(y_src, x_src)
-        #         azimuth_src[azimuth_src < 0] += 2*np.pi
-        #         #b=1
-
-        #         visualize_pcd_clusters(np.vstack((x_src, y_src, z_src)).T, l_src)
-
-        #     visualize_pcd_clusters(np.vstack((x_src, y_src, z_src)).T, l_src)
-        #     b=1
-
 
         if 'LIDAR_AUG' in cfg:
-            # data_dict["points"][:,:3], data_dict["points"][:,-1] = self.lidar_aug.generate_frame(data_dict["points"][:,:3], data_dict["points"][:,-1], 
-            #                             data_dict["gt_boxes"], gt_cluster_ids, lidar='v32')
+            method = np.random.choice(['mixed', 'single', 'none'], p=[0.2, 0.4, 0.4])
+            target_pc = ['points', 'points_moco'][np.random.choice(2)]
+            if method == 'single':
+                pts, labels = self.lidar_aug.generate_frame(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1]) #, lidar='v32'
+            elif method == 'mixed':
+                pts, labels = self.lidar_aug.generate_lidar_mix_frame(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1]) 
             
-            # data_dict["points_moco"][:,:3], data_dict["points_moco"][:,-1] = self.lidar_aug.generate_frame(data_dict["points_moco"][:,:3], data_dict["points_moco"][:,-1], 
-            #                             data_dict["gt_boxes_moco"], gt_cluster_ids) #, lidar='v32'
-
-            # visualize_pcd_clusters(data_dict["points_moco"][:,:3], data_dict["points_moco"][:,-1])
-            pts, l, src_pts, src_l = self.lidar_aug.generate_frame(data_dict["points_moco"][:,:3], data_dict["points_moco"][:,-1], 
-                                        data_dict["gt_boxes_moco"], gt_cluster_ids, lidar='v32') #, lidar='v32'
-            
-            # visualize_pcd_clusters(src_pts, src_l)
-            # visualize_pcd_clusters(pts, l)
-            visualize_pcd_clusters(np.vstack((pts, src_pts)),  
-                                   np.concatenate((-1*np.ones(pts.shape[0]), np.zeros(src_pts.shape[0]))))
-
-            b=1
+            if method != 'none':
+                #visualize_pcd_clusters(pts, labels)
+                data_dict[target_pc] = np.hstack([pts, labels.reshape(-1,1)])
 
         # transform data_dict points and gt_boxes
         data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7], gt_box_cluster_ids=gt_cluster_ids)

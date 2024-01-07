@@ -57,10 +57,9 @@ dataset:
     # - NAME: random_drop
 
   LIDAR_AUG:
-    method: 'before'
-    cuts: 2
-    samples: 2
-    lidars: ['v32', 'v64'] # 'v16', 'o64', 'o128', 
+    n_crops: 3
+    lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
+    prob: [0.3, 0.3, 0.4]
 
   SAMPLE_NUM_POINTS: 80000
   INPUT: points
