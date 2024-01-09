@@ -104,9 +104,5 @@ NCE_LOSS:
   TEMPERATURE: 0.1
   NUM_NEGATIVES: 65536
   EMBEDDING_DIM: 128
-  # IOU_DIST_THRESHOLD: 0.5 # filter out neg samples if their iou with query is < iou_dist_thresh
   SHAPE_DIST_TYPE: 'cosine'
-  SHAPE_QUANTILE_THRESHOLD: 0.5
-  # RMSE_THRESHOLD: 0.25 # filter out neg samples if their shape desc rmse with query is < rmse_thresh
-  # IOU_WEIGHT: 0.1
-  # SHAPE_DESCRIPTORS_DIM: 640
+  SHAPE_DIST_QUANTILE_THRESHOLD: 0.5

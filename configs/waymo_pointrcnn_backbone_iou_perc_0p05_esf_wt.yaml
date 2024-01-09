@@ -25,7 +25,7 @@ dataset:
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: {'train': 30} #5% waymo 
-  BATCHSIZE_PER_REPLICA: 10
+  BATCHSIZE_PER_REPLICA: 10 #24 and 22 works
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
@@ -60,7 +60,6 @@ dataset:
   INPUT: points
   EXTRACT_SHAPE_DESCRIPTORS: esf
 
-
   COLLATE_FUNCTION: "moco_collator"
   DROP_LAST: True
 
@@ -76,7 +75,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_backbone_esf_perc_0p2" #pseudo classes 8
+  name: "pointrcnn_pretrain_backbone_iou_perc_0p05_esf_wt" #pseudo classes 8
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -104,5 +103,6 @@ NCE_LOSS:
   TEMPERATURE: 0.1
   NUM_NEGATIVES: 65536
   EMBEDDING_DIM: 128
-  SHAPE_DIST_TYPE: 'cosine'
-  SHAPE_DIST_QUANTILE_THRESHOLD: 0.2
+  IOU_QUANTILE_THRESHOLD: 0.05
+  SHAPE_DIST_TYPE: 'cosine' 
+  SHAPE_WEIGHT: 1.0
