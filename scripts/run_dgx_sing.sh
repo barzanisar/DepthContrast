@@ -1,5 +1,6 @@
 PROJ_DIR=$PWD
 SING_IMG=/raid/singularity/ssl_minkunet.sif
+DATA_DIR=/raid/datasets/Waymo
 
 echo "Proj_dir=$PROJ_DIR"
 
