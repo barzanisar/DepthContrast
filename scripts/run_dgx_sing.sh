@@ -1,4 +1,5 @@
 PROJ_DIR=$PWD
+SING_IMG=/raid/singularity
 
 echo "Proj_dir=$PROJ_DIR"
 
