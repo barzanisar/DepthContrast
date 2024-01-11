@@ -22,26 +22,52 @@ from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 import open3d as o3d
 import matplotlib.pyplot as plt
 
-def visualize_pcd_clusters(points, labels):
+def visualize_pcd_clusters(points, labels, img_name='screenshot', max_label=None):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points[:,:3])
-    
-    colors = np.zeros((len(labels), 4))
-    flat_indices = np.unique(labels)
-    max_instance = len(flat_indices)
-    colors_instance = plt.get_cmap("prism")(np.arange(len(flat_indices)) / (max_instance if max_instance > 0 else 1))
 
-    for idx in range(len(flat_indices)):
-        colors[labels == flat_indices[int(idx)]] = colors_instance[int(idx)]
+    # colors = np.zeros((len(labels), 4))
+    # flat_indices = np.unique(labels)
+    # max_instance = len(flat_indices)
+    # colors_instance = plt.get_cmap("prism")(np.arange(len(flat_indices)) / (max_instance if max_instance > 0 else 1))
 
-    colors[labels == -1] = [0.,0.,0.,0.]
+    # for idx in range(len(flat_indices)):
+    #     colors[labels == flat_indices[int(idx)]] = colors_instance[int(idx)]
+
+    # colors[labels == -1] = [0.,0.,0.,0.]
+    if max_label is None:
+        max_label = labels.max()
+
+    import matplotlib.pyplot as plt
+    colors = plt.get_cmap("prism")(labels / (max_label if max_label > 0 else 1)) #prism
+    colors[labels < 0] = 0
 
     pcd.colors = o3d.utility.Vector3dVector(colors[:,:3])
     geometries = [pcd]
 
     axis_pcd = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1.0, origin=[0, 0, 0])
     geometries.append(axis_pcd)
-    o3d.visualization.draw_geometries(geometries)
+    #o3d.visualization.draw_geometries(geometries)
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+    vis.add_geometry(axis_pcd)
+    vis.add_geometry(pcd)
+    # # Get the view control
+    # view_control = vis.get_view_control()
+
+    # # Set zoom level
+    # view_control.set_constant_z_far(100)  # Adjust the value as needed
+
+    # # Set viewpoint (rotation)
+    # view_control.rotate(0.0, 45.0)  # Rotate around the y-axis by 45 degrees
+
+
+    vis.run()  # Adjust your viewpoint in the window as needed
+    vis.capture_screen_image(f"{img_name}.png")
+    import subprocess
+    subprocess.run(["convert", f"{img_name}.png", f"{img_name}.pdf"])
+    vis.destroy_window()
+
     
 try:
     try:
@@ -293,9 +319,10 @@ class DepthContrastDataset(Dataset):
             target_pc = ['points', 'points_moco'][np.random.choice(2)]
             if method == 'single':
                 pts, labels = self.lidar_aug.generate_frame(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1]) #, lidar='v32'
+                #visualize_pcd_clusters(pts, labels, img_name='single_aug')
             elif method == 'mixed':
                 pts, labels = self.lidar_aug.generate_lidar_mix_frame(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1]) 
-            
+                #visualize_pcd_clusters(pts, labels, img_name='mixed_aug')
             if method != 'none':
                 #visualize_pcd_clusters(pts, labels)
                 data_dict[target_pc] = np.hstack([pts, labels.reshape(-1,1)])
@@ -329,6 +356,9 @@ class DepthContrastDataset(Dataset):
             V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
             V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
 
+        #max_label = max(data_dict['points'][:,-1].max(),  data_dict['points_moco'][:,-1].max())
+        #visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1], img_name='points')
+        #visualize_pcd_clusters(data_dict['points_moco'][:,:-1], data_dict['points_moco'][:,-1], img_name='points_moco')
         # data processor
         # sample points if pointnet backbone
         if cfg['INPUT'] == 'points':
