@@ -31,6 +31,7 @@ LINEARPROBE_BATCHSIZE_PER_GPU=-1
 FINETUNE_BATCHSIZE_PER_GPU=-1
 PRETRAIN_EPOCHS=-1
 FINETUNE_EPOCHS=-1
+LINEARPROBE_EPOCHS=-1
 MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
 
@@ -175,6 +176,14 @@ while :; do
             die 'ERROR: "--pretrain_epochs" requires a non-empty option argument.'
         fi
         ;;
+    -i|--linearprobe_epochs)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            LINEARPROBE_EPOCHS=$2
+            shift
+        else
+            die 'ERROR: "--linearprobe_epochs" requires a non-empty option argument.'
+        fi
+        ;;
         
     # Additional parameters
     -?*)
@@ -227,7 +236,6 @@ DEPTH_CONTRAST_BINDS+="
 
 BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
 SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-SINGULARITYENV_WANDB_MODE=offline
 SINGULARITYENV_NCCL_BLOCKING_WAIT=1
 singularity exec
 --nv
@@ -303,7 +311,7 @@ LINEARPROBE_CMD+="python -m torch.distributed.launch
 --batchsize_per_gpu $LINEARPROBE_BATCHSIZE_PER_GPU 
 --downstream_model_dir $DOWNSTREAM_MODEL_DIR
 --model_name $MODEL_NAME
---linear_probe_last_n_ckpts $LINEAR_PROBE_LAST_N_CKPTS 
+--linear_probe_last_n_ckpts $LINEARPROBE_LAST_N_CKPTS 
 --workers $WORKERS_PER_GPU
 "
 
@@ -316,7 +324,7 @@ if [[ "$MODE" == "pretrain-finetune" ]]; then
     echo "Running Finetuning"
     echo "$FINETUNE_CMD"
     #eval $FINETUNE_CMD
-    echo "Done pretraining"
+    echo "Done Finetuning"
 
 elif [[ "$MODE" == "linearprobe" ]]; then
     echo "Running Linear Probe Only"
