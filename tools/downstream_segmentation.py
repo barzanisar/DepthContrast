@@ -59,10 +59,11 @@ parser.add_argument('--multiprocessing-distributed', action='store_true', defaul
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
-parser.add_argument('--pretrained_ckpt', type=str, default=None, help='load single pretrained ckpt for linear probing or finetuning')
+parser.add_argument('--pretrained_ckpt', type=str, default='default', help='load single pretrained ckpt for linear probing or finetuning')
 parser.add_argument('--linear_probe_last_n_ckpts', type=int, default=-1, help='last num ckpts to linear probe')
-parser.add_argument('--model_name', type=str, default=None, help='pretrained model name')
-parser.add_argument('--downstream_model_dir', type=str, default=None, help='downstream_model_dir name')
+parser.add_argument('--model_name', type=str, default='default', help='pretrained model name')
+parser.add_argument('--downstream_model_dir', type=str, default='default', help='downstream_model_dir name')
+parser.add_argument('--workers', default=-1, type=int, help='workers per gpu')
 
 def main():
     args = parser.parse_args()
@@ -71,10 +72,12 @@ def main():
         cfg['dataset']['BATCHSIZE_PER_REPLICA']=args.batchsize_per_gpu
     if args.epochs > 0:
         cfg['optimizer']['num_epochs']=args.epochs
-    if args.model_name is not None:
+    if args.model_name != 'default':
         cfg['model']['name'] = args.model_name
-    if args.downstream_model_dir is not None and args.downstream_model_dir != 'default':
+    if args.downstream_model_dir != 'default':
         cfg['model']['downstream_model_dir'] = args.downstream_model_dir
+    if args.workers > 0:
+        cfg['num_workers']=args.workers
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -105,7 +108,7 @@ def main_worker(args, cfg):
 
     if args.multiprocessing_distributed:
         torch.distributed.barrier()
-    if args.pretrained_ckpt is not None:
+    if args.pretrained_ckpt != 'default':
         cfg['load_pretrained_checkpoint'] = args.pretrained_ckpt
     if not linear_probe:
         assert cfg['load_pretrained_checkpoint'] != 'all'

@@ -1,5 +1,5 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_pseudo8_test.yaml
-# python tools/main_dist.py --cfg configs/waymo_pointrcnn_pseudo8_test.yaml
+# CUDA_VISIBLE_DEVICES=0 python tools/main_dist.py --cfg configs/waymo_pointrcnn_pseudo8_test.yaml
 wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
 resume: true
 num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
