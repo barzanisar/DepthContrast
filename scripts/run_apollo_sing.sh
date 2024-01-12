@@ -1,6 +1,6 @@
 PROJ_DIR=$PWD
-SING_IMG=/raid/singularity/ssl_minkunet.sif
-DATA_DIR=/raid/datasets/Waymo
+SING_IMG=/home/bnisar/singularity/ssl_minkunet.sif
+DATA_DIR=/home/bnisar/datasets/Waymo
 CUDA_VISIBLE_DEVICES=0
 
 echo "Proj_dir=$PROJ_DIR"
