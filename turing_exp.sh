@@ -10,6 +10,6 @@ setsid nohup scripts/submit_ddp_turing.sh --tcp_port 19833 --mode linearprobe --
 setsid nohup scripts/submit_ddp_turing.sh --cuda_visible_devices 2,3 --tcp_port 19834 --mode scratch --cfg_file configs/waymo_scratch_minkunet_test.yaml --finetune_epochs 50 --finetune_batchsize_per_gpu 10 --pretrained_ckpt checkpoint-ep0.pth.tar --downstream_model_dir scratch_test1 > ./output/log/mink_scratch_test_$(date +%Y-%m-%d_%H:%M).out 2>&1 &
 
 # To kill a GPU process
-#nvidia-smi
+# nvidia-smi
 # check for PID
 # kill PID
