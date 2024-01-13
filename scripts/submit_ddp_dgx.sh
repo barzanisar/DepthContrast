@@ -69,9 +69,12 @@ while :; do
             echo "Checking BACKBONE"
             if [[ "$PRETRAIN_CFG_FILE"  == *"minkunet"* ]]; then
                 BACKBONE=minkunet
-                LINEARPROBE_CFG_FILE=configs/waymo_lpseg_minkunet.yaml
-                FINETUNE_CFG_FILE=configs/waymo_fine1lr_minkunet.yaml
-                SCRATCH_CFG_FILE=configs/waymo_scratch_minkunet.yaml
+                # LINEARPROBE_CFG_FILE=configs/waymo_lpseg_minkunet.yaml
+                # FINETUNE_CFG_FILE=configs/waymo_fine1lr_minkunet.yaml
+                # SCRATCH_CFG_FILE=configs/waymo_scratch_minkunet.yaml
+                LINEARPROBE_CFG_FILE=configs/waymo_lpseg_minkunet_test.yaml
+                FINETUNE_CFG_FILE=configs/waymo_finetune_minkunet_test.yaml
+                SCRATCH_CFG_FILE=configs/waymo_scratch_minkunet_test.yaml
                 echo "Backbone: minkunet"
             elif [[ "$CFG_FILE" == *"pointrcnn"* ]]; then
                 BACKBONE=pointrcnn
