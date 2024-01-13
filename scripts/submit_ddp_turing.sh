@@ -259,7 +259,6 @@ PRETRAIN_CMD+="python -m torch.distributed.launch
 --epochs $PRETRAIN_EPOCHS 
 --batchsize_per_gpu $PRETRAIN_BATCHSIZE_PER_GPU 
 --workers $WORKERS_PER_GPU
---quiet
 "
 
 
@@ -277,7 +276,6 @@ FINETUNE_CMD+="python -m torch.distributed.launch
 --model_name $MODEL_NAME
 --pretrained_ckpt $PRETRAINED_CKPT 
 --workers $WORKERS_PER_GPU
---quiet
 "
 
 SCRATCH_CMD=$BASE_CMD
@@ -293,7 +291,6 @@ SCRATCH_CMD+="python -m torch.distributed.launch
 --downstream_model_dir $DOWNSTREAM_MODEL_DIR
 --pretrained_ckpt $PRETRAINED_CKPT 
 --workers $WORKERS_PER_GPU
---quiet
 "
 
 LINEARPROBE_CMD=$BASE_CMD
@@ -310,7 +307,6 @@ LINEARPROBE_CMD+="python -m torch.distributed.launch
 --model_name $MODEL_NAME
 --linear_probe_last_n_ckpts $LINEARPROBE_LAST_N_CKPTS 
 --workers $WORKERS_PER_GPU
---quiet
 "
 
 if [[ "$MODE" == "pretrain-finetune" ]]; then
