@@ -318,24 +318,24 @@ LINEARPROBE_CMD+="python -m torch.distributed.launch
 if [[ "$MODE" == "pretrain-finetune" ]]; then
     echo "Running Pretraining"
     echo "$PRETRAIN_CMD"
-    #eval $PRETRAIN_CMD
+    eval $PRETRAIN_CMD
     echo "Done pretraining"
 
     echo "Running Finetuning"
     echo "$FINETUNE_CMD"
-    #eval $FINETUNE_CMD
+    eval $FINETUNE_CMD
     echo "Done Finetuning"
 
 elif [[ "$MODE" == "linearprobe" ]]; then
     echo "Running Linear Probe Only"
     echo "$LINEARPROBE_CMD"
-    #eval $LINEARPROBE_CMD
+    eval $LINEARPROBE_CMD
     echo "Done linear probe"
 
 elif [[ "$MODE" == "scratch" ]]; then
     echo "Running Scratch training"
     echo "$SCRATCH_CMD"
-    #eval $SCRATCH_CMD
+    eval $SCRATCH_CMD
     echo "Done scratch training"
     
 fi
