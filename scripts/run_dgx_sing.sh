@@ -1,3 +1,21 @@
+# run looping job with GPU
+
+#     "sbatch run_loop.sh"
+
+# connect to running job
+
+#     "srun --jobid=**NUMBER** --pty /usr/bin/bash"
+
+    
+
+# run a singularity image and open a shell in the image
+
+#     "./run_sing.sh"
+
+    
+
+# debug your singularity image
+
 PROJ_DIR=$PWD
 SING_IMG=/raid/singularity/ssl_minkunet.sif
 DATA_DIR=/raid/datasets/Waymo
