@@ -94,7 +94,7 @@
             },
             "args": [
                 "--cfg",
-                "configs/waymo_minkunet_test.yaml", "--quiet"
+                "configs/waymo_minkunet_test.yaml"
             ]
         },
         {
@@ -109,7 +109,7 @@
             },
             "args": [
                 "--cfg",
-                "configs/waymo_lpseg_minkunet_test.yaml", "--quiet"
+                "configs/waymo_lpseg_minkunet_test.yaml"
             ]
         },
         {
@@ -132,7 +132,7 @@
                 "--cfg",
                 "configs/waymo_lpseg_minkunet_test.yaml",
                 "--linear_probe_last_n_ckpts", 
-                "3", "--quiet"
+                "3"
             ]
         },
         {
@@ -155,7 +155,7 @@
                 "--cfg",
                 "configs/waymo_finetune_minkunet_test.yaml",
                 "--pretrained_ckpt",
-                "checkpoint-ep0.pth.tar", "--quiet"
+                "checkpoint-ep0.pth.tar"
             ]
         },
         {
@@ -178,7 +178,7 @@
                 "--cfg",
                 "configs/waymo_finetune_pointrcnn_test.yaml",
                 "--pretrained_ckpt",
-                "checkpoint-ep1.pth.tar", "--quiet"
+                "checkpoint-ep1.pth.tar"
             ]
         },
         {
@@ -199,7 +199,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_minkunet_test.yaml", "--quiet"
+                "configs/waymo_minkunet_test.yaml"
             ]
         },
         {
@@ -220,7 +220,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_pointrcnn_pseudo8_test.yaml", "--quiet"
+                "configs/waymo_pointrcnn_pseudo8_test.yaml"
             ]
         },
         {
@@ -241,7 +241,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_pointrcnn_pseudo8_test_stage2.yaml", "--quiet"
+                "configs/waymo_pointrcnn_pseudo8_test_stage2.yaml"
             ]
         },
         {
@@ -262,7 +262,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_lpseg_pointrcnn_test.yaml", "--quiet"
+                "configs/waymo_lpseg_pointrcnn_test.yaml"
             ]
         },
         // {
@@ -298,7 +298,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_centerpoint_pseudo8_test.yaml", "--quiet"
+                "configs/waymo_centerpoint_pseudo8_test.yaml"
             ]
         },
         // {
