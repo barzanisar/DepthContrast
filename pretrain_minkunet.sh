@@ -30,3 +30,9 @@ sbatch --time=2:00:00 --array=1-1%1 --job-name=fine1lr_mink_segcontrast_w3 scrip
 sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_iou_perc_0p05_w5 scripts/submit_ddp_cedar.sh --tcp_port 19831 --cfg_file configs/waymo_minkunet_iou_perc_0p05_waymo5.yaml
 sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_iou_perc_0p01_w5 scripts/submit_ddp_cedar.sh --tcp_port 19832 --cfg_file configs/waymo_minkunet_iou_perc_0p01_waymo5.yaml
 sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_esf_perc_0p05_w5 scripts/submit_ddp_cedar.sh --tcp_port 19833 --cfg_file configs/waymo_minkunet_esf_perc_0p05_waymo5.yaml
+
+sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_iou_perc_0p01_iou_wt_w5 scripts/submit_ddp_cedar.sh --tcp_port 19834 --cfg_file configs/waymo_minkunet_iou_perc_0p01_iou_wt_waymo5.yaml
+sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_esf_perc_0p05_iou_wt_w5 scripts/submit_ddp_cedar.sh --tcp_port 19835 --cfg_file configs/waymo_minkunet_esf_perc_0p05_iou_wt_waymo5.yaml
+
+sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_iou_perc_0p01_esf_wt_w5 scripts/submit_ddp_cedar.sh --tcp_port 19836 --cfg_file configs/waymo_minkunet_iou_perc_0p01_esf_wt_waymo5.yaml
+sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_esf_perc_0p05_esf_wt_w5 scripts/submit_ddp_cedar.sh --tcp_port 19837 --cfg_file configs/waymo_minkunet_esf_perc_0p05_esf_wt_waymo5.yaml
