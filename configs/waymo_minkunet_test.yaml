@@ -5,7 +5,7 @@ resume: true
 num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
-log2wb: true
+log2wb: false
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
@@ -13,7 +13,7 @@ ckpt_save_interval: 1 #save only models to finetune for object detection
 save_ckpt_after_epochs: 0
 
 WANDB:
-  ENABLED: True 
+  ENABLED: False 
   PROJECT: SSL3dObject
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
@@ -24,8 +24,8 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train_one}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 2} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
-  BATCHSIZE_PER_REPLICA: 12 #Change to 14, if input moco feats is false, use 8
+  FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75, -75 ,  -3 ,  75 ,  75 ,   3 ] #
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
@@ -51,10 +51,9 @@ dataset:
       LOCAL_ROT_ANGLE: [-0.78539816, 0.78539816]
     - NAME: random_local_scaling
       LOCAL_SCALE_RANGE: [0.95, 1.05]
-
-    # - NAME: random_cuboid_lidar
-    #   npoints: 10000
-    # - NAME: random_drop
+    - NAME: random_cuboid_lidar
+      npoints: 10000
+    - NAME: random_drop
 
   SAMPLE_NUM_POINTS: 80000
   INPUT: sparse_tensor
