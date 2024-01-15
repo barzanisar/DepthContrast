@@ -24,3 +24,9 @@ sbatch --time=00:30:00 --array=1-1%1 --job-name=fine1lr_mink_esf_perc_0p01_w3 sc
 sbatch --time=2:00:00 --array=1-1%1 --job-name=fine1lr_mink_esf_perc_0p05_w3 scripts/submit_ddp_cedar.sh --tcp_port 19215 --cfg_file configs/waymo_fine1lr_minkunet.yaml --downstream  --pretrained_ckpt checkpoint-ep49.pth.tar --model_name minkunet_pretrain_esf_perc_0p05_waymo3
 sbatch --time=2:00:00 --array=1-1%1 --job-name=fine1lr_mink_iou_perc_0p01_w3 scripts/submit_ddp_cedar.sh --tcp_port 19216 --cfg_file configs/waymo_fine1lr_minkunet.yaml --downstream  --pretrained_ckpt checkpoint-ep49.pth.tar --model_name minkunet_pretrain_iou_perc_0p01_waymo3
 sbatch --time=2:00:00 --array=1-1%1 --job-name=fine1lr_mink_segcontrast_w3 scripts/submit_ddp_cedar.sh --tcp_port 19215 --cfg_file configs/waymo_fine1lr_minkunet.yaml --downstream  --pretrained_ckpt checkpoint-ep49.pth.tar --model_name minkunet_pretrain_segcontrast_waymo3
+
+
+#5% waymo for 100 epochs
+sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_iou_perc_0p05_w5 scripts/submit_ddp_cedar.sh --tcp_port 19831 --cfg_file configs/waymo_minkunet_iou_perc_0p05_waymo5.yaml
+sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_iou_perc_0p01_w5 scripts/submit_ddp_cedar.sh --tcp_port 19832 --cfg_file configs/waymo_minkunet_iou_perc_0p01_waymo5.yaml
+sbatch --time=5:00:00 --nodes=2 --ntasks=2 --array=1-14%1 --job-name=mink_esf_perc_0p05_w5 scripts/submit_ddp_cedar.sh --tcp_port 19833 --cfg_file configs/waymo_minkunet_esf_perc_0p05_waymo5.yaml
