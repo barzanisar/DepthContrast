@@ -13,3 +13,13 @@ setsid nohup scripts/submit_ddp_turing.sh --cuda_visible_devices 2,3 --tcp_port 
 # nvidia-smi
 # check for PID
 # kill PID
+
+tmux 
+scripts/submit_ddp_turing.sh --cuda_visible_devices 0,1 --tcp_port 19832 --cfg_file configs/waymo_minkunet_test.yaml --pretrain_batchsize_per_gpu 12 --pretrain_epochs 50 --finetune_epochs 5 --finetune_batchsize_per_gpu 10 --model_name minkunet_pretrain_test --pretrained_ckpt checkpoint-ep4.pth.tar > ./output/log/mink_pretrain_test_$(date +%Y-%m-%d_%H:%M).out 2>&1
+To detach: ctrl+b and then d
+tmux rename-session -t 0 mink_pretrain_test
+tmux attach -t mink_pretrain_test
+To kill a process: ctrl+c
+after training is over: exit 
+
+
