@@ -24,8 +24,8 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 10} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
-  BATCHSIZE_PER_REPLICA: 16 #Change to 14, if input moco feats is false, use 8
+  FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  BATCHSIZE_PER_REPLICA: 12 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
   MEAN_SIZES: [[4.7, 2.1, 1.7],
@@ -73,7 +73,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_esf_perc_0p05_esf_wt_waymo10" 
+  name: "minkunet_pretrain_esf_perc_0p05_iou_wt_waymo5_bs12" 
 
   MODEL_BASE:
     NAME: Segmentor
@@ -94,5 +94,5 @@ NCE_LOSS:
   NUM_NEGATIVES: 65536
   EMBEDDING_DIM: 128
   SHAPE_DIST_TYPE: 'cosine' #'euclidean'
-  SHAPE_WEIGHT: 1.0
+  IOU_WEIGHT: 1.0
   SHAPE_DIST_QUANTILE_THRESHOLD: 0.05
