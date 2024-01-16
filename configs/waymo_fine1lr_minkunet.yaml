@@ -24,7 +24,7 @@ dataset:
   DATA_SPLIT: {'train': train, 'val': train}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 15} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
-  BATCHSIZE_PER_REPLICA: 10 #Change to 14, if input moco feats is false, use 8
+  BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist'] #['Vehicle', 'Pedestrian', 'Cyclist']
  
