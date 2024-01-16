@@ -67,7 +67,7 @@ while :; do
             PRETRAIN_CFG_FILE=$2
 
             # Get model
-            echo "Checking BACKBONE"
+            echo "Checking BACKBONE in $PRETRAIN_CFG_FILE"
             if [[ "$PRETRAIN_CFG_FILE"  == *"minkunet"* ]]; then
                 BACKBONE=minkunet
                 LINEARPROBE_CFG_FILE=configs/waymo_lpseg_minkunet.yaml
