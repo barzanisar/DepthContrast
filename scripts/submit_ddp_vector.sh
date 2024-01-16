@@ -2,13 +2,13 @@
 #SBATCH --wait-all-nodes=1
 #SBATCH --nodes=1
 #SBATCH --partition=a40,rtx6000
-#SBATCH --gres=gpu:2                     # Request 4 GPUs
+#SBATCH --gres=gpu:4                        # Request 4 GPUs
 #SBATCH --ntasks=1                          # set it equal to --nodes
 #SBATCH --ntasks-per-node=1                 # Number of gpus per node
 #SBATCH --time=01:00:00
 #SBATCH --job-name=DepthContrast-train
-#SBATCH --cpus-per-task=32                  # CPU cores/threads
-#SBATCH --mem=170G                        # memory per node
+#SBATCH --cpus-per-task=40                  # CPU cores/threads
+#SBATCH --mem=150G                          # 160G also works memory per node
 #SBATCH --output=./output/log/%x-%j.out     # STDOUT
 #SBATCH --array=1-3%1                       # 3 is the number of jobs in the chain
 
@@ -80,9 +80,9 @@ while :; do
                 # FINETUNE_CFG_FILE=configs/waymo_finetune_minkunet_test.yaml
                 # SCRATCH_CFG_FILE=configs/waymo_scratch_minkunet_test.yaml
                 echo "Backbone: minkunet"
-            elif [[ "$CFG_FILE" == *"pointrcnn"* ]]; then
+            elif [[ "$PRETRAIN_CFG_FILE" == *"pointrcnn"* ]]; then
                 BACKBONE=pointrcnn
-                LINEARPROBE_CFG_FILE=configs/waymo_lpseg_minkunet.yaml
+                LINEARPROBE_CFG_FILE=configs/waymo_lpseg_pointrcnn.yaml
                 FINETUNE_CFG_FILE=configs/waymo_fine1lr_pointrcnn.yaml
                 SCRATCH_CFG_FILE=configs/waymo_scratch_pointrcnn.yaml
                 echo "Backbone: pointrcnn"

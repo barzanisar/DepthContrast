@@ -69,9 +69,9 @@ while :; do
                 # FINETUNE_CFG_FILE=configs/waymo_finetune_minkunet_test.yaml
                 # SCRATCH_CFG_FILE=configs/waymo_scratch_minkunet_test.yaml
                 echo "Backbone: minkunet"
-            elif [[ "$CFG_FILE" == *"pointrcnn"* ]]; then
+            elif [[ "$PRETRAIN_CFG_FILE" == *"pointrcnn"* ]]; then
                 BACKBONE=pointrcnn
-                LINEARPROBE_CFG_FILE=configs/waymo_lpseg_minkunet.yaml
+                LINEARPROBE_CFG_FILE=configs/waymo_lpseg_pointrcnn.yaml
                 FINETUNE_CFG_FILE=configs/waymo_fine1lr_pointrcnn.yaml
                 SCRATCH_CFG_FILE=configs/waymo_scratch_pointrcnn.yaml
                 echo "Backbone: pointrcnn"

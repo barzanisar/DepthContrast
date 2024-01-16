@@ -1,4 +1,4 @@
-sbatch --time=6:00:00 --array=1-7%1 --job-name=esf_perc_0p05 scripts/submit_ddp_cedar.sh --tcp_port 19210 --cfg_file configs/waymo_pointrcnn_backbone_esf_perc_0p05.yaml --model_name pointrcnn_pretrain_backbone_esf_perc_0p05 --pretrained_ckpt checkpoint-ep49.pth.tar
+sbatch --time=00:10:00 --array=1-1%1 --job-name=esf_perc_0p05 scripts/submit_ddp_cedar.sh --tcp_port 19210 --cfg_file configs/waymo_pointrcnn_backbone_esf_perc_0p05.yaml --model_name pointrcnn_pretrain_backbone_esf_perc_0p05 --pretrained_ckpt checkpoint-ep49.pth.tar 
 sbatch --time=6:00:00 --array=1-7%1 --job-name=esf_perc_0p1 scripts/submit_ddp_cedar.sh --tcp_port 19211 --cfg_file configs/waymo_pointrcnn_backbone_esf_perc_0p1.yaml --model_name pointrcnn_pretrain_backbone_esf_perc_0p01 --pretrained_ckpt checkpoint-ep49.pth.tar
 
 sbatch --time=6:00:00 --array=1-7%1 --job-name=iou_perc_0p05 scripts/submit_ddp_cedar.sh --tcp_port 19212 --cfg_file configs/waymo_pointrcnn_backbone_iou_perc_0p05.yaml --model_name pointrcnn_pretrain_backbone_iou_perc_0p05 --pretrained_ckpt checkpoint-ep49.pth.tar
