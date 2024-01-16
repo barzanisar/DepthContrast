@@ -37,8 +37,6 @@ DOWNSTREAM_MODEL_DIR="default"
 
 SING_IMG=/raid/singularity/ssl_minkunet.sif
 DATA_DIR=/raid/datasets/Waymo
-# CUDA_VISIBLE_DEVICES=0,1
-
 
 
 # Usage info

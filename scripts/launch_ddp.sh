@@ -1,49 +1,16 @@
 #!/bin/bash
 
-
-# # $SLURM_NTASKS should be the same as $SLURM_NNODES
-# echo "SLURM NTASKS: $SLURM_NTASKS"
-# echo "SLURM_NNODES: $SLURM_NNODES" 
-
-# echo "command line args for launch_ddp.sh"
-# echo "$1 $2 $3 $4 $5"
-
-# Extract Dataset
-# echo "Extracting Waymo data in Node: $SLURM_NODEID, SLURM_TMPDIR: $SLURM_TMPDIR"
-# TMP_DATA_DIR=$SLURM_TMPDIR/data
-
-# echo "Unzipping $DATA_DIR/waymo_processed_data_10.zip to $TMP_DATA_DIR"
-# unzip -qq $DATA_DIR/waymo_processed_data_10.zip -d $TMP_DATA_DIR
-
-# # echo "Unzipping $DATA_DIR/Infos/waymo_processed_data_10_infos.zip to $TMP_DATA_DIR"
-# # unzip -qq $DATA_DIR/Infos/waymo_processed_data_10_infos.zip -d $TMP_DATA_DIR
-
-# # echo "Unzipping $DATA_DIR/Infos/waymo_infos.zip to $TMP_DATA_DIR"
-# # unzip -qq $DATA_DIR/Infos/waymo_infos.zip -d $TMP_DATA_DIR
-
-# # echo "Unzipping $DATA_DIR/waymo_processed_data_10_short.zip to $TMP_DATA_DIR"
-# # unzip -qq $DATA_DIR/waymo_processed_data_10_short.zip -d $TMP_DATA_DIR
-
-# echo "Copying $DATA_DIR/ImageSets to $TMP_DATA_DIR"
-# cp -r $DATA_DIR/ImageSets -d $TMP_DATA_DIR
-
-# # echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_infos.zip to $TMP_DATA_DIR"
-# # unzip -qq $DATA_DIR/waymo_processed_data_10_short_infos.zip -d $TMP_DATA_DIR
-
-# # echo "Unzipping $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip to $TMP_DATA_DIR"
-# # unzip -qq $DATA_DIR/waymo_processed_data_10_short_gt_database_train_sampled_1.zip -d $TMP_DATA_DIR
-
-# echo "Done extracting Waymo data"
-
 # Get last element in string and increment by 1
 NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"
 NUM_GPUS=$(($NUM_GPUS + 1))
 WORLD_SIZE=$((NUM_GPUS * SLURM_NNODES))
+WORKERS_PER_GPU=$(($SLURM_CPUS_PER_TASK / $NUM_GPUS))
 
 
 echo "NUM GPUS in Node $SLURM_NODEID: $NUM_GPUS"
 echo "Node $SLURM_NODEID says: main node at $MASTER_ADDR:$MASTER_PORT"
 echo "Node $SLURM_NODEID says: WORLD_SIZE=$WORLD_SIZE"
+echo "Node $SLURM_NODEID says: WORKERS_PER_GPU=$SLURM_CPUS_PER_TASK / $NUM_GPUS=$WORKERS_PER_GPU"
 echo "Node $SLURM_NODEID says: Loading Singularity Env..."
 
 # Load Singularity
@@ -90,61 +57,89 @@ $DEPTH_CONTRAST_BINDS
 $SING_IMG
 "
 
-TRAIN_CMD=$BASE_CMD
-# TRAIN_CMD+="python /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$CFG_FILE"
-TRAIN_CMD+="python -m torch.distributed.launch
+PRETRAIN_CMD=$BASE_CMD
+PRETRAIN_CMD+="python -m torch.distributed.launch
 --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
 /DepthContrast/tools/main_dist.py
 --launcher pytorch
---multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE 
+--multiprocessing-distributed --cfg /DepthContrast/$PRETRAIN_CFG_FILE --world-size $WORLD_SIZE 
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
---epochs $EPOCHS 
---batchsize_per_gpu $BATCHSIZE_PER_GPU
+--epochs $PRETRAIN_EPOCHS 
+--batchsize_per_gpu $PRETRAIN_BATCHSIZE_PER_GPU 
+--workers $WORKERS_PER_GPU
 "
 
-TEST_CMD=$BASE_CMD
 
-TEST_CMD+="python -m torch.distributed.launch
+FINETUNE_CMD=$BASE_CMD
+
+FINETUNE_CMD+="python -m torch.distributed.launch
 --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
 /DepthContrast/tools/downstream_segmentation.py
 --launcher pytorch
---multiprocessing-distributed --cfg /DepthContrast/$CFG_FILE --world-size $WORLD_SIZE 
+--multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
---linear_probe_last_n_ckpts $LINEAR_PROBE_LAST_N_CKPTS
---epochs $EPOCHS
---batchsize_per_gpu $BATCHSIZE_PER_GPU 
+--epochs $FINETUNE_EPOCHS
+--batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
 --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+--model_name $MODEL_NAME
+--pretrained_ckpt $PRETRAINED_CKPT 
+--workers $WORKERS_PER_GPU
 "
 
+SCRATCH_CMD=$BASE_CMD
 
-if [ $DOWNSTREAM == "true" ]
-then
-    if [ "$PRETRAINED_CKPT" != "default" ]
-    then
-        TEST_CMD+=" --pretrained_ckpt $PRETRAINED_CKPT"
-    fi
+SCRATCH_CMD+="python -m torch.distributed.launch
+--nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+/DepthContrast/tools/downstream_segmentation.py
+--launcher pytorch
+--multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $WORLD_SIZE 
+--dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+--epochs $FINETUNE_EPOCHS
+--batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+--downstream_model_dir $DOWNSTREAM_MODEL_DIR
+--pretrained_ckpt $PRETRAINED_CKPT 
+--workers $WORKERS_PER_GPU
+"
 
-    if [ "$MODEL_NAME" != "default" ]
-    then
-        TEST_CMD+=" --model_name $MODEL_NAME"
-    fi
+LINEARPROBE_CMD=$BASE_CMD
 
-    # if [ "$DOWNSTREAM_MODEL_DIR" != "default" ]
-    # then
-    #     TEST_CMD+=" --downstream_model_dir $DOWNSTREAM_MODEL_DIR"
-    # fi
+LINEARPROBE_CMD+="python -m torch.distributed.launch
+--nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+/DepthContrast/tools/downstream_segmentation.py
+--launcher pytorch
+--multiprocessing-distributed --cfg /DepthContrast/$LINEARPROBE_CFG_FILE --world-size $WORLD_SIZE 
+--dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+--epochs $LINEARPROBE_EPOCHS
+--batchsize_per_gpu $LINEARPROBE_BATCHSIZE_PER_GPU 
+--downstream_model_dir $DOWNSTREAM_MODEL_DIR
+--model_name $MODEL_NAME
+--linear_probe_last_n_ckpts $LINEARPROBE_LAST_N_CKPTS 
+--workers $WORKERS_PER_GPU
+"
 
-    echo "Running ONLY downstream"
-    echo "Node $SLURM_NODEID says: Launching python script..."
+if [[ "$MODE" == "pretrain-finetune" ]]; then
+    echo "Running Pretraining"
+    echo "$PRETRAIN_CMD"
+    eval $PRETRAIN_CMD
+    echo "Done pretraining"
 
-    echo "$TEST_CMD"
-    eval $TEST_CMD
-    echo "Done evaluation"
-else
-    echo "Running training"
-    echo "Node $SLURM_NODEID says: Launching python script..."
+    echo "Running Finetuning"
+    echo "$FINETUNE_CMD"
+    eval $FINETUNE_CMD
+    echo "Done Finetuning"
 
-    echo "$TRAIN_CMD"
-    eval $TRAIN_CMD
-    echo "Done training"
+elif [[ "$MODE" == "linearprobe" ]]; then
+    echo "Running Linear Probe Only"
+    echo "$LINEARPROBE_CMD"
+    eval $LINEARPROBE_CMD
+    echo "Done linear probe"
+
+elif [[ "$MODE" == "scratch" ]]; then
+    echo "Running Scratch training"
+    echo "$SCRATCH_CMD"
+    eval $SCRATCH_CMD
+    echo "Done scratch training"
+    
 fi
+
+
