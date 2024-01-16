@@ -100,8 +100,7 @@ def main_worker(args, cfg):
     
     CLUSTER = False
     if 'PRETEXT_HEAD'in cfg['model']['MODEL_BASE']:
-        pretext_head_name = cfg['model']['MODEL_BASE']['PRETEXT_HEAD']['NAME']
-        CLUSTER = pretext_head_name in ['SegHead', 'SegVoxHead', 'SegSparseVoxHead']
+        CLUSTER = cfg['model']['MODEL_BASE']['PRETEXT_HEAD']['cluster']
     if 'EXTRACT_SHAPE_DESCRIPTORS' in cfg['dataset']:
         shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
         cfg['NCE_LOSS']['SHAPE_DESCRIPTORS_DIM'] = shape_dim_dict[cfg['dataset']['EXTRACT_SHAPE_DESCRIPTORS']]

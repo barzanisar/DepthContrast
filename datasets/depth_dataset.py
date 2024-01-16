@@ -316,26 +316,44 @@ class DepthContrastDataset(Dataset):
 
         if 'LIDAR_AUG' in cfg:
             method = np.random.choice(['mixed', 'single', 'none'], p=[0.2, 0.4, 0.4])
-            target_pc = ['points', 'points_moco'][np.random.choice(2)]
+            choice = np.random.choice(2)
+            target_pc = ['points', 'points_moco'][choice]
+            target_gt = ['gt_boxes', 'gt_boxes_moco'][choice]
+            
             if method == 'single':
-                pts, labels = self.lidar_aug.generate_frame(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1]) #, lidar='v32'
-                #visualize_pcd_clusters(pts, labels, img_name='single_aug')
+                pts, labels, boxes, box_lbls = self.lidar_aug.generate_frame_with_gt_boxes(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1],
+                                             data_dict[target_gt][:,:-1], data_dict[target_gt][:,-1])
+                #pts, labels = self.lidar_aug.generate_frame(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1]) #, lidar='v32'
+                # visualize_pcd_clusters(pts, labels, img_name='single_aug')
+                # V.draw_scenes(points=data_dict[target_pc][:,:4], gt_boxes=data_dict[target_gt][:,:7], color_feature='intensity')
+                # V.draw_scenes(points=pts[:,:4], gt_boxes=boxes[:,:7], color_feature='intensity')
             elif method == 'mixed':
-                pts, labels = self.lidar_aug.generate_lidar_mix_frame(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1]) 
-                #visualize_pcd_clusters(pts, labels, img_name='mixed_aug')
+                pts, labels, boxes, box_lbls = self.lidar_aug.generate_lidar_mix_frame_with_gt_boxes(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1],
+                                                                                    data_dict[target_gt][:,:-1], data_dict[target_gt][:,-1]) 
+                # visualize_pcd_clusters(pts, labels, img_name='mixed_aug')
+                # V.draw_scenes(points=data_dict[target_pc][:,:4], gt_boxes=data_dict[target_gt][:,:7], color_feature='intensity')
+                # V.draw_scenes(points=pts[:,:4], gt_boxes=boxes[:,:7], color_feature='intensity')
+
             if method != 'none':
                 #visualize_pcd_clusters(pts, labels)
                 data_dict[target_pc] = np.hstack([pts, labels.reshape(-1,1)])
+                data_dict[target_gt] = np.hstack([boxes, box_lbls.reshape(-1,1)])
+
+
 
         # transform data_dict points and gt_boxes
+        gt_cluster_ids = data_dict["gt_boxes"][:,-1].reshape(-1,1)
+        gt_classes_idx = data_dict["gt_boxes"][:,-2].reshape(-1,1)
         data_dict["points"], data_dict["gt_boxes"] = self.data_augmentor.forward(data_dict["points"], data_dict["gt_boxes"][:,:7], gt_box_cluster_ids=gt_cluster_ids)
 
         # transform data_dict points_moco and gt_boxes_moco
-        data_dict["points_moco"], data_dict["gt_boxes_moco"] = self.data_augmentor.forward(data_dict["points_moco"], data_dict["gt_boxes_moco"][:,:7], gt_box_cluster_ids=gt_cluster_ids)
+        gt_moco_cluster_ids = data_dict["gt_boxes_moco"][:,-1].reshape(-1,1)
+        gt_moco_classes_idx = data_dict["gt_boxes_moco"][:,-2].reshape(-1,1)
+        data_dict["points_moco"], data_dict["gt_boxes_moco"] = self.data_augmentor.forward(data_dict["points_moco"], data_dict["gt_boxes_moco"][:,:7], gt_box_cluster_ids=gt_moco_cluster_ids)
         
         #reappend the gt class indexes and cluster ids
         data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx, gt_cluster_ids])
-        data_dict["gt_boxes_moco"] = np.hstack([data_dict["gt_boxes_moco"], gt_classes_idx, gt_cluster_ids])
+        data_dict["gt_boxes_moco"] = np.hstack([data_dict["gt_boxes_moco"], gt_moco_classes_idx, gt_moco_cluster_ids])
         
         # cluster_ids, cnts = np.unique(data_dict['points'][:,-1], return_counts=True)
         # for cluster_id, cnt in zip(cluster_ids, cnts):
@@ -356,9 +374,9 @@ class DepthContrastDataset(Dataset):
             V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
             V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
 
-        #max_label = max(data_dict['points'][:,-1].max(),  data_dict['points_moco'][:,-1].max())
-        #visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1], img_name='points')
-        #visualize_pcd_clusters(data_dict['points_moco'][:,:-1], data_dict['points_moco'][:,-1], img_name='points_moco')
+        # max_label = max(data_dict['points'][:,-1].max(),  data_dict['points_moco'][:,-1].max())
+        # visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1], img_name='points')
+        # visualize_pcd_clusters(data_dict['points_moco'][:,:-1], data_dict['points_moco'][:,-1], img_name='points_moco')
         # data processor
         # sample points if pointnet backbone
         if cfg['INPUT'] == 'points':
@@ -377,10 +395,6 @@ class DepthContrastDataset(Dataset):
             data_dict['points_moco'], data_dict['gt_boxes_moco'], _ = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'], pt_cluster_ids=data_dict['points_moco'][:, -1], numpts=20)
 
         
-        if PLOT:
-            # After sampling points and removing empty boxes
-            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
-            V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
         # if vox then transform points to voxels else save points as tensor
         if cfg['INPUT'] == 'voxels':
             vox_dict = self.toVox(data_dict["points"]) # xyzil=clusterlabel 
@@ -398,6 +412,10 @@ class DepthContrastDataset(Dataset):
             assert data_dict["points"].dtype=='float32', f'points dtype is not float32, dtype is {data_dict["points"].dtype}'
             assert data_dict["points_moco"].dtype=='float32', f'points_moco dtype is not float32, dtype is {data_dict["points_moco"].dtype}'
 
+        if False:
+            # After sampling points and removing empty boxes
+            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
+            V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
 
         data_dict['gt_boxes_cluster_ids'] = data_dict['gt_boxes'][:,-1]
         data_dict['gt_boxes'] = data_dict['gt_boxes'][:, :8] #xyz,lwh, rz, gt class_index i.e. 1: Vehicle, ...

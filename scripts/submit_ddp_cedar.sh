@@ -30,7 +30,7 @@ DOWNSTREAM_MODEL_DIR="default"
 
 # Additional parameters
 DATA_DIR=/home/$USER/scratch/Datasets/Waymo #/home/$USER/projects/rrg-swasland/Datasets/Waymo_short
-SING_IMG=/home/$USER/scratch/singularity/ssl_minkunet.sif
+SING_IMG=/home/$USER/scratch/singularity/ssl_lidar_aug.sif
 
 
 # Usage info
