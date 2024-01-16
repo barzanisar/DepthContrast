@@ -55,6 +55,23 @@ class DataAugmentor(object):
         data_dict["points"] = points[new_pointidx,:]
         return data_dict
 
+    def random_drop_n_cuboids(self, data_dict=None, config=None):
+        """ Randomly drop N cuboids from the point cloud.
+            Input:
+                BxNx3 array, original batch of point clouds
+            Return:
+                BxNx3 array, dropped batch of point clouds
+        """
+        if data_dict is None:
+            return partial(self.random_drop_n_cuboids, config=config)
+        data_dict = self.random_drop(data_dict)
+        cuboids_count = 1
+        while cuboids_count < 5 and np.random.uniform(0., 1.) > 0.3:
+            data_dict = self.random_drop(data_dict)
+            cuboids_count += 1
+
+        return data_dict
+
     def random_drop(self, data_dict=None, config=None):
         if data_dict is None:
             return partial(self.random_drop, config=config)
