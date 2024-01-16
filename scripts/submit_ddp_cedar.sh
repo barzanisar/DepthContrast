@@ -7,7 +7,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --job-name=DepthContrast-train
 #SBATCH --account=def-swasland-ab
-#SBATCH --cpus-per-task=16                  # CPU cores/threads
+#SBATCH --cpus-per-task=32                  # CPU cores/threads
 #SBATCH --mem=180G                        # memory per node
 #SBATCH --output=./output/log/%x-%j.out     # STDOUT
 #SBATCH --array=1-3%1                       # 3 is the number of jobs in the chain
