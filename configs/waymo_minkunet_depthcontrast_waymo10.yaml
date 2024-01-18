@@ -51,7 +51,7 @@ dataset:
       LOCAL_ROT_ANGLE: [-0.78539816, 0.78539816]
     - NAME: random_local_scaling
       LOCAL_SCALE_RANGE: [0.95, 1.05]
-    - NAME: random_drop_n_cuboids 
+    # - NAME: random_drop_n_cuboids 
 
     # - NAME: random_cuboid_lidar
     #   npoints: 10000
