@@ -233,7 +233,7 @@ def prep_environment(args, cfg, pretraining=True):
     if pretraining:
         phase_name = f'pretrain_waymo'
     else:
-        downstream_task = 'segmentation' if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
+        downstream_task = 'segmentation' #if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
         if 'downstream_model_dir' in cfg['model']:
             phase_name = cfg['model']['downstream_model_dir']
         else:

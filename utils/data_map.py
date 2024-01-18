@@ -1,6 +1,6 @@
 
 ################### Semantic Kitti Labels #####################
-learning_map = {
+semantic_kitti_labels_map = {
   0 : 0,     # "unlabeled"
   1 : 0,     # "outlier" mapped to "unlabeled" --------------------------mapped
   10: 1,     # "car"
@@ -160,7 +160,29 @@ color_map = {
 }
 
 #################### Semantic Kitti Labels ###############
-
+nuscenes_labels_map = {0: 0, 1: 0, 2: 7, 3: 7, 4: 7, 5: 0, 6: 7, 7: 0, 8: 0, 9: 1, 10: 0, 11: 0,
+            12: 8, 13: 0, 14: 2, 15: 3, 16: 3, 17: 4, 18: 5, 19: 0, 20: 0, 21: 6, 22: 9,
+            23: 10, 24: 11, 25: 12, 26: 13, 27: 14, 28: 15, 29: 0, 30: 16, 31: 0,
+        }
+CLASSES_NUSCENES = [
+    "noise",
+    "barrier",
+    "bicycle",
+    "bus",
+    "car",
+    "construction_vehicle",
+    "motorcycle",
+    "pedestrian",
+    "traffic_cone",
+    "trailer",
+    "truck",
+    "driveable_surface",
+    "other_flat",
+    "sidewalk",
+    "terrain",
+    "manmade",
+    "vegetation",
+]
 #################### Waymo Labels ########################
 
 WAYMO_LABELS = ['UNDEFINED', 'CAR', 'TRUCK', 'BUS', 'OTHER_VEHICLE', 'MOTORCYCLIST', 'BICYCLIST', 'PEDESTRIAN', 'SIGN',

@@ -100,9 +100,6 @@ def main_worker(args, cfg):
     # Setup environment
     args = main_utils.initialize_distributed_backend(args)
     cfg['model']['INPUT'] = cfg['dataset']['INPUT']
-    downstream_task = 'segmentation' if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
-    cfg['dataset']['downstream_task'] = downstream_task # needed in dataset
-    # configuration
     linear_probe = cfg['model']['linear_probe']
     logger, _, downstream_dir, pretrain_model_dir, phase_name = main_utils.prep_environment(args, cfg, pretraining=False)
 

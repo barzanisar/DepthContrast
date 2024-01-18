@@ -152,6 +152,7 @@ RUN python ./third_party/OpenPCDet/setup.py develop
 RUN conda install -c conda-forge/label/gcc7 qhull
 RUN conda install -c conda-forge -c davidcaron pclpy
 RUN pip install torch-scatter==2.0.9 -f https://data.pyg.org/whl/torch-1.9.0+cu111.html
+RUN pip install nuscenes-devkit
 
 RUN mkdir checkpoints &&  \
     mkdir configs &&  \

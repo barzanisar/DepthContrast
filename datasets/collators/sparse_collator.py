@@ -111,20 +111,20 @@ def sparse_downstream_collator(batch):
                      'batch_size': batch_size}
                      }
     
-    # if downstream task is detection:
-    if 'gt_boxes' in batch[0]:
-        pt_wise_gtbox_idxs = np.concatenate([x["pt_wise_gtbox_idxs"] for x in batch], axis=0) # (N1, N2, ..., Nbs)
+    # # if downstream task is detection:
+    # if 'gt_boxes' in batch[0]:
+    #     pt_wise_gtbox_idxs = np.concatenate([x["pt_wise_gtbox_idxs"] for x in batch], axis=0) # (N1, N2, ..., Nbs)
         
-        # make gt boxes in shape (batch size, max gt box len, 8) (xyz, lwh, rz, class label)
-        max_gt = max([len(x['gt_boxes']) for x in batch])
-        batch_gt_boxes3d = np.zeros((batch_size, max_gt, batch[0]['gt_boxes'].shape[-1]), dtype=np.float32) # (batch size = 2, max_gt_boxes in a pc in this batch = 67, 8)
-        for k in range(batch_size):
-            batch_gt_boxes3d[k, :batch[k]['gt_boxes'].__len__(), :] = batch[k]['gt_boxes']
+    #     # make gt boxes in shape (batch size, max gt box len, 8) (xyz, lwh, rz, class label)
+    #     max_gt = max([len(x['gt_boxes']) for x in batch])
+    #     batch_gt_boxes3d = np.zeros((batch_size, max_gt, batch[0]['gt_boxes'].shape[-1]), dtype=np.float32) # (batch size = 2, max_gt_boxes in a pc in this batch = 67, 8)
+    #     for k in range(batch_size):
+    #         batch_gt_boxes3d[k, :batch[k]['gt_boxes'].__len__(), :] = batch[k]['gt_boxes']
 
 
-        output_batch['input'].update(
-                        {'gt_boxes': batch_gt_boxes3d,
-                        'pt_wise_gtbox_idxs': pt_wise_gtbox_idxs})
+    #     output_batch['input'].update(
+    #                     {'gt_boxes': batch_gt_boxes3d,
+    #                     'pt_wise_gtbox_idxs': pt_wise_gtbox_idxs})
 
     return output_batch
 

@@ -155,31 +155,36 @@ class WaymoDataset(DepthContrastDataset):
         points = np.hstack([points, pt_seg_labels.reshape(-1, 1)]) #xyzi, seglabel
 
 
-        annos = info['annos']
-        #filter unknown boxes
-        annos = drop_info_with_name(annos, name='unknown')
-        # filter empty boxes
-        mask = (annos['num_points_in_gt'] > 0) 
-        annos['name'] = annos['name'][mask]
-        annos['gt_boxes_lidar'] = annos['gt_boxes_lidar'][mask]
-        annos['num_points_in_gt'] = annos['num_points_in_gt'][mask]
+        # annos = info['annos']
+        # #filter unknown boxes
+        # annos = drop_info_with_name(annos, name='unknown')
+        # # filter empty boxes
+        # mask = (annos['num_points_in_gt'] > 0) 
+        # annos['name'] = annos['name'][mask]
+        # annos['gt_boxes_lidar'] = annos['gt_boxes_lidar'][mask]
+        # annos['num_points_in_gt'] = annos['num_points_in_gt'][mask]
 
-        #filer gt boxes not in self.class_names
-        selected = keep_arrays_by_name(annos['name'], self.class_names)
-        annos['name'] = annos['name'][selected]
-        annos['gt_boxes_lidar'] = annos['gt_boxes_lidar'][selected]
-        annos['num_points_in_gt'] = annos['num_points_in_gt'][selected]
+        # #filer gt boxes not in self.class_names
+        # selected = keep_arrays_by_name(annos['name'], self.class_names)
+        # annos['name'] = annos['name'][selected]
+        # annos['gt_boxes_lidar'] = annos['gt_boxes_lidar'][selected]
+        # annos['num_points_in_gt'] = annos['num_points_in_gt'][selected]
 
 
-        gt_classes = np.array([self.class_names.index(n) + 1 for n in annos['name']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
+        # gt_classes = np.array([self.class_names.index(n) + 1 for n in annos['name']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
         
-        #append class id as 8th entry in gt boxes 
-        gt_boxes = np.hstack([annos['gt_boxes_lidar'][:,:7], gt_classes.reshape(-1, 1).astype(np.float32)])
+        # #append class id as 8th entry in gt boxes 
+        # gt_boxes = np.hstack([annos['gt_boxes_lidar'][:,:7], gt_classes.reshape(-1, 1).astype(np.float32)])
         
+
+        # input_dict = {
+        #     'points': points, #xyzi, seglabel
+        #     'gt_boxes':  gt_boxes, #gtbox, class_indx
+        #     'frame_id': frame_id
+        #     }
 
         input_dict = {
             'points': points, #xyzi, seglabel
-            'gt_boxes':  gt_boxes, #gtbox, class_indx
             'frame_id': frame_id
             }
 

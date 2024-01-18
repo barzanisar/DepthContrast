@@ -182,7 +182,7 @@ class DataAugmentor(object):
         data_dict['points'] = points
         return data_dict
     
-    def forward(self, points, gt_boxes, gt_box_cluster_ids=None):
+    def forward(self, points, gt_boxes=None, gt_box_cluster_ids=None):
         """
         Args:
                 points: (N, 3 + C_in)
@@ -193,8 +193,9 @@ class DataAugmentor(object):
         for cur_augmentor in self.data_augmentor_queue:
             data_dict = cur_augmentor(data_dict=data_dict)
         
-        gt_boxes[:, 6] = common_utils.limit_period(
-            gt_boxes[:, 6], offset=0.5, period=2 * np.pi
-        )#[-2pi=-360deg, 2pi=360 deg] --> [-pi=-180, pi=180]
+        if gt_boxes is not None:
+            gt_boxes[:, 6] = common_utils.limit_period(
+                gt_boxes[:, 6], offset=0.5, period=2 * np.pi
+            )#[-2pi=-360deg, 2pi=360 deg] --> [-pi=-180, pi=180]
 
         return data_dict['points'], data_dict['gt_boxes']
