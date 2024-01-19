@@ -23,8 +23,8 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train, 'val': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 15} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
-  BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
+  FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 1} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
+  BATCHSIZE_PER_REPLICA: 4 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
@@ -57,7 +57,7 @@ model:
   model_dir: "checkpoints/minkunet"
   name: "from_command_line"
   linear_probe: false #meaning lp vs finetune
-  downstream_model_dir: "finetune_waymo_1percent_val_1percent"
+  downstream_model_dir: "finetune_waymo_1percent_val"
 
   MODEL_BASE:
     NAME: Segmentor

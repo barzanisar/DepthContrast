@@ -1,6 +1,6 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/downstream_segmentation.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_lpseg_test.yaml
 # python tools/downstream_segmentation.py --cfg configs/waymo_pointrcnn_lpseg_test.yaml
-wb_extra_tags: ['pointrcnn', 'finetune_segmentation_waymo']
+wb_extra_tags: ['minkunet', 'finetune_segmentation_semantickitti']
 resume: true
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 load_pretrained_checkpoint: 'all'
@@ -19,14 +19,12 @@ WANDB:
   dir: '/DepthContrast/output'
 
 dataset:
-  DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train, 'val': train}
-  DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 1} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
-  BATCHSIZE_PER_REPLICA: 4 #Change to 14, if input moco feats is false, use 8
+  DATASET_NAMES: [SemanticKittiDataset]
+  FRAME_SAMPLING_INTERVAL: {'train': 100, 'val': 1} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
+  BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
-
+  CLASS_NAMES: ['Object']
+  
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
     - NAME: random_world_flip
       ALONG_AXIS_LIST: ['x', 'y']
@@ -36,9 +34,10 @@ dataset:
       WORLD_SCALE_RANGE: [0.95, 1.05]
 
   SAMPLE_NUM_POINTS: 80000
-  INPUT: points
+  INPUT: sparse_tensor
+  RESOLUTION: 0.05
 
-  COLLATE_FUNCTION: "downstream_collator"
+  COLLATE_FUNCTION: "sparse_downstream_collator"
   DROP_LAST: True
 
 optimizer:
@@ -53,28 +52,19 @@ optimizer:
     base_lr: 0.24 #0.1 for linear_probe #0.12
 
 model:
-  model_dir: "checkpoints/pointrcnn"
-  name: "from_cmd_line"
+  model_dir: "checkpoints/minkunet"
+  name: "from_command_line"
   linear_probe: false #meaning lp vs finetune
-  downstream_model_dir: "finetune_waymo_1percent_val"
+  downstream_model_dir: "finetune_semantickitti_1percent"
 
   MODEL_BASE:
-    NAME: PointRCNN
+    NAME: Segmentor
 
     BACKBONE_3D:
-      NAME: PointNet2MSG
-      SA_CONFIG:
-        NPOINTS: [4096, 1024, 256, 64]
-        RADIUS: [[0.1, 0.5], [0.5, 1.0], [1.0, 2.0], [2.0, 4.0]]
-        NSAMPLE: [[16, 32], [16, 32], [16, 32], [16, 32]]
-        MLPS: [[[16, 16, 32], [32, 32, 64]],
-                [[64, 64, 128], [64, 96, 128]],
-                [[128, 196, 256], [128, 196, 256]],
-                [[256, 256, 512], [256, 384, 512]]]
-      FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
+      NAME: MinkUNet
 
   SEGMENTATION_HEAD:
-    CLS_FC: [128, 23]
+    CLS_FC: [96, 20]
     loss_types: ['CELoss', 'LovLoss']
     loss_weights: [1.0, 1.0]
-    label_smoothing: 0.1
+    # label_smoothing: 0.1
