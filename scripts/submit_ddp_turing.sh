@@ -30,7 +30,7 @@ DATA_DIR=/raid/datasets/Waymo
 NUM_GPUS=2
 CUDA_VISIBLE_DEVICES=0,1
 MASTER_ADDR=Turing
-WORKERS_PER_GPU=10 # Turing has 48 cpus so use 10 cpus/gpu
+WORKERS_PER_GPU=8 # Turing has 48 cpus so use 10 cpus/gpu
 
 
 
