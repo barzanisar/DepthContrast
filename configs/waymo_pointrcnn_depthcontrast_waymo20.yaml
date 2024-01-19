@@ -90,7 +90,7 @@ model:
       FP_MLPS: [[128, 128], [256, 256], [512, 512], [512, 512]]
 
     PRETEXT_HEAD: 
-      NAME: ProjectionSparseVoxHead
+      NAME: ProjectionPointHead
       cluster: False
       use_mlp: True
       mlp_dim: [128, 128, 128]
