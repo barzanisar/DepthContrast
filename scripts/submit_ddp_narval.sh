@@ -41,7 +41,7 @@ MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
 
 # Additional parameters
-DATA_DIR=/home/$USER/scratch/Datasets/Waymo
+WAYMO_DATA_DIR=/home/$USER/scratch/Datasets/Waymo
 SING_IMG=/home/$USER/scratch/singularity/ssl_lidar_aug.sif
 
 
@@ -85,7 +85,8 @@ while :; do
                 LINEARPROBE_CFG_FILE=configs/waymo_lpseg_pointrcnn.yaml
                 FINETUNE_CFG_FILE=configs/waymo_fine1lr_pointrcnn.yaml
                 SCRATCH_CFG_FILE=configs/waymo_scratch_pointrcnn.yaml
-                echo "Backbone: pointrcnn"
+                echo "Backbone: pointrcnn"# NUSCENES_DATA_DIR=
+# KITTI_DATA_DIR=
             else
                 die 'ERROR: Could not determine backbone from cfg_file path.'
             fi
@@ -213,7 +214,7 @@ echo ""
 export MASTER_ADDR=$(hostname)
 export TCP_PORT=$TCP_PORT
 export SING_IMG=$SING_IMG
-export DATA_DIR=$DATA_DIR
+export WAYMO_DATA_DIR=$WAYMO_DATA_DIR
 
 export PRETRAIN_CFG_FILE=$PRETRAIN_CFG_FILE
 export LINEARPROBE_CFG_FILE=$LINEARPROBE_CFG_FILE
