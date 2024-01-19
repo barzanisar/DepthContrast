@@ -41,8 +41,10 @@ MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
 
 # Additional parameters
-DATA_DIR=/home/$USER/scratch/Datasets/Waymo
+WAYMO_DATA_DIR=/home/$USER/scratch/Datasets/Waymo
 SING_IMG=/home/$USER/scratch/singularity/ssl_lidar_aug.sif
+# NUSCENES_DATA_DIR=
+# KITTI_DATA_DIR=
 
 
 # Usage info
@@ -213,7 +215,7 @@ echo ""
 export MASTER_ADDR=$(hostname)
 export TCP_PORT=$TCP_PORT
 export SING_IMG=$SING_IMG
-export DATA_DIR=$DATA_DIR
+export WAYMO_DATA_DIR=$WAYMO_DATA_DIR
 
 export PRETRAIN_CFG_FILE=$PRETRAIN_CFG_FILE
 export LINEARPROBE_CFG_FILE=$LINEARPROBE_CFG_FILE
@@ -235,6 +237,7 @@ export LINEARPROBE_EPOCHS=$LINEARPROBE_EPOCHS
 
 export MODEL_NAME=$MODEL_NAME
 export DOWNSTREAM_MODEL_DIR=$DOWNSTREAM_MODEL_DIR
+export BACKBONE=$BACKBONE
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
 
