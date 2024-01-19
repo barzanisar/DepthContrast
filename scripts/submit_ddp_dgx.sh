@@ -38,7 +38,7 @@ LINEARPROBE_EPOCHS=-1
 MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
 
-SING_IMG=/raid/singularity/ssl_minkunet.sif
+SING_IMG=/raid/singularity/ssl_lidar_aug.sif
 DATA_DIR=/raid/datasets/Waymo
 
 
