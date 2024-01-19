@@ -14,4 +14,4 @@ sbatch --time=00:10:00 --job-name=mink_scratch_w1 scripts/submit_ddp_dgx.sh --tc
 sbatch --time=01:00:00 --job-name=mink_scratch_test scripts/submit_ddp_dgx.sh --tcp_port 19834 --mode scratch --cfg_file configs/waymo_scratch_minkunet_test.yaml --finetune_epochs 5 --finetune_batchsize_per_gpu 10 --pretrained_ckpt checkpoint-ep0.pth.tar --downstream_model_dir scratch_test
 
 
-sbatch --time=60:00:00 --job-name=mink_depthcontrast_w20 scripts/submit_ddp_dgx.sh --tcp_port 19831 --cfg_file configs/waymo_minkunet_depthcontrast_waymo20.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_depthcontrast_waymo20 --pretrained_ckpt checkpoint-ep49.pth.tar
+sbatch --time=60:00:00 --job-name=mink_depthcontrast_w10 scripts/submit_ddp_dgx.sh --tcp_port 19831 --cfg_file configs/waymo_minkunet_depthcontrast_waymo10.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_depthcontrast_waymo10 --pretrained_ckpt checkpoint-ep49.pth.tar
