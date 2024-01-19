@@ -220,7 +220,7 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_pointrcnn_pseudo8_test.yaml"
+                "configs/waymo_pointrcnn_test.yaml"
             ]
         },
         {

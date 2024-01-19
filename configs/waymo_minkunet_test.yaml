@@ -64,7 +64,7 @@ dataset:
   SAMPLE_NUM_POINTS: 20000
   INPUT: sparse_tensor
   RESOLUTION: 0.05
-  # EXTRACT_SHAPE_DESCRIPTORS: esf
+  EXTRACT_SHAPE_DESCRIPTORS: esf
 
   COLLATE_FUNCTION: "sparse_moco_collator"
   DROP_LAST: True
@@ -91,7 +91,7 @@ model:
 
     PRETEXT_HEAD: 
       NAME: ProjectionSparseVoxHead
-      cluster: False
+      cluster: True
       use_mlp: True
       mlp_dim: [96, 128, 128]
 
@@ -104,7 +104,7 @@ NCE_LOSS:
   # # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
   # IOU_WEIGHT: 1.0
   # # IOU_QUANTILE_THRESHOLD: 0.3
-  # SHAPE_DIST_TYPE: 'cosine' #'euclidean'
-  # # SHAPE_WEIGHT: 1.0
+  SHAPE_DIST_TYPE: 'cosine' #'euclidean'
+  # SHAPE_WEIGHT: 1.0
   # # SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
-  # SHAPE_DIST_QUANTILE_THRESHOLD: 0.01
+  SHAPE_DIST_QUANTILE_THRESHOLD: 0.01

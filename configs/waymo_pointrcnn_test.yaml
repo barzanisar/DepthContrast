@@ -1,7 +1,7 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_pseudo8_test.yaml
 # CUDA_VISIBLE_DEVICES=0 python tools/main_dist.py --cfg configs/waymo_pointrcnn_pseudo8_test.yaml
 wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
-resume: true
+resume: false
 num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
@@ -51,6 +51,7 @@ dataset:
       LOCAL_ROT_ANGLE: [-0.78539816, 0.78539816]
     - NAME: random_local_scaling
       LOCAL_SCALE_RANGE: [0.95, 1.05]
+    - NAME: random_drop_n_cuboids 
 
     # - NAME: random_cuboid_lidar
     #   npoints: 10000
@@ -61,7 +62,7 @@ dataset:
     lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
     prob: [0.3, 0.3, 0.4]
 
-  SAMPLE_NUM_POINTS: 80000
+  SAMPLE_NUM_POINTS: 20000
   INPUT: points
   
   EXTRACT_SHAPE_DESCRIPTORS: esf
@@ -81,7 +82,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_stage1" 
+  name: "pointrcnn_pretrain_test" 
 
   MODEL_BASE:
     NAME: PointRCNN
@@ -229,10 +230,10 @@ NCE_LOSS:
   EMBEDDING_DIM: 128
   # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
   IOU_WEIGHT: 0.1
-  IOU_QUANTILE_THRESHOLD: 0.3
+  #IOU_QUANTILE_THRESHOLD: 0.3
   # CLASS_BALANCING: 'shape' # high weight for positive sample if its sum iou or shape distance with negative samples is high meaning it is a rare sample
-  # SHAPE_DIST_TYPE: 'cosine' #'euclidean'
-  # SHAPE_WEIGHT: 1.0
+  SHAPE_DIST_TYPE: 'cosine' #'euclidean'
+  #SHAPE_WEIGHT: 1.0
   #SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
-  #SHAPE_DIST_QUANTILE_THRESHOLD: 0.3
+  SHAPE_DIST_QUANTILE_THRESHOLD: 0.05
   

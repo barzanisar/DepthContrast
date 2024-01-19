@@ -22,6 +22,18 @@ from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 import open3d as o3d
 import matplotlib.pyplot as plt
 
+def sort_matrix(matrix, column_index=-1, col_vals=None):
+    # Get the indices that would sort the specified column
+    if col_vals is not None:
+        sorted_indices = np.argsort(col_vals)
+    else:
+        sorted_indices = np.argsort(matrix[:, column_index])
+
+    # Use the sorted indices to rearrange the rows of the matrix
+    sorted_matrix = matrix[sorted_indices]
+
+    return sorted_matrix
+
 def visualize_pcd_clusters(points, labels, img_name='screenshot', max_label=None):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points[:,:3])
@@ -104,7 +116,7 @@ class DepthContrastDataset(Dataset):
         self.cfg = cfg
         self.root_path = (Path(__file__) / '../..').resolve()  # DepthContrast
         self.point_cloud_range = np.array(cfg["POINT_CLOUD_RANGE"], dtype=np.float32)
-        self.class_names = cfg.get("CLASS_NAMES", None)
+        self.class_names = cfg["CLASS_NAMES"] #needed for detection head in OpenPCDet
         self.used_num_point_features  = 4
 
         if 'LIDAR_AUG' in cfg:
@@ -302,25 +314,27 @@ class DepthContrastDataset(Dataset):
             choice = np.random.choice(2)
             target_pc = ['points', 'points_moco'][choice]
             target_gt = ['gt_boxes', 'gt_boxes_moco'][choice]
+            num_boxes=data_dict[target_gt].shape[0]
             
             if method == 'single':
-                pts, labels, boxes, box_lbls = self.lidar_aug.generate_frame_with_gt_boxes(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1],
-                                             data_dict[target_gt][:,:-1], data_dict[target_gt][:,-1])
+                pts, boxes = self.lidar_aug.generate_frame_with_gt_boxes(data_dict[target_pc], data_dict[target_gt])
                 #pts, labels = self.lidar_aug.generate_frame(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1]) #, lidar='v32'
                 # visualize_pcd_clusters(pts, labels, img_name='single_aug')
                 # V.draw_scenes(points=data_dict[target_pc][:,:4], gt_boxes=data_dict[target_gt][:,:7], color_feature='intensity')
                 # V.draw_scenes(points=pts[:,:4], gt_boxes=boxes[:,:7], color_feature='intensity')
             elif method == 'mixed':
-                pts, labels, boxes, box_lbls = self.lidar_aug.generate_lidar_mix_frame_with_gt_boxes(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1],
-                                                                                    data_dict[target_gt][:,:-1], data_dict[target_gt][:,-1]) 
+                pts, boxes = self.lidar_aug.generate_lidar_mix_frame_with_gt_boxes(data_dict[target_pc], data_dict[target_gt]) 
                 # visualize_pcd_clusters(pts, labels, img_name='mixed_aug')
                 # V.draw_scenes(points=data_dict[target_pc][:,:4], gt_boxes=data_dict[target_gt][:,:7], color_feature='intensity')
                 # V.draw_scenes(points=pts[:,:4], gt_boxes=boxes[:,:7], color_feature='intensity')
 
             if method != 'none':
                 #visualize_pcd_clusters(pts, labels)
-                data_dict[target_pc] = np.hstack([pts, labels.reshape(-1,1)])
-                data_dict[target_gt] = np.hstack([boxes, box_lbls.reshape(-1,1)])
+                assert (boxes.shape[0] == num_boxes), f'{boxes.shape[0]}, {num_boxes}'
+                assert np.unique(boxes[:,-1]).shape[0] == num_boxes, 'Boxes duplicated!'
+                boxes = sort_matrix(boxes, column_index=-1)
+                data_dict[target_pc] = pts
+                data_dict[target_gt] = boxes
 
 
 
@@ -392,8 +406,6 @@ class DepthContrastDataset(Dataset):
 
             data_dict['voxel_coords_moco'], feats_moco, cluster_p_moco = point_set_to_coord_feats(data_dict["points_moco"][:,:-1], data_dict["points_moco"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"], frame_id=data_dict['frame_id'])
             data_dict["points_moco"] = np.hstack([feats_moco, cluster_p_moco[:,None]])
-            assert data_dict["points"].dtype=='float32', f'points dtype is not float32, dtype is {data_dict["points"].dtype}'
-            assert data_dict["points_moco"].dtype=='float32', f'points_moco dtype is not float32, dtype is {data_dict["points_moco"].dtype}'
 
         if False:
             # After sampling points and removing empty boxes
@@ -409,7 +421,7 @@ class DepthContrastDataset(Dataset):
         assert (data_dict["points"][:,-1] > -1).sum() > 0
         assert (data_dict["points_moco"][:,-1] > -1).sum() > 0
 
-        #get unscaled_lwhz_cluster_id of gt_boxes remaining after augmentation and then keep only those unscaled lwhz
+        # #get unscaled_lwhz_cluster_id of gt_boxes remaining after augmentation and then keep only those unscaled lwhz
         box_idx=np.where(np.isin(data_dict['unscaled_lwhz_cluster_id'][:,-1], data_dict['gt_boxes_cluster_ids']))[0]
         data_dict['unscaled_lwhz_cluster_id'] = data_dict['unscaled_lwhz_cluster_id'][box_idx]
         assert (data_dict['unscaled_lwhz_cluster_id'][:,-1] -  data_dict['gt_boxes_cluster_ids']).sum() == 0

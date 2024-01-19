@@ -68,7 +68,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_stage1"
+  name: "pointrcnn_pretrain_test"
   linear_probe: false #meaning lp vs finetune
   downstream_model_dir: "finetune"
 
