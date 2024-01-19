@@ -24,7 +24,7 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 10} #5% waymo 
+  FRAME_SAMPLING_INTERVAL: {'train': 5} #5% waymo 
   BATCHSIZE_PER_REPLICA: 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
@@ -72,7 +72,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/pointrcnn"
-  name: "pointrcnn_pretrain_depthcontrast_waymo10"
+  name: "pointrcnn_pretrain_depthcontrast_waymo20"
 
   MODEL_BASE:
     NAME: PointRCNN
