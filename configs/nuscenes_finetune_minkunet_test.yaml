@@ -6,13 +6,13 @@ num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus pe
 load_pretrained_checkpoint: 'all'
 
 log2tb: false
-log2wb: true
+log2wb: false
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
 
 WANDB:
-  ENABLED: True 
+  ENABLED: False 
   PROJECT: SSL3dObject
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
@@ -20,9 +20,9 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [NuscenesDataset]
-  VERSION: v1.0-trainval
-  FRAME_SAMPLING_INTERVAL: {'train': 100, 'val': 1} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
-  BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
+  VERSION: v1.0-mini
+  FRAME_SAMPLING_INTERVAL: {'train': 5, 'val': 1} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
+  BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.0, -75.0, -5, 75.0, 75.0, 3] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
   CLASS_NAMES: ['Object']
 
@@ -50,11 +50,11 @@ optimizer:
   warmup_epochs: 0
   lr:
     name: "cosine_warm_up"
-    base_lr: 0.24 #0.1 for linear_probe #0.12
+    base_lr: 0.012 #0.1 for linear_probe #0.12
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "from_command_line"
+  name: "minkunet_pretrain_test"
   linear_probe: false #meaning lp vs finetune
   downstream_model_dir: "finetune_nuscenes_1percent"
 

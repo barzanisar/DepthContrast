@@ -41,7 +41,7 @@ MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
 
 # Additional parameters
-DATA_DIR=/datasets/waymo-processed
+WAYMO_DATA_DIR=/datasets/waymo-processed
 SING_IMG=/scratch/ssd004/scratch/$USER/singularity/ssl_lidar_aug.sif
 
 
@@ -213,7 +213,7 @@ echo ""
 export MASTER_ADDR=$(hostname)
 export TCP_PORT=$TCP_PORT
 export SING_IMG=$SING_IMG
-export DATA_DIR=$DATA_DIR
+export WAYMO_DATA_DIR=$WAYMO_DATA_DIR
 
 export PRETRAIN_CFG_FILE=$PRETRAIN_CFG_FILE
 export LINEARPROBE_CFG_FILE=$LINEARPROBE_CFG_FILE

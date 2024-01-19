@@ -1,17 +1,17 @@
 #!/bin/bash
 
-echo "Inside extract data slurm_tmpdir: $SLURM_TMPDIR"
-echo "Inside extract data waymo data dir: $WAYMO_DATA_DIR"
+# echo "Inside extract data slurm_tmpdir: $SLURM_TMPDIR"
+# echo "Inside extract data waymo data dir: $WAYMO_DATA_DIR"
 
-# Extract Waymo Dataset
-echo "Extracting Waymo data"
-TMP_DATA_DIR=$SLURM_TMPDIR/waymo_data
+# # Extract Waymo Dataset
+# echo "Extracting Waymo data"
+# TMP_DATA_DIR=$SLURM_TMPDIR/waymo_data
 
-for file in $WAYMO_DATA_DIR/*.zip; do
-   echo "Unzipping $file to $TMP_DATA_DIR"
-   unzip -qq $file -d $TMP_DATA_DIR
-done
-echo "Done extracting dataset Waymo infos"
+# for file in $WAYMO_DATA_DIR/*.zip; do
+#    echo "Unzipping $file to $TMP_DATA_DIR"
+#    unzip -qq $file -d $TMP_DATA_DIR
+# done
+# echo "Done extracting dataset Waymo infos"
 
 # Get last element in string and increment by 1
 NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"
@@ -64,7 +64,7 @@ singularity exec
 --bind $PROJ_DIR/models:/DepthContrast/models
 --bind $PROJ_DIR/scripts:/DepthContrast/scripts
 --bind $PROJ_DIR/utils:/DepthContrast/utils
---bind $TMP_DATA_DIR:/DepthContrast/data/waymo
+--bind $WAYMO_DATA_DIR:/DepthContrast/data/waymo
 --bind $PROJ_DIR/lib:/DepthContrast/lib
 $DEPTH_CONTRAST_BINDS
 $SING_IMG

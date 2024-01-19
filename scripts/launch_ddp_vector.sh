@@ -50,7 +50,7 @@ singularity exec
 --bind $PROJ_DIR/models:/DepthContrast/models
 --bind $PROJ_DIR/scripts:/DepthContrast/scripts
 --bind $PROJ_DIR/utils:/DepthContrast/utils
---bind $DATA_DIR:/DepthContrast/data/waymo
+--bind $WAYMO_DATA_DIR:/DepthContrast/data/waymo
 --bind $PROJ_DIR/lib:/DepthContrast/lib
 $DEPTH_CONTRAST_BINDS
 $SING_IMG
