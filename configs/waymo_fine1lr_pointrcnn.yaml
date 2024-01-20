@@ -26,6 +26,7 @@ dataset:
   FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 10} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 4 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
+  CLASS_NAMES: ['Object']
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
     - NAME: random_world_flip
