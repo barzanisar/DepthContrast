@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --wait-all-nodes=1
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:a100:2                     # Request 4 GPUs
+#SBATCH --gres=gpu:a100:4                     # Request 4 GPUs
 #SBATCH --ntasks=1                          # set it equal to --nodes
 #SBATCH --ntasks-per-node=1                 # Number of gpus per node
 #SBATCH --time=01:00:00
 #SBATCH --job-name=DepthContrast-train
 #SBATCH --account=rrg-swasland
-#SBATCH --cpus-per-task=16                  # 48 max CPU cores/threads
-#SBATCH --mem=160G                        # memory per node
+#SBATCH --cpus-per-task=48                  # 48 max CPU cores/threads
+#SBATCH --mem=200G                        # memory per node
 #SBATCH --output=./output/log/%x-%j.out     # STDOUT
 #SBATCH --array=1-3%1                       # 3 is the number of jobs in the chain
 
@@ -31,9 +31,9 @@ BACKBONE=minkunet
 
 PRETRAINED_CKPT="default"
 LINEARPROBE_LAST_N_CKPTS=-1
-PRETRAIN_BATCHSIZE_PER_GPU=16
+PRETRAIN_BATCHSIZE_PER_GPU=-1
 LINEARPROBE_BATCHSIZE_PER_GPU=-1
-FINETUNE_BATCHSIZE_PER_GPU=8
+FINETUNE_BATCHSIZE_PER_GPU=-1
 PRETRAIN_EPOCHS=-1
 FINETUNE_EPOCHS=-1
 LINEARPROBE_EPOCHS=-1
