@@ -72,7 +72,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_iou_perc_0p01_waymo5" 
+  name: "minkunet_pretrain_iou_perc_0p01_iou_wt_waymo5" 
 
   MODEL_BASE:
     NAME: Segmentor
