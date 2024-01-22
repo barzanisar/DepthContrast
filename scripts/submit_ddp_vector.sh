@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --wait-all-nodes=1
 #SBATCH --nodes=1
-#SBATCH --partition=a40,rtx6000
+#SBATCH --partition=a40                     #--partition=a40,rtx6000
 #SBATCH --gres=gpu:4                        # Request 4 GPUs
 #SBATCH --ntasks=1                          # set it equal to --nodes
 #SBATCH --ntasks-per-node=1                 # Number of gpus per node
 #SBATCH --time=01:00:00
 #SBATCH --job-name=DepthContrast-train
-#SBATCH --cpus-per-task=40                  # CPU cores/threads
+#SBATCH --cpus-per-task=32                  # CPU cores/threads
 #SBATCH --mem=160G                          # 160G also works memory per node
 #SBATCH --output=./output/log/%x-%j.out     # STDOUT
 #SBATCH --array=1-3%1                       # 3 is the number of jobs in the chain
