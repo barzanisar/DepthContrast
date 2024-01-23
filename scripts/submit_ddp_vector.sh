@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --wait-all-nodes=1
 #SBATCH --nodes=1
-#SBATCH --partition=a40                     #--partition=a40,rtx6000
+#SBATCH --partition=a40,rtx6000             #--partition=a40,rtx6000
 #SBATCH --gres=gpu:4                        # Request 4 GPUs
 #SBATCH --ntasks=1                          # set it equal to --nodes
 #SBATCH --ntasks-per-node=1                 # Number of gpus per node
