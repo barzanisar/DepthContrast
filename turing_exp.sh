@@ -15,8 +15,27 @@ setsid nohup scripts/submit_ddp_turing.sh --cuda_visible_devices 2,3 --tcp_port 
 # kill PID
 
 tmux 
+#done
 scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19832 --cfg_file configs/waymo_minkunet_segcontrast_waymo20.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_segcontrast_waymo20 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_segcontrast_waymo20_$(date +%Y-%m-%d_%H:%M).out 2>&1
 scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19833 --cfg_file configs/waymo_pointrcnn_segcontrast_waymo20.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name pointrcnn_pretrain_segcontrast_waymo20 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/pointrcnn_pretrain_segcontrast_waymo20_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19832 --cfg_file configs/waymo_minkunet_esf_perc_0p05_iou_wt_waymo5.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_esf_perc_0p05_iou_wt_waymo5 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_esf_perc_0p05_iou_wt_waymo5_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19833 --cfg_file configs/waymo_minkunet_esf_perc_0p05_esf_wt_waymo5.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_esf_perc_0p05_esf_wt_waymo5 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_esf_perc_0p05_esf_wt_waymo5_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19832 --cfg_file configs/waymo_minkunet_esf_perc_0p05_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_esf_perc_0p05_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_esf_perc_0p05_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19832 --cfg_file configs/waymo_minkunet_esf_perc_0p05_waymo5_t0p07.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_esf_perc_0p05_waymo5_t0p07 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_esf_perc_0p05_waymo5_t0p07_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19833 --cfg_file configs/waymo_minkunet_iou_perc_0p01_waymo5_t0p07.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_perc_0p01_waymo5_t0p07 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_perc_0p01_waymo5_t0p07_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_lovelace.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19832 --cfg_file configs/waymo_minkunet_iou_perc_0p01_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_perc_0p01_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_perc_0p01_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_lovelace.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19833 --cfg_file configs/waymo_minkunet_iou_perc_0p01_esf_wt_waymo5.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_perc_0p01_esf_wt_waymo5 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_perc_0p01_esf_wt_waymo5_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19832 --cfg_file configs/waymo_minkunet_iou_perc_0p01_iou_wt_waymo5.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_perc_0p01_iou_wt_waymo5 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_perc_0p01_iou_wt_waymo5_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19833 --cfg_file configs/waymo_minkunet_iou_perc_0p01_waymo5.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_perc_0p01_waymo5 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_perc_0p01_waymo5_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_lovelace.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19833 --cfg_file configs/waymo_pointrcnn_segcontrast_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name pointrcnn_pretrain_segcontrast_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/pointrcnn_pretrain_segcontrast_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_lovelace.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19833 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_segcontrast_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_segcontrast_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
 To detach: ctrl+b and then d
 tmux rename-session -t 0 mink_pretrain_test
 tmux attach -t mink_pretrain_test
