@@ -25,7 +25,7 @@ LINEARPROBE_EPOCHS=-1
 MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
 
-SING_IMG=/raid/singularity/ssl_lidar_aug.sif
+SING_IMG=/raid/home/nisarbar/singularity/ssl_lidar_aug.sif
 DATA_DIR=/raid/datasets/Waymo
 NUM_GPUS=2
 CUDA_VISIBLE_DEVICES=0,1
