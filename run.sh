@@ -5,6 +5,7 @@
 #KITTI_TEST=$(readlink -f ../data/kitti/testing)
 #WAYMO_RAW=$(readlink -f ../data/waymo/raw_data)
 WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
+SEMANTIC_KITTI=$(readlink -f ./data/semantic_kitti/dataset)
 # WAYMO_PROCESSED_INFO_TRAIN_PKL=$(readlink -f ./data/waymo/waymo_processed_data_10_short_infos_train_short.pkl)
 # WAYMO_GTDB=$(readlink -f ./data/waymo/waymo_processed_data_10_short_gt_database_train_sampled_1)
 # WAYMO_GTDB_PKL=$(readlink -f ./data/waymo/waymo_processed_data_10_short_waymo_dbinfos_train_sampled_1.pkl)
@@ -22,6 +23,7 @@ PROJ_DIR=$CUR_DIR
 #KITTI_TEST=$KITTI_TEST:/DepthContrast/data/kitti/testing
 #WAYMO_RAW=$WAYMO_RAW:/DepthContrast/data/waymo/raw_data
 WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_10
+SEMANTIC_KITTI=$SEMANTIC_KITTI:/DepthContrast/data/semantic_kitti/dataset
 # WAYMO_PROCESSED_INFO_TRAIN_PKL=$WAYMO_PROCESSED_INFO_TRAIN_PKL:/DepthContrast/data/waymo/waymo_processed_data_10_short_infos_train_short.pkl
 # WAYMO_GTDB=$WAYMO_GTDB:/DepthContrast/data/waymo/waymo_processed_data_10_short_gt_database_train_sampled_1
 # WAYMO_GTDB_PKL=$WAYMO_GTDB_PKL:/DepthContrast/data/waymo/waymo_processed_data_10_short_waymo_dbinfos_train_sampled_1.pkl
@@ -56,6 +58,7 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --hostname="inside-DOCKER" \
         --name="DepthContrast" \
         --volume $WAYMO_PROCESSED \
+        --volume $SEMANTIC_KITTI \
         --volume $PROJ_DIR/data:/DepthContrast/data \
         --volume $PROJ_DIR/output:/DepthContrast/output \
         --volume $PROJ_DIR/tools:/DepthContrast/tools \

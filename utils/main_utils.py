@@ -228,7 +228,7 @@ def get_ckpts_to_eval(cfg, logger, pretrain_model_dir, eval_list_dir):
 
 def prep_environment(args, cfg, pretraining=True):
     from torch.utils.tensorboard import SummaryWriter
-    DATASET_NAMES = { 'WaymoDataset': 'waymo', 'SemanticKittiDataset': 'semantickitti'}
+    DATASET_NAMES = { 'WaymoDataset': 'waymo', 'SemanticKittiDataset': 'semantickitti', 'NuscenesDataset': 'nuscenes'}
     dataset_name = DATASET_NAMES[cfg['dataset']['DATASET_NAMES'][0]]
     if pretraining:
         phase_name = f'pretrain_waymo'

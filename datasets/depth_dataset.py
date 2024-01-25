@@ -176,7 +176,8 @@ class DepthContrastDataset(Dataset):
         cfg = self.cfg
 
         #remove points outside range
-        data_dict['points'] = data_processor.mask_points_outside_range(data_dict['points'], self.point_cloud_range)
+        if cfg["INPUT"] == 'voxels':
+            data_dict['points'] = data_processor.mask_points_outside_range(data_dict['points'], self.point_cloud_range)
 
         if self.mode == 'train':
             data_dict["points"], _ = self.data_augmentor.forward(data_dict["points"])
@@ -203,7 +204,8 @@ class DepthContrastDataset(Dataset):
         cfg = self.cfg
 
         # remove points outside range
-        data_dict['points'] = data_processor.mask_points_outside_range(data_dict['points'], self.point_cloud_range)
+        if cfg["INPUT"] == 'voxels':
+            data_dict['points'] = data_processor.mask_points_outside_range(data_dict['points'], self.point_cloud_range)
     
 
         if PLOT:

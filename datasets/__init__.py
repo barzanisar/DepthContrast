@@ -9,12 +9,14 @@ import logging
 
 import torch
 from datasets.collators import get_collator
-from datasets.DenseKittiDataset import DenseKittiDataset
+from datasets.SemanticKittiDataset import SemanticKittiDataset
+from datasets.NuscenesDataset import NuscenesDataset
 from datasets.WaymoDataset import WaymoDataset
 from torch.utils.data import DataLoader
 
 
-__all__ = {"DenseKittiDataset": DenseKittiDataset,
+__all__ = {"SemanticKittiDataset": SemanticKittiDataset,
+           "NuscenesDataset": NuscenesDataset,
            "WaymoDataset": WaymoDataset}
 
 
