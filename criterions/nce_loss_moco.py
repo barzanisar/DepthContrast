@@ -63,6 +63,8 @@ class NCELossMoco(nn.Module):
         self.shape_guidance = False
         self.neg_queue_filled = False
         if self.cluster:
+            self.weight_inside = config.get("WEIGHT_INSIDE", True)
+            self.use_custom_cross_entropy = config.get("CUSTOM_CROSS_ENTROPY", False)
             self.iou_dist_threshold = config.get("IOU_DIST_THRESHOLD", None)
             self.shape_dist_threshold = config.get("SHAPE_DIST_THRESHOLD", None)
 
@@ -261,27 +263,40 @@ class NCELossMoco(nn.Module):
 
         # # Another option remove neg examples from denominator if iou3d of positive and neg samples > 0.6
         # iou_dist[iou_dist<0.4] = 0
-        neg_w = 0
+        neg_w = 1
         if self.neg_queue_filled:
             if self.shape_weight is not None:
                 neg_w =  self.shape_weight * shape_dist_mat
-            if self.iou_weight is not None:
-                neg_w += (self.iou_weight * iou_dist)
-            if self.shape_weight is not None or self.iou_weight is not None:
-                l_neg = l_neg * neg_w
+            elif self.iou_weight is not None:
+                neg_w = self.iou_weight * iou_dist
 
-            if self.shape_dist_threshold is not None:
-                l_neg=l_neg.masked_fill(shape_dist_mat<self.shape_dist_threshold, -1e9)
+            # if self.shape_dist_threshold is not None:
+            #     l_neg=l_neg.masked_fill(shape_dist_mat<self.shape_dist_threshold, -1e9)
             if self.shape_dist_quantile_threshold is not None:
-                row_wise_quantiles = torch.quantile(shape_dist_mat, self.shape_dist_quantile_threshold, dim=1, keepdim=True)
-                l_neg=l_neg.masked_fill(shape_dist_mat < row_wise_quantiles.repeat(1, self.K), -1e9)
+                row_wise_quantiles = torch.quantile(shape_dist_mat, self.shape_dist_quantile_threshold/100, dim=1, keepdim=True)
+                if self.shape_weight is not None or self.iou_weight is not None:
+                    # Weight on KNN
+                    # mask_to_not_weight = shape_dist_mat > row_wise_quantiles #.repeat(1, self.K)
+                    neg_w[shape_dist_mat > row_wise_quantiles] = 1
+                else:
+                    # Remove KNN
+                    l_neg=l_neg.masked_fill(shape_dist_mat < row_wise_quantiles.repeat(1, self.K), -1e9)
 
-            if self.iou_dist_threshold is not None:
-                l_neg=l_neg.masked_fill(iou_dist<self.iou_dist_threshold, -1e9)
+            # if self.iou_dist_threshold is not None:
+            #     l_neg=l_neg.masked_fill(iou_dist<self.iou_dist_threshold, -1e9)
             if self.iou_quantile_threshold is not None:
-                row_wise_quantiles = torch.quantile(iou_dist, self.iou_quantile_threshold, dim=1, keepdim=True)
-                #mask = iou_dist < row_wise_quantiles.repeat(1, self.K) #row_wise_quantiles.expand_as(iou_dist)
-                l_neg=l_neg.masked_fill(iou_dist < row_wise_quantiles.repeat(1, self.K), -1e9)
+                row_wise_quantiles = torch.quantile(iou_dist, self.iou_quantile_threshold/100, dim=1, keepdim=True)
+                if self.shape_weight is not None or self.iou_weight is not None:
+                    # Weight on KNN
+                    neg_w[iou_dist > row_wise_quantiles] = 1
+                else:
+                    # Remove KNN
+                    l_neg=l_neg.masked_fill(iou_dist < row_wise_quantiles.repeat(1, self.K), -1e9)
+
+            if self.shape_weight is not None or self.iou_weight is not None:
+                if self.weight_inside:
+                    # weigh inside exponential
+                    l_neg = l_neg * neg_w
 
         # logits: Nx(1+K) i.e. N examples or clusters and K+1 class scores
         logits = torch.cat([l_pos, l_neg], dim=1)
@@ -289,13 +304,26 @@ class NCELossMoco(nn.Module):
         # apply temperature
         logits /= self.T
 
-        #N = logits.shape[0] # num common clusters in this batch of pcs for segContrast and batch size for DepthContrast
-        labels = torch.zeros(
-            N_pos, device=logits.device, dtype=torch.int64
-        ) # because for each pair out of N pairs, zero'th class (out of K=60000 classes) is the true class
 
-        loss = self.loss_weight * self.xe_criterion(logits, labels) # Nx(1+K) logits, N labels
-        
+        if self.use_custom_cross_entropy:
+            maxes = torch.max(logits, 1, keepdim=True)[0]
+            logits_exp = torch.exp(logits-maxes) #Nx(1+K)
+            if self.weight_inside:
+                modified_logits_exp = logits_exp
+            else:
+                # Weight negative samples outside exponential
+                modified_logits_exp = torch.cat([logits_exp[:,0].unsqueeze(-1), logits_exp[:,1:] * neg_w], dim=1)
+            logits_exp_sum = torch.sum(modified_logits_exp, 1, keepdim=True) #Nx1
+            log_probs = torch.log(logits_exp[:,0].view(-1,1)/logits_exp_sum) #Nx1
+            loss =-torch.mean(log_probs)
+        else:
+            #N = logits.shape[0] # num common clusters in this batch of pcs for segContrast and batch size for DepthContrast
+            labels = torch.zeros(
+                N_pos, device=logits.device, dtype=torch.int64
+            ) # because for each pair out of N pairs, zero'th class (out of K=60000 classes) is the true class
+
+            loss = self.loss_weight * self.xe_criterion(logits, labels) # Nx(1+K) logits, N labels
+            
 
         if self.cluster:
             keys = normalized_output2

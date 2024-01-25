@@ -81,3 +81,6 @@ sbatch --time=6:00:00 --array=1-2%1 --job-name=mink_iou_perc_0p01_w5_t0p07 scrip
 # sbatch --time=00:20:00 --gres=gpu:2 --array=1-1%1 --job-name=esf_perc_0p05 scripts/submit_ddp_vector.sh --tcp_port 19210 --cfg_file configs/waymo_pointrcnn_backbone_esf_perc_0p05.yaml --model_name pointrcnn_pretrain_backbone_esf_perc_0p05 --pretrained_ckpt checkpoint-ep49.pth.tar 
 
 # sbatch --time=03:00:00 --array=1-1%1 --job-name=mink_esf_perc_0p01_w5 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19831 --cfg_file configs/waymo_minkunet_esf_perc_0p01_waymo5.yaml --model_name minkunet_pretrain_esf_perc_0p01_waymo5 --pretrained_ckpt checkpoint-ep49.pth.tar 
+
+sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_segcontrast_t0p07 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19843 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_t0p07.yaml --model_name minkunet_pretrain_segcontrast_waymo5_t0p07 --pretrained_ckpt checkpoint-ep49.pth.tar 
+sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_segcontrast_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19844 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_t0p04.yaml --model_name minkunet_pretrain_segcontrast_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar 
