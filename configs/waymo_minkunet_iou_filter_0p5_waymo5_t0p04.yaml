@@ -27,7 +27,7 @@ dataset:
   FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4]
-  CLASS_NAMES: ['Object']
+  CLASS_NAMES: ['Object'] 
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
     - NAME: random_world_flip
@@ -64,7 +64,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_iou_filter_0p15_waymo5_t0p04" 
+  name: "minkunet_pretrain_iou_filter_0p5_waymo5_t0p04" 
 
   MODEL_BASE:
     NAME: Segmentor
@@ -84,4 +84,4 @@ NCE_LOSS:
   TEMPERATURE: 0.04
   NUM_NEGATIVES: 65536
   EMBEDDING_DIM: 128
-  IOU_QUANTILE_THRESHOLD: 0.15 #% of 65536 i.e. 6.55 neg samples removed
+  IOU_QUANTILE_THRESHOLD: 0.5 #% of 65536 i.e. 6.55 neg samples removed

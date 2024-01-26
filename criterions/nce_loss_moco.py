@@ -299,7 +299,7 @@ class NCELossMoco(nn.Module):
                     neg_w[shape_dist_mat > row_wise_quantiles] = 1
                 else:
                     # Remove KNN
-                    l_neg=l_neg.masked_fill(shape_dist_mat < row_wise_quantiles.repeat(1, self.K), -1e9)
+                    l_neg=l_neg.masked_fill(shape_dist_mat < row_wise_quantiles, -1e9)
 
             # if self.iou_dist_threshold is not None:
             #     l_neg=l_neg.masked_fill(iou_dist<self.iou_dist_threshold, -1e9)
@@ -310,7 +310,7 @@ class NCELossMoco(nn.Module):
                     neg_w[iou_dist > row_wise_quantiles] = 1
                 else:
                     # Remove KNN
-                    l_neg=l_neg.masked_fill(iou_dist < row_wise_quantiles.repeat(1, self.K), -1e9)
+                    l_neg=l_neg.masked_fill(iou_dist < row_wise_quantiles, -1e9)
 
             if self.shape_weight is not None or self.iou_weight is not None:
                 if self.weight_inside:
