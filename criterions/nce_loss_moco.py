@@ -61,6 +61,7 @@ class NCELossMoco(nn.Module):
         self.shape_descs_dim = None
         self.iou_guidance = False
         self.shape_guidance = False
+        self.gt_guidance = False
         self.neg_queue_filled = False
         if self.cluster:
             self.weight_inside = config.get("WEIGHT_INSIDE", True)
@@ -80,6 +81,7 @@ class NCELossMoco(nn.Module):
             self.shape_guidance = self.shape_weight is not None or self.shape_dist_threshold is not None or self.shape_dist_quantile_threshold is not None
             self.iou_guidance = self.iou_weight is not None or self.iou_dist_threshold is not None or self.iou_quantile_threshold is not None
             
+            self.gt_guidance = config.get("USE_GT_PRIOR", False)
             if self.shape_guidance:
                 assert self.shape_descs_dim is not None
                 assert self.shape_dist_type is not None
@@ -88,6 +90,10 @@ class NCELossMoco(nn.Module):
 
         if self.iou_guidance:
             self.dim += 4 #lwhz
+        
+        if self.gt_guidance:
+            self.dim += 1 #gt_class_id
+
 
         self.T = float(config["TEMPERATURE"])
 
@@ -101,6 +107,8 @@ class NCELossMoco(nn.Module):
                 self.queue[self.embedding_dim+self.shape_descs_dim:, :] = -1 * torch.ones((4,  self.K))
             else:
                 self.queue[self.embedding_dim:, :] = -1 * torch.ones((4,  self.K))
+        if self.gt_guidance:
+            self.queue[-1, :] = -1 * torch.ones((1,  self.K))
 
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
         
@@ -192,9 +200,17 @@ class NCELossMoco(nn.Module):
     def forward(self, output_dict, output_dict_moco):
         
         # batch_size = output_dict['batch_size'] #2
-        common_unscaled_lwhz = output_dict['common_unscaled_lwhz']
-        output_0 = output_dict['pretext_head_feats'] #query features (N=num common clusters , 128)
-        output_1 = output_dict_moco['pretext_head_feats'] #key_features = moco features (N=num common clusters, 128)
+        if self.gt_guidance: 
+            #ignore 0 class
+            mask_nonzero_class = output_dict['common_gt_box_class_ids'] != 0
+            common_gt_class_ids = output_dict['common_gt_box_class_ids'][mask_nonzero_class]
+            common_unscaled_lwhz = output_dict['common_unscaled_lwhz'][mask_nonzero_class]
+            output_0 = output_dict['pretext_head_feats'][mask_nonzero_class] #query features (N=num common clusters , 128)
+            output_1 = output_dict_moco['pretext_head_feats'][mask_nonzero_class] #key_features = moco features (N=num common clusters, 128)    
+        else:
+            common_unscaled_lwhz = output_dict['common_unscaled_lwhz']
+            output_0 = output_dict['pretext_head_feats'] #query features (N=num common clusters , 128)
+            output_1 = output_dict_moco['pretext_head_feats'] #key_features = moco features (N=num common clusters, 128)
         feature_dim = output_0.shape[1]
         N_pos = output_0.shape[0]
             
@@ -202,7 +218,6 @@ class NCELossMoco(nn.Module):
         normalized_output1 = nn.functional.normalize(output_0, dim=1, p=2) #query embeddings 
         normalized_output2 = nn.functional.normalize(output_1, dim=1, p=2) #key embeddings
 
-        #TODO: class balanced contrastive loss
         if self.iou_guidance:
             # Define l= max(dx,dy), w = min(dx,dy)
             l = torch.max(common_unscaled_lwhz[:,:2], dim=-1)[0].view(-1,1) #column of lenghts of positive samples
@@ -232,8 +247,8 @@ class NCELossMoco(nn.Module):
                 iou_dist =  (1-iou3d) # NxK #if high iou, similar sizes -> low weight or threshold
 
         if self.shape_guidance:
-            common_shape_descs_mask = output_dict['shape_cluster_ids_is_common_mask_batch']
-            shape_descs_pos = output_dict['shape_descs'][common_shape_descs_mask] #N x 604
+            # common_shape_descs_mask = output_dict['shape_cluster_ids_is_common_mask_batch']
+            shape_descs_pos = output_dict['shape_descs'] #[common_shape_descs_mask] #N x 604
             if self.shape_dist_type == 'cosine':
                 shape_descs_pos =  nn.functional.normalize(shape_descs_pos, dim=1, p=2) #(Npos, 604)
 
@@ -265,6 +280,10 @@ class NCELossMoco(nn.Module):
         # iou_dist[iou_dist<0.4] = 0
         neg_w = 1
         if self.neg_queue_filled:
+            if self.gt_guidance:
+                class_ids_neg = self.queue[-1,:]
+                mask = common_gt_class_ids.view(-1,1) == class_ids_neg.view(1,-1) #NxK true if row and col class ids match
+                l_neg=l_neg.masked_fill(mask, -1e9)
             if self.shape_weight is not None:
                 neg_w =  self.shape_weight * shape_dist_mat
             elif self.iou_weight is not None:
@@ -331,6 +350,8 @@ class NCELossMoco(nn.Module):
                 keys = torch.cat([keys, shape_descs_pos], dim=1)
             if self.iou_guidance:
                 keys = torch.cat([keys, l,w,h,z], dim=1)
+            if self.gt_guidance:
+                keys = torch.cat([keys, common_gt_class_ids.view(-1,1)], dim=1)
             self._dequeue_and_enqueue_cluster(keys)  
         else:
             self._dequeue_and_enqueue_pcd(normalized_output2)

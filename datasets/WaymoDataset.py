@@ -60,7 +60,19 @@ class WaymoDataset(DepthContrastDataset):
                 continue
             with open(seq_info_path, 'rb') as f:
                 infos = pickle.load(f) # loads 20 infos for one seq pkl i.e. 20 frames if seq pkl was formed by sampling every 10th frame
-                waymo_infos.extend(infos) # each info is one frame
+                # waymo_infos.extend(infos) # each info is one frame
+            
+            if self.pretraining and self.use_gt_seg_labels:
+                with open(self.seglabels_root_path / seq_name /  ('%s.pkl' % seq_name), 'rb') as f:
+                    seg_seq_infos = pickle.load(f) # loads 20 infos for one seq pkl i.e. 20 frames if seq pkl was formed by sampling every 10th frame
+                sample_idx_with_seg_labels = [info['point_cloud']['sample_idx'] for info in seg_seq_infos]
+
+                for info in infos:
+                    if info['point_cloud']['sample_idx'] in sample_idx_with_seg_labels:
+                        waymo_infos.append(info) # each info is one frame
+            else:
+                waymo_infos.extend(infos)
+
 
         self.infos.extend(waymo_infos[:])
         self.logger.add_line('Total skipped sequences due to missing info pkls %s' % num_skipped_infos)
@@ -119,6 +131,17 @@ class WaymoDataset(DepthContrastDataset):
         label_file = self.cluster_root_path / sequence_name / ('%04d.npy' % sample_idx)
         labels = np.fromfile(label_file, dtype=np.float16)
         return labels
+    
+    def get_box_gt_seglabels(self, cluster_labels, seg_labels, info):
+        class_ids=np.zeros(len(info['cluster_labels_boxes']))
+        for i, lbl in enumerate(info['cluster_labels_boxes']):
+            gt_pt_labels = seg_labels[cluster_labels==lbl]
+            gt_labels, cnts = np.unique(gt_pt_labels, return_counts=True)
+            majority_label = gt_labels[np.argmax(cnts)]
+            class_ids[i] = majority_label
+        
+        return class_ids
+
 
     def get_seglabels(self, sequence_name, sample_idx, num_points):
         label_file = self.seglabels_root_path / sequence_name / ('%04d.npy' % sample_idx)
@@ -203,11 +226,17 @@ class WaymoDataset(DepthContrastDataset):
 
         points = self.get_lidar(sequence_name, sample_idx)
         pt_cluster_labels = self.get_cluster_labels(sequence_name, sample_idx)
-
-        assert points.shape[0] == pt_cluster_labels.shape[0], f'Missing labels for {frame_id}!!!!!!!!'
-
-        gt_classes = np.array([self.class_names.index(n) + 1 for n in info['approx_boxes_names']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
+        assert points.shape[0] == pt_cluster_labels.shape[0], f'Missing cluster labels for {frame_id}!!!!!!!!'
         gt_cluster_ids =  info['cluster_labels_boxes']
+
+        if self.use_gt_seg_labels:
+            pt_seg_labels = self.get_seglabels(sequence_name, sample_idx, points.shape[0])
+            assert points.shape[0] == pt_seg_labels.shape[0], f'Missing gt seg labels for {frame_id}!!!!!!!!'
+            gt_classes = self.get_box_gt_seglabels(pt_cluster_labels, pt_seg_labels, info)
+        elif self.mean_box_sizes is not None:
+            gt_classes = np.array([self.class_names.index(n) + 1 for n in info['approx_boxes_names']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
+        else:
+            gt_classes = np.array([1]*gt_cluster_ids.shape[0])
         #append class id as 8th entry in gt boxes and cluster label as 9th
         gt_boxes = np.hstack([info['approx_boxes_closeness_to_edge'][:,:7], gt_classes.reshape(-1, 1).astype(np.float32), gt_cluster_ids.reshape(-1, 1)])
         

@@ -285,7 +285,8 @@ FINETUNE_CMD+="python -m torch.distributed.launch
 --downstream_model_dir $DOWNSTREAM_MODEL_DIR
 --model_name $MODEL_NAME
 --pretrained_ckpt $PRETRAINED_CKPT 
---workers $WORKERS_PER_GPU
+--workers $WORKERS_PER_GPU 
+--model_name $MODEL_NAME
 "
 
 SCRATCH_CMD=$BASE_CMD

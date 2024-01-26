@@ -38,6 +38,12 @@ scripts/submit_ddp_lovelace.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_por
 
 scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19834 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_segcontrast_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_segcontrast_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19835 --cfg_file configs/waymo_minkunet_iou_filter_0p15_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_filter_0p15_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_filter_0p15_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19836 --cfg_file configs/waymo_minkunet_iou_filter_0p03_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_filter_0p03_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_filter_0p03_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_lovelace.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19835 --cfg_file configs/waymo_minkunet_iou_filter_0p15_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_filter_0p15_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_filter_0p15_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_lovelace.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19836 --cfg_file configs/waymo_minkunet_iou_filter_0p03_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_filter_0p03_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_filter_0p03_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
 To detach: ctrl+b and then d
 tmux rename-session -t 0 mink_pretrain_test
 tmux attach -t mink_pretrain_test

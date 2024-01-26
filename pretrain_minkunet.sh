@@ -82,5 +82,16 @@ sbatch --time=6:00:00 --array=1-2%1 --job-name=mink_iou_perc_0p01_w5_t0p07 scrip
 
 # sbatch --time=03:00:00 --array=1-1%1 --job-name=mink_esf_perc_0p01_w5 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19831 --cfg_file configs/waymo_minkunet_esf_perc_0p01_waymo5.yaml --model_name minkunet_pretrain_esf_perc_0p01_waymo5 --pretrained_ckpt checkpoint-ep49.pth.tar 
 
-sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_segcontrast_t0p07 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19843 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_t0p07.yaml --model_name minkunet_pretrain_segcontrast_waymo5_t0p07 --pretrained_ckpt checkpoint-ep49.pth.tar 
-sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_segcontrast_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19844 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_t0p04.yaml --model_name minkunet_pretrain_segcontrast_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar 
+sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_gt_segcontrast_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19843 --cfg_file configs/waymo_minkunet_gt_segcontrast_waymo5_t0p04.yaml --model_name minkunet_pretrain_gt_segcontrast_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar 
+sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_iou_filter_0p01_w5_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19844 --cfg_file configs/waymo_minkunet_iou_filter_0p01_waymo5_t0p04.yaml --model_name minkunet_pretrain_iou_filter_0p01_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar 
+sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_2_iou_filter_0p01_w5_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19845 --cfg_file configs/waymo_minkunet_iou_filter_0p01_waymo5_t0p04.yaml --model_name minkunet_pretrain_iou_filter_0p01_waymo5_t0p04_try2 --pretrained_ckpt checkpoint-ep49.pth.tar 
+
+sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_iou_knn_0p15_iou_owt_waymo5_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19846 --cfg_file configs/waymo_minkunet_iou_knn_0p15_iou_owt_waymo5_t0p04.yaml --model_name minkunet_pretrain_iou_knn_0p15_iou_owt_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar 
+sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_2_iou_knn_0p15_iou_owt_waymo5_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19847 --cfg_file configs/waymo_minkunet_iou_knn_0p15_iou_owt_waymo5_t0p04.yaml --model_name minkunet_pretrain_iou_knn_0p15_iou_owt_waymo5_t0p04_try2 --pretrained_ckpt checkpoint-ep49.pth.tar 
+
+sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_iou_knn_0p15_iou_iwt_waymo5_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19848 --cfg_file configs/waymo_minkunet_iou_knn_0p15_iou_iwt_waymo5_t0p04.yaml --model_name minkunet_pretrain_iou_knn_0p15_iou_iwt_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar 
+sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_2_iou_knn_0p15_iou_iwt_waymo5_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19849 --cfg_file configs/waymo_minkunet_iou_knn_0p15_iou_iwt_waymo5_t0p04.yaml --model_name minkunet_pretrain_iou_knn_0p15_iou_iwt_waymo5_t0p04_try2 --pretrained_ckpt checkpoint-ep49.pth.tar 
+
+
+
+# sbatch --time=6:00:00 --array=1-4%1 --job-name=mink_segcontrast_t0p04 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19844 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_t0p04.yaml --model_name minkunet_pretrain_segcontrast_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar 

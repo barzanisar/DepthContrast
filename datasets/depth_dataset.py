@@ -118,6 +118,7 @@ class DepthContrastDataset(Dataset):
         self.point_cloud_range = np.array(cfg["POINT_CLOUD_RANGE"], dtype=np.float32)
         self.class_names = cfg["CLASS_NAMES"] #needed for detection head in OpenPCDet
         self.used_num_point_features  = 4
+        self.use_gt_seg_labels = cfg.get('USE_GT_PRIOR', False)
 
         if 'LIDAR_AUG' in cfg:
             self.lidar_aug = LiDAR_aug_manager(self.root_path, cfg['LIDAR_AUG'])

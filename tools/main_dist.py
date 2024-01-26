@@ -54,6 +54,8 @@ parser.add_argument('--epochs', default=-1, type=int,
                     help='num epochs')
 parser.add_argument('--workers', default=-1, type=int,
                     help='workers per gpu')
+parser.add_argument('--model_name', default='default', type=str,
+                    help='model_name')
 parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
@@ -69,6 +71,8 @@ def main():
         cfg['optimizer']['num_epochs']=args.epochs
     if args.workers > 0:
         cfg['num_workers']=args.workers
+    if args.model_name != 'default':
+        cfg['model']['name'] = args.model_name
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -105,7 +109,9 @@ def main_worker(args, cfg):
         shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
         cfg['NCE_LOSS']['SHAPE_DESCRIPTORS_DIM'] = shape_dim_dict[cfg['dataset']['EXTRACT_SHAPE_DESCRIPTORS']]
     cfg['NCE_LOSS']['cluster'] = CLUSTER
+    cfg['NCE_LOSS']['USE_GT_PRIOR'] = cfg['dataset'].get('USE_GT_PRIOR', False)
     cfg['model']['INPUT'] = cfg['dataset']['INPUT']
+
 
 
     

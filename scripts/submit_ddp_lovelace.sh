@@ -258,7 +258,8 @@ PRETRAIN_CMD+="python -m torch.distributed.launch
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
 --epochs $PRETRAIN_EPOCHS 
 --batchsize_per_gpu $PRETRAIN_BATCHSIZE_PER_GPU 
---workers $WORKERS_PER_GPU
+--workers $WORKERS_PER_GPU 
+--model_name $MODEL_NAME
 "
 
 
