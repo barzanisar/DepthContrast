@@ -177,7 +177,7 @@ def extract_descs():
         print(f'Processing {sign}')
         desc_mat = [] #num frames elems -> elem = (n_samples, shape feat dim) or (n_samples, 4)
         class_ids = [] #num frames elems -> elem = (n_samples,)
-        num_obj_pts = []
+        num_obj_pts_all = []
         k = 0
         for info_cluster in waymo_infos_cluster:
             # k +=1
@@ -199,7 +199,7 @@ def extract_descs():
             elif desc_type in ['vfh', 'esf', 'gasd']:
                 shape_desc_frame, num_obj_pts_frame = get_shape_desc(points, pt_cluster_labels, info_cluster, method=desc_type) # n cluster in this frame, shape feat dim
                 desc_mat.append(shape_desc_frame)
-                num_obj_pts.append(num_obj_pts_frame)
+                num_obj_pts_all.extend(num_obj_pts_frame)
 
             class_ids_frame = get_class_ids(pt_cluster_labels, pt_seg_labels, info_cluster)
             class_ids.append(class_ids_frame)
@@ -207,8 +207,8 @@ def extract_descs():
         desc_mat = np.concatenate(desc_mat)
         class_ids = np.concatenate(class_ids)
         if desc_type in ['vfh', 'esf', 'gasd']:
-            num_obj_pts = np.concatenate(num_obj_pts)
-            pickle.dump(desc_mat, open(f'num_obj_pts.pkl', 'wb'))
+            num_obj_pts_all = np.array(num_obj_pts_all)
+            pickle.dump(num_obj_pts_all, open(f'num_obj_pts.pkl', 'wb'))
 
         pickle.dump(desc_mat, open(f'desc_mat_{sign}.pkl', 'wb'))
         pickle.dump(class_ids, open(f'class_ids_{sign}.pkl', 'wb'))
@@ -229,6 +229,7 @@ def analyse_knn(dist, class_ids, sign):
         # avg_acc = []
         print(f'Quantile thresh {thresh}')
         row_wise_quantiles = torch.quantile(dist, thresh, dim=1, keepdim=True)
+        dist = dist.fill_diagonal_(float('inf'))
         mask_selected = dist < row_wise_quantiles.repeat(1, n_samples)
         class_ids_of_nn = class_ids.view(1, -1).repeat(n_samples, 1) #[mask_selected]
         mask_gt = class_ids_of_nn ==  class_ids.view(-1, 1).repeat(1, n_samples)
@@ -253,7 +254,7 @@ def load_desc_class_ids(sign, mask=None):
     class_ids = pickle.load(open(f'class_ids_{sign}.pkl', 'rb'))
     # #remove class ids 0
     if mask is None:
-        mask = np.logical_or(class_ids > 0, ~np.isnan(desc_mat[:,0])) 
+        mask = (class_ids > 0) & (~np.isnan(desc_mat.sum(axis=1)))
         desc_mat = desc_mat[mask]
         class_ids = class_ids[mask]
     else:
@@ -266,7 +267,7 @@ def load_desc_class_ids(sign, mask=None):
 
 ################## 1. Extract Descs ###############  
 
-extract_descs()
+# extract_descs()
 
 ################## 2. Analyse KNN ###############
  
@@ -274,7 +275,7 @@ for desc_type in desc_types:
     sign = desc_type
     desc_mat, class_ids, mask = load_desc_class_ids(sign)
     num_obj_pts = pickle.load(open(f'num_obj_pts.pkl', 'rb'))
-    num_obj_pts = num_obj_pts[mask] 
+    num_obj_pts = num_obj_pts[mask][:num_samples]
     
     for num_pts in min_num_pts:
         mask = num_obj_pts>num_pts

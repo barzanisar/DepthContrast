@@ -9,7 +9,7 @@ from torch import nn
 
 quantile_thresh = np.array([0.01, 0.03, 0.05, 0.1])/100 #0.2, 0.3, 0.4, 0.5, 1,2,3,4,5
 shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
-desc_types = ['iou_z', 'iou', 'vfh', 'esf']
+desc_types = ['iou', 'vfh', 'esf'] #iou_z'
 shape_dist_methods = ['cosine']
 num_samples = 15000
 
@@ -83,6 +83,7 @@ print('Total frames: ',len(waymo_infos_cluster))
 assert len(waymo_infos_cluster) == len(waymo_infos_seg_labels)
 
 def get_lwhz(info_cluster):
+    assert info_cluster['approx_boxes_closeness_to_edge'].shape[0] == info_cluster['cluster_labels_boxes'].shape[0]
     z = info_cluster['approx_boxes_closeness_to_edge'][:,2]
     l = info_cluster['approx_boxes_closeness_to_edge'][:,3:5].max(axis=1)
     w = info_cluster['approx_boxes_closeness_to_edge'][:,3:5].min(axis=1)
@@ -94,15 +95,13 @@ def get_lwhz(info_cluster):
     lwhz_mat[:, 3] = z
     return lwhz_mat
 
-def get_class_ids(cluster_labels, seg_labels, info):
-    class_ids=np.zeros(len(info['cluster_labels_boxes']))
-    for i, lbl in enumerate(info['cluster_labels_boxes']):
+def get_class_ids(cluster_labels, seg_labels, info_cluster):
+    class_ids=np.zeros(len(info_cluster['cluster_labels_boxes']))
+    for i, lbl in enumerate(info_cluster['cluster_labels_boxes']):
         gt_pt_labels = seg_labels[cluster_labels==lbl]
         gt_labels, cnts = np.unique(gt_pt_labels, return_counts=True)
         majority_label = gt_labels[np.argmax(cnts)]
         class_ids[i] = majority_label
-
-    
     return class_ids
 
 def compute_iou_mat(lwhz_mat, iou_z=False):
@@ -184,7 +183,7 @@ def extract_descs():
         desc_mat = [] #num frames elems -> elem = (n_samples, shape feat dim) or (n_samples, 4)
         class_ids = [] #num frames elems -> elem = (n_samples,)
         k = 0
-        for info_cluster, info_seg in zip(waymo_infos_cluster, waymo_infos_seg_labels):
+        for info_cluster in waymo_infos_cluster:
             # k +=1
             # if k % 2 == 0:
             #     continue
@@ -213,29 +212,30 @@ def extract_descs():
 
 
         #remove class ids 0
-        mask = class_ids > 0
-        desc_mat = desc_mat[mask]
-        class_ids = class_ids[mask]
+        # mask = class_ids > 0
+        # desc_mat = desc_mat[mask]
+        # class_ids = class_ids[mask]
 
-        #remove desc with nan values
-        mask = ~np.isnan(desc_mat[:,0]) 
-        desc_mat = desc_mat[mask]
-        class_ids = class_ids[mask]
+        # #remove desc with nan values
+        # mask = ~np.isnan(desc_mat[:,0]) 
+        # desc_mat = desc_mat[mask]
+        # class_ids = class_ids[mask]
 
-        desc_mat = torch.from_numpy(desc_mat)
-        class_ids = torch.from_numpy(class_ids)
-        n_samples = desc_mat.shape[0]
+        # desc_mat = torch.from_numpy(desc_mat)
+        # class_ids = torch.from_numpy(class_ids)
+        # n_samples = desc_mat.shape[0]
 
         pickle.dump(desc_mat, open(f'desc_mat_{sign}.pkl', 'wb'))
         pickle.dump(class_ids, open(f'class_ids_{sign}.pkl', 'wb'))
 
-        if desc_type == 'iou':
-            pickle.dump(desc_mat, open(f'desc_mat_{sign}_z.pkl', 'wb'))
-            pickle.dump(class_ids, open(f'class_ids_{sign}_z.pkl', 'wb'))
+        # if desc_type == 'iou':
+        #     pickle.dump(desc_mat, open(f'desc_mat_{sign}_z.pkl', 'wb'))
+        #     pickle.dump(class_ids, open(f'class_ids_{sign}_z.pkl', 'wb'))
 
-        print(f'Computed descs {sign} for {n_samples} clusters')
+        print(f'Computed descs {sign} for {desc_mat.shape[0]} clusters')
 
-def analyse_knn(dist, sign):
+def analyse_knn(dist, class_ids, sign):
+    n_samples = dist.shape[0]
     acc_samplewise_threshwise = np.zeros((n_samples, len(quantile_thresh))) # rows are samples, cols are thresholds 
     mean_samplewise_acc_threshwise = np.zeros(len(quantile_thresh))
     mean_classwise_acc_threshwise = np.zeros((len(WAYMO_LABELS), len(quantile_thresh))) #includes undefined class 
@@ -244,6 +244,7 @@ def analyse_knn(dist, sign):
         # avg_acc = []
         print(f'Quantile thresh {thresh}')
         row_wise_quantiles = torch.quantile(dist, thresh, dim=1, keepdim=True)
+        dist = dist.fill_diagonal_(float('inf'))
         mask_selected = dist < row_wise_quantiles.repeat(1, n_samples)
         class_ids_of_nn = class_ids.view(1, -1).repeat(n_samples, 1) #[mask_selected]
         mask_gt = class_ids_of_nn ==  class_ids.view(-1, 1).repeat(1, n_samples)
@@ -263,32 +264,45 @@ def analyse_knn(dist, sign):
     pickle.dump(mean_classwise_acc_threshwise, open(f'mean_classwise_acc_threshwise_{sign}.pkl', 'wb'))
     print(f'Done dumping {sign}')
 
+def load_desc_class_ids(sign, mask=None):
+    desc_mat = pickle.load(open(f'desc_mat_{sign}.pkl', 'rb'))
+    class_ids = pickle.load(open(f'class_ids_{sign}.pkl', 'rb'))
+    # #remove class ids 0
+    if mask is None:
+        mask = (class_ids > 0) & (~np.isnan(desc_mat.sum(axis=1)))
+        desc_mat = desc_mat[mask]
+        class_ids = class_ids[mask]
+    else:
+        desc_mat = desc_mat[mask]
+        class_ids = class_ids[mask]
+
+    desc_mat = torch.from_numpy(desc_mat)[:num_samples]
+    class_ids = torch.from_numpy(class_ids)[:num_samples]
+    return desc_mat, class_ids, mask
+
 ################## 1. Extract Descs ###############  
 
 # extract_descs()
 
-
 ################## 2. Analyse KNN ############### 
 # for desc_type in desc_types:
 #     sign = desc_type
-#     desc_mat = pickle.load(open(f'desc_mat_{desc_type}.pkl', 'rb'))[:num_samples]
-#     class_ids = pickle.load(open(f'class_ids_{desc_type}.pkl', 'rb'))[:num_samples]
-#     n_samples = desc_mat.shape[0]
+#     desc_mat, class_ids, _ = load_desc_class_ids(sign)
 
-#     if desc_type in ['iou', 'iou_z']:
+#     if desc_type in ['iou']:
 #         sign = desc_type
 #         print(f'Computing dist {sign}')
-#         iou3d = compute_iou_mat(desc_mat, iou_z=(desc_type=='iou_z'))
+#         iou3d = compute_iou_mat(desc_mat, iou_z=True)
 #         dist = 1-iou3d
 #         print(f'Analysing knn {sign}')
-#         analyse_knn(dist, sign)
+#         analyse_knn(dist, class_ids, sign)
 #     elif desc_type in ['vfh', 'esf', 'gasd']:
 #         for dist_type in shape_dist_methods:
 #             sign = f'{desc_type}-{dist_type}'
 #             print(f'Computing dist {sign}')
 #             dist = compute_shape_desc_dist_mat(desc_mat, method=dist_type)
 #             print(f'Analysing knn {sign}')
-#             analyse_knn(dist, sign)
+#             analyse_knn(dist, class_ids, sign)
 
 
 ################## 3. Plot ############### 
@@ -341,7 +355,7 @@ def plotting(sign, class_ids):
 
 signs=[]
 for desc_type in desc_types:
-    class_ids = pickle.load(open(f'class_ids_{desc_type}.pkl', 'rb'))[:num_samples]
+    _, class_ids, _ = load_desc_class_ids(desc_type)
     if desc_type in ['iou_z', 'iou']:
         sign = desc_type
         signs += [sign]
@@ -353,22 +367,22 @@ for desc_type in desc_types:
             signs += [sign]
             plotting(sign, class_ids)
     
-plt.figure()
-for sign in signs:
-    mean_samplewise_acc_threshwise = pickle.load(open(f'mean_samplewise_acc_threshwise_{sign}.pkl', 'rb'))
-    #plt.plot(quantile_thresh*100, mean_samplewise_acc_threshwise, label=f'{sign}')
-    plt.plot(np.round(quantile_thresh*num_samples), mean_samplewise_acc_threshwise, label=f'{sign}')
-    print(f'{sign}: {mean_samplewise_acc_threshwise}')
+# plt.figure()
+# for sign in signs:
+#     mean_samplewise_acc_threshwise = pickle.load(open(f'mean_samplewise_acc_threshwise_{sign}.pkl', 'rb'))
+#     #plt.plot(quantile_thresh*100, mean_samplewise_acc_threshwise, label=f'{sign}')
+#     plt.plot(np.round(quantile_thresh*num_samples), mean_samplewise_acc_threshwise, label=f'{sign}')
+#     print(f'{sign}: {mean_samplewise_acc_threshwise}')
 
-plt.ylabel('Average Precision for K Nearest Neighbors')
-# plt.xlabel('Quantiles %')
-plt.xlabel('K')
-plt.title(f'Average Precision KNN')
+# plt.ylabel('Average Precision for K Nearest Neighbors')
+# # plt.xlabel('Quantiles %')
+# plt.xlabel('K')
+# plt.title(f'Average Precision KNN')
 
-plt.grid()
-plt.legend()
-plt.savefig(f'avg_prec_all_methods_knn.png')
-plt.show()
+# plt.grid()
+# plt.legend()
+# plt.savefig(f'avg_prec_all_methods_knn.png')
+# plt.show()
 b=1
 
 # plt.figure()

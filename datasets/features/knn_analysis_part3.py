@@ -83,28 +83,6 @@ for seq_name in seq_list:
 print('Total frames: ',len(waymo_infos_cluster))
 assert len(waymo_infos_cluster) == len(waymo_infos_seg_labels)
 
-def get_lwhz(info_cluster):
-    z = info_cluster['approx_boxes_closeness_to_edge'][:,2]
-    l = info_cluster['approx_boxes_closeness_to_edge'][:,3:5].max(axis=1)
-    w = info_cluster['approx_boxes_closeness_to_edge'][:,3:5].min(axis=1)
-    h = info_cluster['approx_boxes_closeness_to_edge'][:,5]
-    lwhz_mat = np.zeros((l.shape[0], 4))
-    lwhz_mat[:, 0] = l
-    lwhz_mat[:, 1] = w
-    lwhz_mat[:, 2] = h
-    lwhz_mat[:, 3] = z
-    return lwhz_mat
-
-def get_class_ids(cluster_labels, seg_labels, info):
-    class_ids=np.zeros(len(info['cluster_labels_boxes']))
-    for i, lbl in enumerate(info['cluster_labels_boxes']):
-        gt_pt_labels = seg_labels[cluster_labels==lbl]
-        gt_labels, cnts = np.unique(gt_pt_labels, return_counts=True)
-        majority_label = gt_labels[np.argmax(cnts)]
-        class_ids[i] = majority_label
-
-    
-    return class_ids
 
 def compute_iou_mat(lwhz_mat, iou_z=False):
     l_a= lwhz_mat[:,0].reshape(-1, 1)
@@ -156,63 +134,13 @@ def compute_shape_desc_dist_mat(desc_mat, method='cosine'):
 
     return shape_dist_mat
 
-def get_shape_desc(points, cluster_labels, info,  method, min_num_pts):
-    shape_descs = [] #nclusters, feat dim
-    for i, lbl in enumerate(info['cluster_labels_boxes']):
-        obj_points = points[cluster_labels == lbl][:,:3] - info['approx_boxes_closeness_to_edge'][i, :3]
-        if len(obj_points) > min_num_pts: #TODO make this 20
-            shape_desc = global_descriptors.extract_feats(obj_points, method=method)
-                    # visualize_selected_labels(obj_points, data_dict["points"][obj_points_mask, -1], [i])
-
-            if shape_desc is not None:
-                shape_descs.append(shape_desc)
-            else:
-                shape_descs.append(np.array([np.nan]*shape_dim_dict[method]))
-        else:
-            shape_descs.append(np.array([np.nan]*shape_dim_dict[method]))
-
-    shape_descs = np.asarray(shape_descs)
-
-    return shape_descs
-
-
-def analyse_knn(dist, class_ids, sign):
-    n_samples = dist.shape[0]
-    acc_samplewise_threshwise = np.zeros((n_samples, len(quantile_thresh))) # rows are samples, cols are thresholds 
-    mean_samplewise_acc_threshwise = np.zeros(len(quantile_thresh))
-    mean_classwise_acc_threshwise = np.zeros((len(WAYMO_LABELS), len(quantile_thresh))) #includes undefined class 
-
-    for i, thresh in enumerate(quantile_thresh):
-        # avg_acc = []
-        print(f'Quantile thresh {thresh}')
-        row_wise_quantiles = torch.quantile(dist, thresh, dim=1, keepdim=True)
-        mask_selected = dist < row_wise_quantiles.repeat(1, n_samples)
-        # class_ids_of_nn = class_ids.view(1, -1).repeat(n_samples, 1) #[mask_selected]
-        # mask_gt = class_ids_of_nn ==  class_ids.view(-1, 1).repeat(1, n_samples)
-        mask_gt = class_ids.view(-1, 1) == class_ids.view(1, -1)
-        mask_selected_hit = mask_gt & mask_selected
-        acc_sample_wise = mask_selected_hit.sum(axis=1)/torch.clamp(mask_selected.sum(axis=1), min=1)
-
-        mean_samplewise_acc_threshwise[i] = acc_sample_wise.mean()
-        acc_samplewise_threshwise[:, i] = acc_sample_wise
-
-        for cid in np.unique(class_ids):
-            class_mean_acc = acc_sample_wise[class_ids == cid].mean()
-            mean_classwise_acc_threshwise[int(cid), i] = class_mean_acc
-
-    print(f'Done Processing {sign}')
-    pickle.dump(acc_samplewise_threshwise, open(f'acc_samplewise_threshwise_{sign}.pkl', 'wb'))
-    pickle.dump(mean_samplewise_acc_threshwise, open(f'mean_samplewise_acc_threshwise_{sign}.pkl', 'wb'))
-    pickle.dump(mean_classwise_acc_threshwise, open(f'mean_classwise_acc_threshwise_{sign}.pkl', 'wb'))
-    print(f'Done dumping {sign}')
-
 
 def load_desc_class_ids(sign, mask=None):
     desc_mat = pickle.load(open(f'desc_mat_{sign}.pkl', 'rb'))
     class_ids = pickle.load(open(f'class_ids_{sign}.pkl', 'rb'))
     # #remove class ids 0
     if mask is None:
-        mask = np.logical_or(class_ids > 0, ~np.isnan(desc_mat[:,0])) 
+        mask = (class_ids > 0) & (~np.isnan(desc_mat.sum(axis=1)))
         desc_mat = desc_mat[mask]
         class_ids = class_ids[mask]
     else:
@@ -225,13 +153,15 @@ def load_desc_class_ids(sign, mask=None):
 
 ################## 1. Extract Descs ###############  
 
-desc_esf, class_ids_esf, mask = load_desc_class_ids('esf-20')
-desc_iou, class_ids_iou, _ = load_desc_class_ids('iou_z', mask)
+
+desc_esf, class_ids_esf, mask = load_desc_class_ids(f'esf')
+desc_iou, class_ids_iou, _ = load_desc_class_ids('iou', mask)
 sign='esfANDiou-cosine'
 assert torch.equal(class_ids_esf, class_ids_iou)
 assert desc_esf.shape[0] == desc_iou.shape[0]
-class_ids = class_ids_esf
 
+
+class_ids = class_ids_esf
 iou3d = compute_iou_mat(desc_iou, iou_z=True)
 iou_dist = 1-iou3d
 esf_dist = compute_shape_desc_dist_mat(desc_esf, method='cosine')
@@ -245,8 +175,10 @@ for i, thresh in enumerate(quantile_thresh):
     # avg_acc = []
     print(f'Quantile thresh {thresh}')
     row_wise_quantiles = torch.quantile(iou_dist, thresh, dim=1, keepdim=True)
+    iou_dist = iou_dist.fill_diagonal_(float('inf'))
     mask_selected_iou = iou_dist < row_wise_quantiles.repeat(1, n_samples)
     row_wise_quantiles = torch.quantile(esf_dist, thresh, dim=1, keepdim=True)
+    esf_dist = esf_dist.fill_diagonal_(float('inf'))
     mask_selected_esf = esf_dist < row_wise_quantiles.repeat(1, n_samples)
     
     mask_selected = mask_selected_iou & mask_selected_esf
@@ -270,7 +202,7 @@ pickle.dump(mean_classwise_acc_threshwise, open(f'mean_classwise_acc_threshwise_
 print(f'Done dumping {sign}')
 
 ################## 3. Plot ############### 
-signs = ['esfANDiou-cosine', 'esf-20-cosine', 'iou_z']
+signs = ['esfANDiou-cosine', f'esf-{shape_desc_min_pts}-cosine', 'iou_z']
 
 plt.figure()
 for sign in signs:
