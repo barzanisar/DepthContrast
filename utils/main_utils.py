@@ -373,7 +373,7 @@ def build_optimizer(params, cfg, total_iters_each_epoch=None, logger=None):
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=cfg['lr']['milestones'], gamma=cfg['lr']['gamma'])
     elif cfg['lr']['name'] == 'cosine':
         ### By default we use a cosine param scheduler
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg['num_epochs'], eta_min=cfg['lr']['base_lr']/1000)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=total_iters_each_epoch*cfg['num_epochs'], eta_min=cfg['lr']['base_lr']/1000)
     else:
         def linear_warmup_with_cosdecay(cur_step, total_steps, warmup_steps=0, min_scale=1e-5):
             if cur_step < warmup_steps:

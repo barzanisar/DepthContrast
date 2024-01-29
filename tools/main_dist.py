@@ -145,6 +145,7 @@ def main_worker(args, cfg):
     optimizer, scheduler = main_utils.build_optimizer(
         params=list(model.parameters())+list(train_criterion.parameters()),
         cfg=cfg['optimizer'],
+        total_iters_each_epoch=len(train_loader),
         logger=logger)
     ckp_manager = main_utils.CheckpointManager(model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
     
@@ -153,7 +154,7 @@ def main_worker(args, cfg):
     if cfg['resume']:
         if ckp_manager.checkpoint_exists(last=True):
             start_epoch = ckp_manager.restore(restore_last=True, model=model, optimizer=optimizer, train_criterion=train_criterion)
-            scheduler.step(start_epoch)
+            scheduler.step(start_epoch*len(train_loader))
             logger.add_line("Checkpoint loaded: '{}' (epoch {})".format(ckp_manager.last_checkpoint_fn(), start_epoch))
         else:
             logger.add_line("No checkpoint found at '{}'".format(ckp_manager.last_checkpoint_fn()))
@@ -177,7 +178,7 @@ def main_worker(args, cfg):
         logger.add_line('LR: {}'.format(scheduler.get_last_lr()))
 
         run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_last_lr()[0])
-        scheduler.step(epoch)
+        scheduler.step(epoch*len(train_loader))
 
         if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
             #resume training from this checkpoint bcz we are saving optimizer and train criterion
