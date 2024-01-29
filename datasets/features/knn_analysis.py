@@ -7,9 +7,9 @@ from datasets.features import global_descriptors
 from torch import nn
 
 
-quantile_thresh = np.array([0.01, 0.03, 0.05, 0.1])/100 #0.2, 0.3, 0.4, 0.5, 1,2,3,4,5
+quantile_thresh = np.array([0.01, 0.03, 0.05, 0.1, 1, 5])/100 #0.2, 0.3, 0.4, 0.5, 1,2,3,4,5
 shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
-desc_types = ['iou', 'vfh', 'esf'] #iou_z'
+desc_types = ['iou', 'esf'] #iou_z'
 shape_dist_methods = ['cosine']
 num_samples = 15000
 
@@ -285,42 +285,29 @@ def load_desc_class_ids(sign, mask=None):
 # extract_descs()
 
 ################## 2. Analyse KNN ############### 
-# for desc_type in desc_types:
-#     sign = desc_type
-#     desc_mat, class_ids, _ = load_desc_class_ids(sign)
+for desc_type in desc_types:
+    sign = desc_type
+    desc_mat, class_ids, _ = load_desc_class_ids(sign)
 
-#     if desc_type in ['iou']:
-#         sign = desc_type
-#         print(f'Computing dist {sign}')
-#         iou3d = compute_iou_mat(desc_mat, iou_z=True)
-#         dist = 1-iou3d
-#         print(f'Analysing knn {sign}')
-#         analyse_knn(dist, class_ids, sign)
-#     elif desc_type in ['vfh', 'esf', 'gasd']:
-#         for dist_type in shape_dist_methods:
-#             sign = f'{desc_type}-{dist_type}'
-#             print(f'Computing dist {sign}')
-#             dist = compute_shape_desc_dist_mat(desc_mat, method=dist_type)
-#             print(f'Analysing knn {sign}')
-#             analyse_knn(dist, class_ids, sign)
+    if desc_type in ['iou']:
+        sign = desc_type
+        print(f'Computing dist {sign}')
+        iou3d = compute_iou_mat(desc_mat, iou_z=True)
+        dist = 1-iou3d
+        print(f'Analysing knn {sign}')
+        analyse_knn(dist, class_ids, sign)
+    elif desc_type in ['vfh', 'esf', 'gasd']:
+        for dist_type in shape_dist_methods:
+            sign = f'{desc_type}-{dist_type}'
+            print(f'Computing dist {sign}')
+            dist = compute_shape_desc_dist_mat(desc_mat, method=dist_type)
+            print(f'Analysing knn {sign}')
+            analyse_knn(dist, class_ids, sign)
 
 
 ################## 3. Plot ############### 
 def plotting(sign, class_ids):
-    # acc_samplewise_threshwise = pickle.load(open(f'acc_samplewise_threshwise_{sign}.pkl', 'rb'))
-    # mean_samplewise_acc_threshwise = pickle.load(open(f'mean_samplewise_acc_threshwise_{sign}.pkl', 'rb'))
     mean_classwise_acc_threshwise = pickle.load(open(f'mean_classwise_acc_threshwise_{sign}.pkl', 'rb'))
-
-    # plt.figure()
-    # plt.plot(quantile_thresh, mean_samplewise_acc_threshwise)
-    # plt.ylabel('Average Precision for nearest neighbors')
-    # plt.xlabel('Quantiles')
-    # plt.title(f'Average Precision of {sign}-based QNN')
-
-    # plt.grid()
-    # plt.savefig(f'avg_prec_{sign}_knn.png')
-    # # plt.show()
-
     NUM_COLORS = 22
     cm = plt.get_cmap('gist_rainbow')
     fig = plt.figure(figsize=(20,8))
@@ -367,23 +354,23 @@ for desc_type in desc_types:
             signs += [sign]
             plotting(sign, class_ids)
     
-# plt.figure()
-# for sign in signs:
-#     mean_samplewise_acc_threshwise = pickle.load(open(f'mean_samplewise_acc_threshwise_{sign}.pkl', 'rb'))
-#     #plt.plot(quantile_thresh*100, mean_samplewise_acc_threshwise, label=f'{sign}')
-#     plt.plot(np.round(quantile_thresh*num_samples), mean_samplewise_acc_threshwise, label=f'{sign}')
-#     print(f'{sign}: {mean_samplewise_acc_threshwise}')
+plt.figure()
+for sign in signs:
+    mean_samplewise_acc_threshwise = pickle.load(open(f'mean_samplewise_acc_threshwise_{sign}.pkl', 'rb'))
+    #plt.plot(quantile_thresh*100, mean_samplewise_acc_threshwise, label=f'{sign}')
+    plt.plot(np.round(quantile_thresh*num_samples), mean_samplewise_acc_threshwise, label=f'{sign}')
+    print(f'{sign}: {mean_samplewise_acc_threshwise}')
 
-# plt.ylabel('Average Precision for K Nearest Neighbors')
-# # plt.xlabel('Quantiles %')
-# plt.xlabel('K')
-# plt.title(f'Average Precision KNN')
+plt.ylabel('Average Precision for K Nearest Neighbors')
+# plt.xlabel('Quantiles %')
+plt.xlabel('K')
+plt.title(f'Average Precision KNN')
 
-# plt.grid()
-# plt.legend()
-# plt.savefig(f'avg_prec_all_methods_knn.png')
-# plt.show()
-b=1
+plt.grid()
+plt.legend()
+plt.savefig(f'avg_prec_all_methods_knn.png')
+plt.show()
+#b=1
 
 # plt.figure()
 # for sign in signs:

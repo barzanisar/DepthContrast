@@ -7,10 +7,8 @@ from datasets.features import global_descriptors
 from torch import nn
 
 
-quantile_thresh = np.array([0.01, 0.03, 0.05, 0.1])/100 #0.2, 0.3, 0.4, 0.5, 1,2,3,4,5
+quantile_thresh = np.array([0.5, 1, 5])/100 #np.array([0.01, 0.03, 0.05, 0.1, 0.5, 1, 2, 3, 4, 5])/100 
 shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
-desc_types = ['iou_z', 'esf']
-dist_type = 'cosine'
 num_samples = 15000
 shape_desc_min_pts = 20
 
@@ -19,6 +17,7 @@ split_txt_file = '/home/barza/DepthContrast/data/waymo/ImageSets/train_ten.txt'
 lidar_data_path = Path('/home/barza/DepthContrast/data/waymo/waymo_processed_data_v_1_2_0')
 cluster_root_path = Path('/home/barza/DepthContrast/data/waymo/waymo_processed_data_v_1_2_0_clustered')
 seglabels_root_path = Path('/home/barza/DepthContrast/data/waymo/waymo_processed_data_v_1_2_0_labels')
+results_save_path = Path('/home/barza/DepthContrast/knn_analysis')
 
 WAYMO_LABELS = ['UNDEFINED', 'CAR', 'TRUCK', 'BUS', 'OTHER_VEHICLE', 'MOTORCYCLIST', 'BICYCLIST', 'PEDESTRIAN', 'SIGN',
                   'TRAFFIC_LIGHT', 'POLE', 'CONSTRUCTION_CONE', 'BICYCLE', 'MOTORCYCLE', 'BUILDING', 'VEGETATION',
@@ -136,8 +135,8 @@ def compute_shape_desc_dist_mat(desc_mat, method='cosine'):
 
 
 def load_desc_class_ids(sign, mask=None):
-    desc_mat = pickle.load(open(f'desc_mat_{sign}.pkl', 'rb'))
-    class_ids = pickle.load(open(f'class_ids_{sign}.pkl', 'rb'))
+    desc_mat = pickle.load(open(results_save_path / f'desc_mat_{sign}.pkl', 'rb'))
+    class_ids = pickle.load(open(results_save_path / f'class_ids_{sign}.pkl', 'rb'))
     # #remove class ids 0
     if mask is None:
         mask = (class_ids > 0) & (~np.isnan(desc_mat.sum(axis=1)))
@@ -156,15 +155,21 @@ def load_desc_class_ids(sign, mask=None):
 
 desc_esf, class_ids_esf, mask = load_desc_class_ids(f'esf')
 desc_iou, class_ids_iou, _ = load_desc_class_ids('iou', mask)
-sign='esfANDiou-cosine'
+sign=f'esf_{shape_desc_min_pts}_ANDiou-cosine'
 assert torch.equal(class_ids_esf, class_ids_iou)
 assert desc_esf.shape[0] == desc_iou.shape[0]
-
-
 class_ids = class_ids_esf
-iou3d = compute_iou_mat(desc_iou, iou_z=True)
+
+num_obj_pts = pickle.load(open(results_save_path / f'num_obj_pts.pkl', 'rb'))
+num_obj_pts = num_obj_pts[mask][:num_samples]
+mask = num_obj_pts>shape_desc_min_pts
+desc_mat_esf_min_pts = desc_esf[mask]
+desc_mat_iou_min_pts = desc_iou[mask]
+class_ids = class_ids[mask]
+
+iou3d = compute_iou_mat(desc_mat_iou_min_pts, iou_z=True)
 iou_dist = 1-iou3d
-esf_dist = compute_shape_desc_dist_mat(desc_esf, method='cosine')
+esf_dist = compute_shape_desc_dist_mat(desc_mat_esf_min_pts, method='cosine')
 
 n_samples = esf_dist.shape[0]
 acc_samplewise_threshwise = np.zeros((n_samples, len(quantile_thresh))) # rows are samples, cols are thresholds 
@@ -196,17 +201,17 @@ for i, thresh in enumerate(quantile_thresh):
         mean_classwise_acc_threshwise[int(cid), i] = class_mean_acc
 
 print(f'Done Processing')
-pickle.dump(acc_samplewise_threshwise, open(f'acc_samplewise_threshwise_{sign}.pkl', 'wb'))
-pickle.dump(mean_samplewise_acc_threshwise, open(f'mean_samplewise_acc_threshwise_{sign}.pkl', 'wb'))
-pickle.dump(mean_classwise_acc_threshwise, open(f'mean_classwise_acc_threshwise_{sign}.pkl', 'wb'))
+pickle.dump(acc_samplewise_threshwise, open(results_save_path / 'pickles' / f'acc_samplewise_threshwise_{sign}.pkl', 'wb'))
+pickle.dump(mean_samplewise_acc_threshwise, open(results_save_path / 'pickles' / f'mean_samplewise_acc_threshwise_{sign}.pkl', 'wb'))
+pickle.dump(mean_classwise_acc_threshwise, open(results_save_path / 'pickles' / f'mean_classwise_acc_threshwise_{sign}.pkl', 'wb'))
 print(f'Done dumping {sign}')
 
 ################## 3. Plot ############### 
-signs = ['esfANDiou-cosine', f'esf-{shape_desc_min_pts}-cosine', 'iou_z']
+signs = [sign] # , 'iou', 'esf'
 
 plt.figure()
 for sign in signs:
-    mean_samplewise_acc_threshwise = pickle.load(open(f'mean_samplewise_acc_threshwise_{sign}.pkl', 'rb'))
+    mean_samplewise_acc_threshwise = pickle.load(open(results_save_path / 'pickles' / f'mean_samplewise_acc_threshwise_{sign}.pkl', 'rb'))
     #plt.plot(quantile_thresh*100, mean_samplewise_acc_threshwise, label=f'{sign}')
     plt.plot(np.round(quantile_thresh*num_samples), mean_samplewise_acc_threshwise, label=f'{sign}')
     print(f'{sign}: {mean_samplewise_acc_threshwise}')
@@ -218,7 +223,43 @@ plt.title(f'Average Precision KNN')
 
 plt.grid()
 plt.legend()
-plt.savefig(f'avg_prec_esfANDiou_esf_iou_knn.png')
+plt.savefig(results_save_path / 'plots' / f'avg_prec_{sign}_knn.png')
 plt.show()
 
-b=1
+# def plotting(sign, class_ids):
+#     mean_classwise_acc_threshwise = pickle.load(open(f'mean_classwise_acc_threshwise_{sign}.pkl', 'rb'))
+#     NUM_COLORS = 22
+#     cm = plt.get_cmap('gist_rainbow')
+#     fig = plt.figure(figsize=(20,8))
+#     ax = fig.add_subplot(111)
+#     ax.set_prop_cycle(color=[cm(1.*i/NUM_COLORS) for i in range(NUM_COLORS)])
+#     LINE_STYLES = ['solid', 'dashed', 'dashdot', 'dotted']
+#     NUM_STYLES = len(LINE_STYLES)
+#     print(f'Plotting classwise precision for {sign}')
+
+#     for i, cid in enumerate(np.unique(class_ids)):  
+#         r = np.round(np.random.rand(),1)
+#         g = np.round(np.random.rand(),1)
+#         b = np.round(np.random.rand(),1)
+#         #lines = ax.plot(quantile_thresh*100, mean_classwise_acc_threshwise[int(cid), :], label=WAYMO_LABELS[int(cid)])
+#         lines = ax.plot(np.round(quantile_thresh*num_samples), mean_classwise_acc_threshwise[int(cid), :], label=WAYMO_LABELS[int(cid)])
+        
+#         lines[0].set_color(cm(i//NUM_STYLES*float(NUM_STYLES)/NUM_COLORS))
+#         lines[0].set_linestyle(LINE_STYLES[i%NUM_STYLES])
+#         print(f'{WAYMO_LABELS[int(cid)]}: {mean_classwise_acc_threshwise[int(cid), :]}')
+#         # plt.plot(quantile_thresh, mean_classwise_acc_threshwise[int(cid), :], label=WAYMO_LABELS[int(cid)], color=[r,g,b]) 
+#     plt.ylabel('Precision for K Nearest Neighbors')
+#     plt.xlabel('K')
+#     # plt.xlabel('Quantiles %')
+
+#     plt.title(f'Classwise Average Precision of {sign}-based KNN')
+#     plt.legend()
+#     plt.grid()
+
+#     plt.savefig(results_save_path / 'plots' /f'classwise_avg_prec_{sign}_knn.png')
+#     plt.show()
+#     print(f'Done plotting {sign}')
+
+# plotting(sign, class_ids)
+
+

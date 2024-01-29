@@ -49,7 +49,7 @@ class DataAugmentor(object):
 
             new_pointidx = (upper_idx) & (lower_idx)
         
-            if (loop_count > 100) or (np.sum(new_pointidx) > float(config['npoints'])):
+            if (loop_count > 100) or (np.sum(new_pointidx) > 20000):
                 break
         
         data_dict["points"] = points[new_pointidx,:]

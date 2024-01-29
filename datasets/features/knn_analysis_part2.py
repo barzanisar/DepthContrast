@@ -7,7 +7,7 @@ from datasets.features import global_descriptors
 from torch import nn
 
 
-quantile_thresh = np.array([0.01, 0.03, 0.05, 0.1])/100 #0.2, 0.3, 0.4, 0.5, 1,2,3,4,5
+quantile_thresh = np.array([0.01, 0.03, 0.05, 0.1, 1, 5])/100 #0.2, 0.3, 0.4, 0.5, 1,2,3,4,5
 shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
 desc_types = ['esf']
 shape_dist_methods = ['cosine']

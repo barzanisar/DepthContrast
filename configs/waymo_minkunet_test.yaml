@@ -30,6 +30,7 @@ dataset:
   CLASS_NAMES: ['Object']
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
+    - NAME: random_cuboid_lidar
     - NAME: random_world_flip
       ALONG_AXIS_LIST: ['x', 'y']
     - NAME: random_world_rotation
@@ -48,16 +49,16 @@ dataset:
     #   npoints: 10000
     # - NAME: random_drop
 
-  LIDAR_AUG:
-    n_crops: 3
-    lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
-    prob: [0.3, 0.3, 0.4]
+  # LIDAR_AUG:
+  #   n_crops: 3
+  #   lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
+  #   prob: [0.3, 0.3, 0.4]
     
   SAMPLE_NUM_POINTS: 20000
   INPUT: sparse_tensor
   RESOLUTION: 0.05
   # USE_GT_PRIOR: True
-  EXTRACT_SHAPE_DESCRIPTORS: vfh
+  EXTRACT_SHAPE_DESCRIPTORS: esf
 
   COLLATE_FUNCTION: "sparse_moco_collator"
   DROP_LAST: True
@@ -95,8 +96,8 @@ NCE_LOSS:
   NUM_NEGATIVES: 1000 #65536
   EMBEDDING_DIM: 128
   # # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
-  # IOU_WEIGHT: 1.0
-  # # IOU_QUANTILE_THRESHOLD: 0.3
+  IOU_WEIGHT: 1.0
+  IOU_QUANTILE_THRESHOLD: 0.23
   # SHAPE_WEIGHT: 1.0
   # # SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
-  SHAPE_DIST_QUANTILE_THRESHOLD: 0.01
+  SHAPE_DIST_QUANTILE_THRESHOLD: 0.23

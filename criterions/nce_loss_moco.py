@@ -289,9 +289,20 @@ class NCELossMoco(nn.Module):
             elif self.iou_weight is not None:
                 neg_w = self.iou_weight * iou_dist
 
+            if self.shape_dist_quantile_threshold is not None and  self.iou_quantile_threshold is not None:
+                row_wise_quantiles = torch.quantile(shape_dist_mat, self.shape_dist_quantile_threshold/100, dim=1, keepdim=True)
+                mask_selected_esf = shape_dist_mat < row_wise_quantiles
+                row_wise_quantiles = torch.quantile(iou_dist, self.iou_quantile_threshold/100, dim=1, keepdim=True)
+                mask_selected_iou = iou_dist < row_wise_quantiles
+                mask_selected = mask_selected_iou & mask_selected_esf
+                if self.shape_weight is not None or self.iou_weight is not None:
+                    # Weight on KNN
+                    neg_w[torch.logical_not(mask_selected)] = 1
+                else:
+                    l_neg=l_neg.masked_fill(mask_selected, -1e9)
             # if self.shape_dist_threshold is not None:
             #     l_neg=l_neg.masked_fill(shape_dist_mat<self.shape_dist_threshold, -1e9)
-            if self.shape_dist_quantile_threshold is not None:
+            elif self.shape_dist_quantile_threshold is not None:
                 row_wise_quantiles = torch.quantile(shape_dist_mat, self.shape_dist_quantile_threshold/100, dim=1, keepdim=True)
                 if self.shape_weight is not None or self.iou_weight is not None:
                     # Weight on KNN
@@ -303,7 +314,7 @@ class NCELossMoco(nn.Module):
 
             # if self.iou_dist_threshold is not None:
             #     l_neg=l_neg.masked_fill(iou_dist<self.iou_dist_threshold, -1e9)
-            if self.iou_quantile_threshold is not None:
+            elif self.iou_quantile_threshold is not None:
                 row_wise_quantiles = torch.quantile(iou_dist, self.iou_quantile_threshold/100, dim=1, keepdim=True)
                 if self.shape_weight is not None or self.iou_weight is not None:
                     # Weight on KNN
