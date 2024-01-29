@@ -48,6 +48,7 @@ dataset:
   SAMPLE_NUM_POINTS: 20000
   INPUT: sparse_tensor
   RESOLUTION: 0.05
+  EXTRACT_SHAPE_DESCRIPTORS: esf
 
   COLLATE_FUNCTION: "sparse_moco_collator"
   DROP_LAST: True
