@@ -12,7 +12,7 @@ shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
 desc_types = ['iou', 'esf']
 num_samples = 15000
 random_seed = 80
-shape_desc_min_pts = [20, 50, 100]
+shape_desc_min_pts = [50] # 
 
 
 
@@ -162,22 +162,6 @@ def analyse_knns(dists_list, class_ids, sign):
             dists_list[1] = dists_list[1].fill_diagonal_(float('inf'))
             mask_selected_1 = dists_list[1] < row_wise_quantiles.repeat(1, n_samples)
             mask_selected = mask_selected_0 & mask_selected_1
-        #mask_selected_sum = mask_selected.sum(axis=1)
-    
-
-        # masks_selected_list = []
-
-        # for dist in dists_list:
-        #     row_wise_quantiles = torch.quantile(dist, thresh, dim=1, keepdim=True)
-        #     dist = dist.fill_diagonal_(float('inf'))
-        #     mask_selected = dist < row_wise_quantiles.repeat(1, n_samples)
-        #     masks_selected_list.append(mask_selected)
-        
-        # mask_selected = masks_selected_list[0]
-        # for i in range(1, len(masks_selected_list)):
-        #     mask_selected = mask_selected & masks_selected_list[i]
-        
-        # mask_selected_sum = mask_selected.sum(axis=1)
         
         mask_gt = class_ids.view(-1, 1) == class_ids.view(1, -1)
         mask_selected_hit = mask_gt & mask_selected
@@ -200,40 +184,45 @@ def analyse_knns(dists_list, class_ids, sign):
 ################## 1. Extract Descs ###############  
 
 
-desc_esf, class_ids_esf, notzeroclass_notnanshape_mask = load_desc_class_ids(f'esf')
-desc_iou, class_ids_iou, _ = load_desc_class_ids('iou', notzeroclass_notnanshape_mask)
-assert torch.equal(class_ids_esf, class_ids_iou)
-assert desc_esf.shape[0] == desc_iou.shape[0]
-class_ids = class_ids_esf
+# desc_esf, class_ids_esf, notzeroclass_notnanshape_mask = load_desc_class_ids(f'esf')
+# desc_iou, class_ids_iou, _ = load_desc_class_ids('iou', notzeroclass_notnanshape_mask)
+# assert torch.equal(class_ids_esf, class_ids_iou)
+# assert desc_esf.shape[0] == desc_iou.shape[0]
+# class_ids = class_ids_esf
 
-num_obj_pts = pickle.load(open(results_save_path / f'num_obj_pts.pkl', 'rb'))
-num_obj_pts = num_obj_pts[notzeroclass_notnanshape_mask]
+# num_obj_pts = pickle.load(open(results_save_path / f'num_obj_pts.pkl', 'rb'))
+# num_obj_pts = num_obj_pts[notzeroclass_notnanshape_mask]
 
-# Randomly select 15k pts
-indices = np.random.choice(desc_esf.shape[0], size=num_samples, replace=False)
-desc_esf = desc_esf[indices]
-desc_iou = desc_iou[indices]
-class_ids = class_ids[indices]
-num_obj_pts = num_obj_pts[indices]
-# desc_esf = desc_esf[:num_samples]
-# desc_iou = desc_iou[:num_samples]
-# class_ids = class_ids[:num_samples]
-# num_obj_pts = num_obj_pts[:num_samples]
+# # Randomly select 15k pts
+# indices = np.random.choice(desc_esf.shape[0], size=num_samples, replace=False)
+# desc_esf = desc_esf[indices]
+# desc_iou = desc_iou[indices]
+# class_ids = class_ids[indices]
+# num_obj_pts = num_obj_pts[indices]
+# # desc_esf = desc_esf[:num_samples]
+# # desc_iou = desc_iou[:num_samples]
+# # class_ids = class_ids[:num_samples]
+# # num_obj_pts = num_obj_pts[:num_samples]
 
-for min_pts in shape_desc_min_pts:
-    #Select clusters with min pts
-    min_pts_mask = num_obj_pts>min_pts
-    desc_mat_esf_min_pts = desc_esf[min_pts_mask]
-    desc_mat_iou_min_pts = desc_iou[min_pts_mask]
-    class_ids_min_pts = class_ids[min_pts_mask]
+# for min_pts in shape_desc_min_pts:
+#     #Select clusters with min pts
+#     min_pts_mask = num_obj_pts>min_pts
+#     desc_mat_esf_min_pts = desc_esf[min_pts_mask]
+#     desc_mat_iou_min_pts = desc_iou[min_pts_mask]
+#     class_ids_min_pts = class_ids[min_pts_mask]
     
-    iou3d = compute_iou_mat(desc_mat_iou_min_pts, iou_z=True)
-    iou_dist = 1-iou3d
-    esf_dist = compute_shape_desc_dist_mat(desc_mat_esf_min_pts, method='cosine')
+#     iou3d = compute_iou_mat(desc_mat_iou_min_pts, iou_z=True)
+#     iou_dist = 1-iou3d
+#     esf_dist = compute_shape_desc_dist_mat(desc_mat_esf_min_pts, method='cosine')
 
-    analyse_knns([iou_dist, esf_dist], class_ids_min_pts, f'esf_AND_iou-p{min_pts}-s{random_seed}')
-    analyse_knns([iou_dist], class_ids_min_pts, f'iou-p{min_pts}-s{random_seed}')
-    analyse_knns([esf_dist], class_ids_min_pts, f'esf-p{min_pts}-s{random_seed}')
+#     for w in np.linspace(0,1,11):
+#         w=round(w, 1)
+#         iou_esf_dist = w*iou_dist+ (1-w)*esf_dist
+#         iou_w = str(w).replace('.', 'p')
+#         esf_w = str(1-w).replace('.', 'p')
+#         analyse_knns([iou_esf_dist], class_ids_min_pts, f'esf_{esf_w}_AND_iou_{iou_w}')
+#     # analyse_knns([iou_dist], class_ids_min_pts, f'iou-p{min_pts}-s{random_seed}')
+#     # analyse_knns([esf_dist], class_ids_min_pts, f'esf-p{min_pts}-s{random_seed}')
 
 
 ################## 3. Plot ############### 
@@ -243,24 +232,19 @@ styles = []
 styles_dict = {20: '-.', 50: '--', 100: '-'}
 for min_pts in shape_desc_min_pts:
     # signs += [f'esf_AND_iou-p{min_pts}-s{random_seed}']
-    signs += [f'iou-p{min_pts}-s{random_seed}', 
-              f'esf-p{min_pts}-s{random_seed}',
-              f'esf_AND_iou-p{min_pts}-s{random_seed}']
-    colors += ['r', 'g', 'b']
-    styles += [styles_dict[min_pts], styles_dict[min_pts], styles_dict[min_pts]]
+    for w in [0.0, 0.4, 0.5, 0.6, 0.7, 1.0]:
+        w=round(w, 1)
+        iou_w = str(w).replace('.', 'p')
+        esf_w = str(1-w).replace('.', 'p')
+        signs += [f'esf_{esf_w}_AND_iou_{iou_w}']
+        styles += [styles_dict[min_pts]]
 
 plt.figure()
-plt.plot([0,0], [0,0], color='r',label='IoU')
-plt.plot([0,0], [0,0], color='g',label='ESF')
-plt.plot([0,0], [0,0], color='b',label='IoU and ESF')
-plt.plot([0,0], [0,0], color='gray', linestyle= '-.', label='min cluster points: 20')
-plt.plot([0,0], [0,0], color='gray', linestyle= '--',label='min cluster points: 50')
-plt.plot([0,0], [0,0], color='gray', linestyle= '-',label='min cluster points: 100')
-for sign, color, style in zip(signs, colors, styles):
+for sign in signs:
     mean_samplewise_acc_threshwise = pickle.load(open(results_save_path / 'pickles' /f'mean_samplewise_acc_threshwise_{sign}.pkl', 'rb'))
     
-    plt.plot(np.round(quantile_thresh*num_samples), mean_samplewise_acc_threshwise, color=color, linestyle=style)
-    print(f'{sign}: {mean_samplewise_acc_threshwise}')
+    plt.plot(np.round(quantile_thresh*num_samples), mean_samplewise_acc_threshwise, label=sign)
+    print(f'{sign}: {mean_samplewise_acc_threshwise}, {np.mean(mean_samplewise_acc_threshwise)} ')
 
 plt.ylabel('Average Precision')
 # plt.xlabel('Quantiles %')
@@ -269,50 +253,50 @@ plt.title(f'Average Precision for K-Nearest Neighbors')
 
 plt.grid()
 plt.legend()
-save_path = results_save_path / 'plots' / f'avg_prec_all_knn.pdf'
+save_path = results_save_path / 'plots' / f'avg_prec_some_knn.png'
 plt.savefig(save_path)
 plt.show()
 
-def plotting(sign):
-    mean_classwise_acc_threshwise = pickle.load(open(results_save_path / 'pickles' / f'mean_classwise_acc_threshwise_{sign}.pkl', 'rb'))
-    NUM_COLORS = 22
-    cm = plt.get_cmap('gist_rainbow')
-    fig = plt.figure(figsize=(10,8))
-    ax = fig.add_subplot(111)
-    ax.set_prop_cycle(color=[cm(1.*i/NUM_COLORS) for i in range(NUM_COLORS)])
-    LINE_STYLES = ['solid', 'dashed', 'dashdot', 'dotted']
-    NUM_STYLES = len(LINE_STYLES)
-    print(f'Plotting classwise precision for {sign}')
+# def plotting(sign):
+#     mean_classwise_acc_threshwise = pickle.load(open(results_save_path / 'pickles' / f'mean_classwise_acc_threshwise_{sign}.pkl', 'rb'))
+#     NUM_COLORS = 22
+#     cm = plt.get_cmap('gist_rainbow')
+#     fig = plt.figure(figsize=(10,8))
+#     ax = fig.add_subplot(111)
+#     ax.set_prop_cycle(color=[cm(1.*i/NUM_COLORS) for i in range(NUM_COLORS)])
+#     LINE_STYLES = ['solid', 'dashed', 'dashdot', 'dotted']
+#     NUM_STYLES = len(LINE_STYLES)
+#     print(f'Plotting classwise precision for {sign}')
 
-    for cid, class_name in enumerate(WAYMO_LABELS):
-        if cid == 0:
-            continue
-        #lines = ax.plot(quantile_thresh*100, mean_classwise_acc_threshwise[cid, :], label=class_name)
-        lines = ax.plot(np.round(quantile_thresh*num_samples), mean_classwise_acc_threshwise[cid, :], label=class_name)
+#     for cid, class_name in enumerate(WAYMO_LABELS):
+#         if cid == 0:
+#             continue
+#         #lines = ax.plot(quantile_thresh*100, mean_classwise_acc_threshwise[cid, :], label=class_name)
+#         lines = ax.plot(np.round(quantile_thresh*num_samples), mean_classwise_acc_threshwise[cid, :], label=class_name)
         
-        lines[0].set_color(cm(cid//NUM_STYLES*float(NUM_STYLES)/NUM_COLORS))
-        lines[0].set_linestyle(LINE_STYLES[cid%NUM_STYLES])
-        print(f'{class_name}: {mean_classwise_acc_threshwise[cid, :]}')
-    plt.ylabel('Average Precision', fontsize=14)
-    plt.xlabel('K', fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    # plt.xlabel('Quantiles %')
-    if 'esf_AND_iou' in sign:
-        title = 'IoU and ESF'
-    elif 'iou' in sign:
-        title = 'IoU'
-    else:
-        title = 'ESF'
-    plt.title(f'Classwise Average Precision for {title}-based KNN', fontsize=14)
-    plt.legend()
-    plt.grid()
+#         lines[0].set_color(cm(cid//NUM_STYLES*float(NUM_STYLES)/NUM_COLORS))
+#         lines[0].set_linestyle(LINE_STYLES[cid%NUM_STYLES])
+#         print(f'{class_name}: {mean_classwise_acc_threshwise[cid, :]}')
+#     plt.ylabel('Average Precision', fontsize=14)
+#     plt.xlabel('K', fontsize=14)
+#     plt.xticks(fontsize=12)
+#     plt.yticks(fontsize=12)
+#     # plt.xlabel('Quantiles %')
+#     if 'esf_AND_iou' in sign:
+#         title = 'IoU and ESF'
+#     elif 'iou' in sign:
+#         title = 'IoU'
+#     else:
+#         title = 'ESF'
+#     plt.title(f'Classwise Average Precision for {title}-based KNN', fontsize=14)
+#     plt.legend()
+#     plt.grid()
 
-    plt.savefig(results_save_path / 'plots' / f'classwise_avg_prec_{sign}_knn.pdf')
-    plt.show()
-    print(f'Done plotting {sign}')
+#     plt.savefig(results_save_path / 'plots' / f'classwise_avg_prec_{sign}_knn.png')
+#     plt.show()
+#     print(f'Done plotting {sign}')
 
-for sign in signs:
-    plotting(sign)
+# for sign in signs:
+#     plotting(sign)
 
 

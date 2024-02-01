@@ -12,7 +12,7 @@ shape_dim_dict = {'esf':640, 'vfh': 308, 'gasd': 512}
 desc_types = ['iou', 'esf']
 num_samples = 15000
 random_seed = 80
-shape_desc_min_pts = [20, 50, 100]
+shape_desc_min_pts = [50] # 
 
 
 
@@ -162,22 +162,6 @@ def analyse_knns(dists_list, class_ids, sign):
             dists_list[1] = dists_list[1].fill_diagonal_(float('inf'))
             mask_selected_1 = dists_list[1] < row_wise_quantiles.repeat(1, n_samples)
             mask_selected = mask_selected_0 & mask_selected_1
-        #mask_selected_sum = mask_selected.sum(axis=1)
-    
-
-        # masks_selected_list = []
-
-        # for dist in dists_list:
-        #     row_wise_quantiles = torch.quantile(dist, thresh, dim=1, keepdim=True)
-        #     dist = dist.fill_diagonal_(float('inf'))
-        #     mask_selected = dist < row_wise_quantiles.repeat(1, n_samples)
-        #     masks_selected_list.append(mask_selected)
-        
-        # mask_selected = masks_selected_list[0]
-        # for i in range(1, len(masks_selected_list)):
-        #     mask_selected = mask_selected & masks_selected_list[i]
-        
-        # mask_selected_sum = mask_selected.sum(axis=1)
         
         mask_gt = class_ids.view(-1, 1) == class_ids.view(1, -1)
         mask_selected_hit = mask_gt & mask_selected
@@ -196,6 +180,19 @@ def analyse_knns(dists_list, class_ids, sign):
     pickle.dump(mean_classwise_acc_threshwise, open(results_save_path / 'pickles' / f'mean_classwise_acc_threshwise_{sign}.pkl', 'wb'))
     print(f'Done dumping {sign}')
 
+
+def image_histogram_equalization(flattened_image, number_bins=50):
+    # from http://www.janeriksolem.net/histogram-equalization-with-python-and.html
+
+    # get image histogram
+    image_histogram, bins = np.histogram(flattened_image, number_bins, density=True)
+    cdf = image_histogram.cumsum() # cumulative distribution function
+    cdf = (number_bins-1) * cdf / cdf[-1] # normalize
+
+    # use linear interpolation of cdf to find new pixel values
+    image_equalized = np.interp(flattened_image, bins[:-1], cdf)
+
+    return image_equalized, cdf
 
 ################## 1. Extract Descs ###############  
 
@@ -231,88 +228,33 @@ for min_pts in shape_desc_min_pts:
     iou_dist = 1-iou3d
     esf_dist = compute_shape_desc_dist_mat(desc_mat_esf_min_pts, method='cosine')
 
-    analyse_knns([iou_dist, esf_dist], class_ids_min_pts, f'esf_AND_iou-p{min_pts}-s{random_seed}')
-    analyse_knns([iou_dist], class_ids_min_pts, f'iou-p{min_pts}-s{random_seed}')
-    analyse_knns([esf_dist], class_ids_min_pts, f'esf-p{min_pts}-s{random_seed}')
+    mask_gt = class_ids_min_pts.view(-1, 1) == class_ids_min_pts.view(1, -1)
+    # # mask_gt = mask_gt.fill_diagonal_(False)
+    # iou_dist_of_true_classes = iou_dist.flatten()[torch.logical_not(mask_gt.flatten())]
+    # esf_dist_of_true_classes = esf_dist.flatten()[torch.logical_not(mask_gt.flatten())]
+    mask_gt = mask_gt.fill_diagonal_(False)
+    iou_dist_of_true_classes = iou_dist.flatten()[mask_gt.flatten()]
+    esf_dist_of_true_classes = esf_dist.flatten()[mask_gt.flatten()]
+    iou_plus_esf_dist = 0.5*iou_dist_of_true_classes[indices] + 0.5*esf_dist_of_true_classes[indices]
+    iou_plus_esf_dist = (iou_plus_esf_dist - iou_plus_esf_dist.min()) / (iou_plus_esf_dist.max() - iou_plus_esf_dist.min())
+    fig, ax = plt.subplots(1,1)
+    # ax = ax.ravel()
+    indices = np.random.choice(esf_dist_of_true_classes.shape[0], size=100000, replace=False)
+    ax.hist(iou_plus_esf_dist, bins=50)
+    ax.set_title('0.4*IoU+0.6*ESF dist Histogram for true classes')
+    # ax[0].hist(iou_dist_of_true_classes[indices], bins=50)
+    # ax[0].set_title('IoU dist Histogram for true classes')
+    # ax[1].hist(esf_dist_of_true_classes[indices], bins=50)
+    # ax[1].set_title('ESF dist Histogram for true classes')
+    # ax[2].hist(image_histogram_equalization(iou_dist_of_true_classes[indices]), bins=50)
+    # ax[2].set_title('IoU dist Equalized Histogram for true classes')
+    # ax[3].hist(image_histogram_equalization(esf_dist_of_true_classes[indices]), bins=50)
+    # ax[3].set_title('ESF dist Equalized Histogram for true classes')
 
-
-################## 3. Plot ############### 
-signs = []
-colors = []
-styles = []
-styles_dict = {20: '-.', 50: '--', 100: '-'}
-for min_pts in shape_desc_min_pts:
-    # signs += [f'esf_AND_iou-p{min_pts}-s{random_seed}']
-    signs += [f'iou-p{min_pts}-s{random_seed}', 
-              f'esf-p{min_pts}-s{random_seed}',
-              f'esf_AND_iou-p{min_pts}-s{random_seed}']
-    colors += ['r', 'g', 'b']
-    styles += [styles_dict[min_pts], styles_dict[min_pts], styles_dict[min_pts]]
-
-plt.figure()
-plt.plot([0,0], [0,0], color='r',label='IoU')
-plt.plot([0,0], [0,0], color='g',label='ESF')
-plt.plot([0,0], [0,0], color='b',label='IoU and ESF')
-plt.plot([0,0], [0,0], color='gray', linestyle= '-.', label='min cluster points: 20')
-plt.plot([0,0], [0,0], color='gray', linestyle= '--',label='min cluster points: 50')
-plt.plot([0,0], [0,0], color='gray', linestyle= '-',label='min cluster points: 100')
-for sign, color, style in zip(signs, colors, styles):
-    mean_samplewise_acc_threshwise = pickle.load(open(results_save_path / 'pickles' /f'mean_samplewise_acc_threshwise_{sign}.pkl', 'rb'))
-    
-    plt.plot(np.round(quantile_thresh*num_samples), mean_samplewise_acc_threshwise, color=color, linestyle=style)
-    print(f'{sign}: {mean_samplewise_acc_threshwise}')
-
-plt.ylabel('Average Precision')
-# plt.xlabel('Quantiles %')
-plt.xlabel('K')
-plt.title(f'Average Precision for K-Nearest Neighbors')
-
-plt.grid()
-plt.legend()
-save_path = results_save_path / 'plots' / f'avg_prec_all_knn.pdf'
-plt.savefig(save_path)
-plt.show()
-
-def plotting(sign):
-    mean_classwise_acc_threshwise = pickle.load(open(results_save_path / 'pickles' / f'mean_classwise_acc_threshwise_{sign}.pkl', 'rb'))
-    NUM_COLORS = 22
-    cm = plt.get_cmap('gist_rainbow')
-    fig = plt.figure(figsize=(10,8))
-    ax = fig.add_subplot(111)
-    ax.set_prop_cycle(color=[cm(1.*i/NUM_COLORS) for i in range(NUM_COLORS)])
-    LINE_STYLES = ['solid', 'dashed', 'dashdot', 'dotted']
-    NUM_STYLES = len(LINE_STYLES)
-    print(f'Plotting classwise precision for {sign}')
-
-    for cid, class_name in enumerate(WAYMO_LABELS):
-        if cid == 0:
-            continue
-        #lines = ax.plot(quantile_thresh*100, mean_classwise_acc_threshwise[cid, :], label=class_name)
-        lines = ax.plot(np.round(quantile_thresh*num_samples), mean_classwise_acc_threshwise[cid, :], label=class_name)
-        
-        lines[0].set_color(cm(cid//NUM_STYLES*float(NUM_STYLES)/NUM_COLORS))
-        lines[0].set_linestyle(LINE_STYLES[cid%NUM_STYLES])
-        print(f'{class_name}: {mean_classwise_acc_threshwise[cid, :]}')
-    plt.ylabel('Average Precision', fontsize=14)
-    plt.xlabel('K', fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    # plt.xlabel('Quantiles %')
-    if 'esf_AND_iou' in sign:
-        title = 'IoU and ESF'
-    elif 'iou' in sign:
-        title = 'IoU'
-    else:
-        title = 'ESF'
-    plt.title(f'Classwise Average Precision for {title}-based KNN', fontsize=14)
-    plt.legend()
-    plt.grid()
-
-    plt.savefig(results_save_path / 'plots' / f'classwise_avg_prec_{sign}_knn.pdf')
+    save_path = results_save_path / 'plots' / f'iou_plus_esf_desc_distribution.png'
+    plt.tight_layout()
+    plt.savefig(save_path)
     plt.show()
-    print(f'Done plotting {sign}')
 
-for sign in signs:
-    plotting(sign)
 
 
