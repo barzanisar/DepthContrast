@@ -62,7 +62,7 @@ class WaymoDataset(DepthContrastDataset):
                 infos = pickle.load(f) # loads 20 infos for one seq pkl i.e. 20 frames if seq pkl was formed by sampling every 10th frame
                 # waymo_infos.extend(infos) # each info is one frame
             
-            if self.pretraining and self.use_gt_seg_labels:
+            if self.pretraining and (self.use_gt_seg_labels or self.use_gt_dataset):
                 with open(self.seglabels_root_path / seq_name /  ('%s.pkl' % seq_name), 'rb') as f:
                     seg_seq_infos = pickle.load(f) # loads 20 infos for one seq pkl i.e. 20 frames if seq pkl was formed by sampling every 10th frame
                 sample_idx_with_seg_labels = [info['point_cloud']['sample_idx'] for info in seg_seq_infos]

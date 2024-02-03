@@ -119,6 +119,7 @@ class DepthContrastDataset(Dataset):
         self.class_names = cfg["CLASS_NAMES"] #needed for detection head in OpenPCDet
         self.used_num_point_features  = 4
         self.use_gt_seg_labels = cfg.get('USE_GT_PRIOR', False)
+        self.use_gt_dataset = cfg.get('USE_GT_DATASET', False)
 
         if 'LIDAR_AUG' in cfg:
             self.lidar_aug = LiDAR_aug_manager(self.root_path, cfg['LIDAR_AUG'])
@@ -318,6 +319,8 @@ class DepthContrastDataset(Dataset):
             target_pc = ['points', 'points_moco'][choice]
             target_gt = ['gt_boxes', 'gt_boxes_moco'][choice]
             num_boxes=data_dict[target_gt].shape[0]
+            # visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1], img_name='points_before_aug')
+
             
             if method == 'single':
                 pts, boxes = self.lidar_aug.generate_frame_with_gt_boxes(data_dict[target_pc], data_dict[target_gt])
@@ -375,8 +378,8 @@ class DepthContrastDataset(Dataset):
             V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
 
         # max_label = max(data_dict['points'][:,-1].max(),  data_dict['points_moco'][:,-1].max())
-        # visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1], img_name='points')
-        # visualize_pcd_clusters(data_dict['points_moco'][:,:-1], data_dict['points_moco'][:,-1], img_name='points_moco')
+        # visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1], max_label=max_label, img_name='points_after_aug')
+        # visualize_pcd_clusters(data_dict['points_moco'][:,:-1], data_dict['points_moco'][:,-1],  max_label=max_label, img_name='points_moco_after_aug')
         # data processor
         # sample points if pointnet backbone
         if cfg['INPUT'] == 'points':

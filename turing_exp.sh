@@ -66,6 +66,8 @@ scripts/submit_ddp_$CLUSTER_NAME.sh --num_gpus 2 --cuda_visible_devices 2,3 --tc
 scripts/submit_ddp_$CLUSTER_NAME.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19835 --cfg_file configs/waymo_minkunet_iou_knn_0p03_iou_iwt_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_knn_0p03_iou_iwt_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_knn_0p03_iou_iwt_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
 scripts/submit_ddp_$CLUSTER_NAME.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19836 --cfg_file configs/waymo_minkunet_iou_knn_0p01_iou_iwt_waymo5_t0p04.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_iou_knn_0p01_iou_iwt_waymo5_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_iou_knn_0p01_iou_iwt_waymo5_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+scripts/submit_ddp_$CLUSTER_NAME.sh --num_gpus 4 --cuda_visible_devices 0,1,2,3 --tcp_port 19836 --cfg_file configs/waymo_minkunet_gt_segcontrast_waymo15_t0p04.yaml --pretrain_batchsize_per_gpu 8 --finetune_batchsize_per_gpu 4 --model_name minkunet_pretrain_gt_segcontrast_waymo15_t0p04 --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/minkunet_pretrain_gt_segcontrast_waymo15_t0p04_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
 
 To detach: ctrl+b and then d
 tmux rename-session -t 0 mink_pretrain_test
