@@ -237,10 +237,26 @@ def sparse_moco_collator(batch):
 
     # sparse_points, sparse_points_moco = collate_points_to_sparse_tensor(voxel_coords, points, voxel_coords_moco, points_moco) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
 
+        # make gt boxes in shape (batch size, max gt box len, 8) (xyz, lwh, rz, class label)
+    max_gt = max([len(x['gt_boxes']) for x in batch])
+    batch_gt_boxes3d = np.zeros((batch_size, max_gt, batch[0]['gt_boxes'].shape[-1]), dtype=np.float32) # (batch size = 2, max_gt_boxes in a pc in this batch = 67, 8)
+    for k in range(batch_size):
+        batch_gt_boxes3d[k, :batch[k]['gt_boxes'].__len__(), :] = batch[k]['gt_boxes']
+
+    # make gt boxes in shape (batch size, max gt box len, 8)
+    max_gt = max([len(x['gt_boxes_moco']) for x in batch])
+    batch_gt_boxes3d_moco = np.zeros((batch_size, max_gt, batch[0]['gt_boxes_moco'].shape[-1]), dtype=np.float32) # (batch size = 2, max_gt_boxes in a pc in this batch = 67, 8)
+    for k in range(batch_size):
+        batch_gt_boxes3d_moco[k, :batch[k]['gt_boxes_moco'].__len__(), :] = batch[k]['gt_boxes_moco']
+
+
+
     output_batch = {'input': 
                     {'points': points,
                      'voxel_coords': voxel_coords,
                      'cluster_ids': cluster_ids,
+                     'gt_boxes': batch_gt_boxes3d,
+                     'gt_boxes_cluster_ids': gt_boxes_cluster_ids,
                     'common_unscaled_lwhz': common_unscaled_lwhz,
                     'common_gt_box_class_ids': common_gt_box_class_ids,
                      'batch_size': batch_size},
@@ -249,6 +265,8 @@ def sparse_moco_collator(batch):
                     {'points': points_moco,
                      'voxel_coords': voxel_coords_moco,
                      'cluster_ids': cluster_ids_moco,
+                     'gt_boxes': batch_gt_boxes3d_moco,
+                     'gt_boxes_cluster_ids': gt_boxes_moco_cluster_ids,
                      'batch_size': batch_size}
                     
                     }

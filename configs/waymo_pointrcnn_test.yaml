@@ -28,15 +28,13 @@ dataset:
   BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75, -75 ,  -3 ,  75 ,  75 ,   3 ] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Object']
-  # CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
+  # CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong'] #['Vehicle', 'Pedestrian', 'Cyclist']
   # MEAN_SIZES: [[4.7, 2.1, 1.7],
   #               [0.91, 0.86, 1.73],
   #               [1.78, 0.84, 1.78],
   #               [0.5, 0.5, 1.0],
   #               [3, 2, 1.5],
-  #               [10, 2.5, 1.7],
-  #               [20, 2.5, 1.7],
-  #               [20, 20, 1.7]]
+  #               [10, 2.5, 1.7]]
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
     - NAME: random_world_flip
@@ -58,14 +56,14 @@ dataset:
     #   npoints: 10000
     # - NAME: random_drop
 
-  LIDAR_AUG:
-    n_crops: 3
-    lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
-    prob: [0.3, 0.3, 0.4]
+  # LIDAR_AUG:
+  #   n_crops: 3
+  #   lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
+  #   prob: [0.3, 0.3, 0.4]
 
   SAMPLE_NUM_POINTS: 20000
   INPUT: points
-  USE_GT_PRIOR: True
+  # USE_GT_PRIOR: True
   
   # EXTRACT_SHAPE_DESCRIPTORS: esf
 
@@ -107,43 +105,36 @@ model:
       use_mlp: True
       mlp_dim: [128, 128, 128]
 
-  # MODEL_DET_HEAD:
-  #   NAME: PointRCNN
+  MODEL_DET_HEAD:
+    NAME: PointRCNN
 
-  #   INPUT_MOCO_FEATS: True
+    INPUT_MOCO_FEATS: True
 
-  #   POINT_HEAD:
-  #     NAME: PointHeadBox
-  #     CLS_FC: [256, 256]
-  #     REG_FC: [256, 256]
-  #     CLASS_AGNOSTIC: False
-  #     USE_POINT_FEATURES_BEFORE_FUSION: False
-  #     TARGET_CONFIG:
-  #       GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
-  #       BOX_CODER: PointResidualCoder
-  #       BOX_CODER_CONFIG: {
-  #           'use_mean_size': True,
-  #           'mean_size': [
-  #               [4.7, 2.1, 1.7],
-  #               [0.91, 0.86, 1.73],
-  #               [1.78, 0.84, 1.78],
-  #               [0.5, 0.5, 1.0],
-  #               [3, 2, 1.5],
-  #               [10, 2.5, 1.7],
-  #               [20, 2.5, 1.7],
-  #               [20, 20, 1.7]
-  #           ]
-  #         }
+    POINT_HEAD:
+      NAME: PointHeadBox
+      # CLS_FC: [256, 256]
+      REG_FC: [256, 256]
+      CLASS_AGNOSTIC: True
+      USE_POINT_FEATURES_BEFORE_FUSION: False
+      TARGET_CONFIG:
+        GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
+        BOX_CODER: PointResidualCoder
+        BOX_CODER_CONFIG: {
+            'use_mean_size': True,
+            'mean_size': [
+                [1,1,1]
+            ]
+          }
 
-  #     LOSS_CONFIG:
-  #       LOSS_REG: WeightedSmoothL1Loss
-  #       LOSS_WEIGHTS: {
-  #           'point_cls_weight': 0.5,
-  #           'point_box_weight': 0.5,
-  #           'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-  #           'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
-  #           'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
-  #       }
+      LOSS_CONFIG:
+        LOSS_REG: WeightedSmoothL1Loss
+        LOSS_WEIGHTS: {
+            # 'point_cls_weight': 0.5,
+            'point_box_weight': 0.5,
+            'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            # 'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
+            'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
+        }
     
 
   #   ROI_HEAD:

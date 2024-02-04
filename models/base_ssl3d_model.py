@@ -107,6 +107,9 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         if self.config['INPUT'] == 'sparse_tensor':
             batch_dict['input']['sparse_points'], batch_dict['input_moco']['sparse_points'] = collate_points_to_sparse_tensor(batch_dict['input']['voxel_coords'], batch_dict['input']['points'], 
                                                                                 batch_dict['input_moco']['voxel_coords'], batch_dict['input_moco']['points']) #xi and xj are sparse tensors for normal and moco pts -> (C:(8, 20k, 4=b_id, xyz voxcoord), F:(8, 20k, 4=xyzi pts))
+            batch_dict['input']['point_coords'] = torch.cat((batch_dict['input']['sparse_points'].C[:,0].unsqueeze(-1), batch_dict['input']['sparse_points'].F[:,:3]), dim=1) #bid, xyz
+            batch_dict['input_moco']['point_coords'] = torch.cat((batch_dict['input_moco']['sparse_points'].C[:,0].unsqueeze(-1), batch_dict['input_moco']['sparse_points'].F[:,:3]), dim=1) #bid, xyz
+            
             batch_dict['input'].pop('points')
             batch_dict['input'].pop('voxel_coords')
             batch_dict['input_moco'].pop('points')
@@ -213,9 +216,11 @@ class BaseSSLMultiInputOutputModel(nn.Module):
         # Concat cluster features
         #(num common clusters, 128+128)
         new_batch_dict['pretext_head_feats'] = torch.cat([output['pretext_head_feats'] for output in all_outputs], dim=1)
-        new_batch_dict['common_cluster_gtbox_idx'] = output_base_dict['common_cluster_gtbox_idx']
-        new_batch_dict['common_cluster_gtbox_idx_moco'] = output_moco_dict['common_cluster_gtbox_idx']
         
+        if 'common_cluster_gtbox_idx' in output_base_dict:
+            new_batch_dict['common_cluster_gtbox_idx'] = output_base_dict['common_cluster_gtbox_idx']
+            new_batch_dict['common_cluster_gtbox_idx_moco'] = output_moco_dict['common_cluster_gtbox_idx']
+            
         return new_batch_dict
     def _single_input_forward(self, batch_dict):
         
