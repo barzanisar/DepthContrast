@@ -25,8 +25,10 @@ LINEARPROBE_EPOCHS=-1
 MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
 
-SING_IMG=/raid/home/nisarbar/singularity/ssl_lidar_aug.sif
+SING_IMG=/raid/home/nisarbar/singularity/ssl_nuscenes_lidar_aug.sif
 DATA_DIR=/raid/datasets/Waymo
+KITTI_DATA_DIR=/raid/datasets/semantic_kitti
+NUSCENES_DATA_DIR=/raid/datasets/nuscenes
 NUM_GPUS=2
 CUDA_VISIBLE_DEVICES=0,1
 MASTER_ADDR=Lovelace
@@ -335,4 +337,180 @@ elif [[ "$MODE" == "scratch" ]]; then
     
 fi
 
+if [[ "$MODE" == "pretrain-finetune" ]]; then
+    FINETUNE_CFG_FILE=configs/semantickitti_fine1lr_$BACKBONE.yaml
+
+    BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
+    SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
+    SINGULARITYENV_WANDB_MODE=offline
+    SINGULARITYENV_NCCL_BLOCKING_WAIT=1
+    singularity exec
+    --nv
+    --pwd /DepthContrast
+    --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
+    --bind $PROJ_DIR/configs:/DepthContrast/configs
+    --bind $PROJ_DIR/criterions:/DepthContrast/criterions
+    --bind $PROJ_DIR/output:/DepthContrast/output
+    --bind $PROJ_DIR/datasets:/DepthContrast/datasets
+    --bind $PROJ_DIR/tools:/DepthContrast/tools
+    --bind $PROJ_DIR/models:/DepthContrast/models
+    --bind $PROJ_DIR/scripts:/DepthContrast/scripts
+    --bind $PROJ_DIR/utils:/DepthContrast/utils
+    --bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
+    --bind $PROJ_DIR/lib:/DepthContrast/lib
+    $DEPTH_CONTRAST_BINDS
+    $SING_IMG
+    "
+    FINETUNE_CMD=$BASE_CMD
+
+    FINETUNE_CMD+="python -m torch.distributed.launch
+    --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+    /DepthContrast/tools/downstream_segmentation.py
+    --launcher pytorch
+    --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
+    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+    --epochs $FINETUNE_EPOCHS
+    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+    --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+    --model_name $MODEL_NAME
+    --pretrained_ckpt $PRETRAINED_CKPT 
+    --workers $WORKERS_PER_GPU
+    "
+    echo "Running Finetuning"
+    echo "$FINETUNE_CMD"
+    eval $FINETUNE_CMD
+    echo "Done Finetuning"
+
+
+    FINETUNE_CFG_FILE=configs/nuscenes_fine1lr_$BACKBONE.yaml
+
+    BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
+    SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
+    SINGULARITYENV_WANDB_MODE=offline
+    SINGULARITYENV_NCCL_BLOCKING_WAIT=1
+    singularity exec
+    --nv
+    --pwd /DepthContrast
+    --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
+    --bind $PROJ_DIR/configs:/DepthContrast/configs
+    --bind $PROJ_DIR/criterions:/DepthContrast/criterions
+    --bind $PROJ_DIR/output:/DepthContrast/output
+    --bind $PROJ_DIR/datasets:/DepthContrast/datasets
+    --bind $PROJ_DIR/tools:/DepthContrast/tools
+    --bind $PROJ_DIR/models:/DepthContrast/models
+    --bind $PROJ_DIR/scripts:/DepthContrast/scripts
+    --bind $PROJ_DIR/utils:/DepthContrast/utils
+    --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
+    --bind $PROJ_DIR/lib:/DepthContrast/lib
+    $DEPTH_CONTRAST_BINDS
+    $SING_IMG
+    "
+    FINETUNE_CMD=$BASE_CMD
+
+    FINETUNE_CMD+="python -m torch.distributed.launch
+    --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+    /DepthContrast/tools/downstream_segmentation.py
+    --launcher pytorch
+    --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
+    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+    --epochs $FINETUNE_EPOCHS
+    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+    --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+    --model_name $MODEL_NAME
+    --pretrained_ckpt $PRETRAINED_CKPT 
+    --workers $WORKERS_PER_GPU
+    "
+    echo "Running Finetuning"
+    echo "$FINETUNE_CMD"
+    eval $FINETUNE_CMD
+    echo "Done Finetuning"
+
+elif [[ "$MODE" == "scratch" ]]; then
+
+    SCRATCH_CFG_FILE=configs/semantickitti_scratch_$BACKBONE.yaml
+
+    BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
+    SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
+    SINGULARITYENV_WANDB_MODE=offline
+    SINGULARITYENV_NCCL_BLOCKING_WAIT=1
+    singularity exec
+    --nv
+    --pwd /DepthContrast
+    --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
+    --bind $PROJ_DIR/configs:/DepthContrast/configs
+    --bind $PROJ_DIR/criterions:/DepthContrast/criterions
+    --bind $PROJ_DIR/output:/DepthContrast/output
+    --bind $PROJ_DIR/datasets:/DepthContrast/datasets
+    --bind $PROJ_DIR/tools:/DepthContrast/tools
+    --bind $PROJ_DIR/models:/DepthContrast/models
+    --bind $PROJ_DIR/scripts:/DepthContrast/scripts
+    --bind $PROJ_DIR/utils:/DepthContrast/utils
+    --bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
+    --bind $PROJ_DIR/lib:/DepthContrast/lib
+    $DEPTH_CONTRAST_BINDS
+    $SING_IMG
+    "
+    SCRATCH_CMD=$BASE_CMD
+
+    SCRATCH_CMD+="python -m torch.distributed.launch
+    --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+    /DepthContrast/tools/downstream_segmentation.py
+    --launcher pytorch
+    --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $WORLD_SIZE 
+    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+    --epochs $FINETUNE_EPOCHS
+    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+    --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+    --pretrained_ckpt $PRETRAINED_CKPT 
+    --workers $WORKERS_PER_GPU
+    "
+    echo "Running Scratch training"
+    echo "$SCRATCH_CMD"
+    eval $SCRATCH_CMD
+    echo "Done scratch training"
+
+    SCRATCH_CFG_FILE=configs/nuscenes_scratch_$BACKBONE.yaml
+
+    BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
+    SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
+    SINGULARITYENV_WANDB_MODE=offline
+    SINGULARITYENV_NCCL_BLOCKING_WAIT=1
+    singularity exec
+    --nv
+    --pwd /DepthContrast
+    --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
+    --bind $PROJ_DIR/configs:/DepthContrast/configs
+    --bind $PROJ_DIR/criterions:/DepthContrast/criterions
+    --bind $PROJ_DIR/output:/DepthContrast/output
+    --bind $PROJ_DIR/datasets:/DepthContrast/datasets
+    --bind $PROJ_DIR/tools:/DepthContrast/tools
+    --bind $PROJ_DIR/models:/DepthContrast/models
+    --bind $PROJ_DIR/scripts:/DepthContrast/scripts
+    --bind $PROJ_DIR/utils:/DepthContrast/utils
+    --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
+    --bind $PROJ_DIR/lib:/DepthContrast/lib
+    $DEPTH_CONTRAST_BINDS
+    $SING_IMG
+    "
+    SCRATCH_CMD=$BASE_CMD
+
+    SCRATCH_CMD+="python -m torch.distributed.launch
+    --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+    /DepthContrast/tools/downstream_segmentation.py
+    --launcher pytorch
+    --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $WORLD_SIZE 
+    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+    --epochs $FINETUNE_EPOCHS
+    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+    --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+    --pretrained_ckpt $PRETRAINED_CKPT 
+    --workers $WORKERS_PER_GPU
+    "
+
+    echo "Running Scratch training"
+    echo "$SCRATCH_CMD"
+    eval $SCRATCH_CMD
+    echo "Done scratch training"
+    
+fi
 

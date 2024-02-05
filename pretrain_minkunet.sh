@@ -150,3 +150,9 @@ sbatch --time=10:00:00 --array=1-4%1 --job-name=det_0p1w_try2 scripts/submit_ddp
 
 sbatch --time=10:00:00 --array=1-4%1 --job-name=det_0p5w scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19558 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_dethead_0p5w.yaml --model_name minkunet_pretrain_segcontrast_waymo5_dethead_0p5w --pretrained_ckpt checkpoint-ep49.pth.tar 
 sbatch --time=10:00:00 --array=1-4%1 --job-name=det_0p5w_try2 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19559 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_dethead_0p5w.yaml --model_name minkunet_pretrain_segcontrast_waymo5_dethead_0p5w_try2 --pretrained_ckpt checkpoint-ep49.pth.tar 
+
+sbatch --time=10:00:00 --array=1-4%1 --job-name=det_0p8w scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19358 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_dethead_0p8w.yaml --model_name minkunet_pretrain_segcontrast_waymo5_dethead_0p8w --pretrained_ckpt checkpoint-ep49.pth.tar 
+sbatch --time=10:00:00 --array=1-4%1 --job-name=det_0p8w_try2 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19359 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_dethead_0p8w.yaml --model_name minkunet_pretrain_segcontrast_waymo5_dethead_0p8w_try2 --pretrained_ckpt checkpoint-ep49.pth.tar 
+
+sbatch --time=10:00:00 --array=1-4%1 --job-name=det_1w scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19558 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_dethead_1w.yaml --model_name minkunet_pretrain_segcontrast_waymo5_dethead_1w --pretrained_ckpt checkpoint-ep49.pth.tar 
+sbatch --time=10:00:00 --array=1-4%1 --job-name=det_1w_try2 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19559 --cfg_file configs/waymo_minkunet_segcontrast_waymo5_dethead_1w.yaml --model_name minkunet_pretrain_segcontrast_waymo5_dethead_1w_try2 --pretrained_ckpt checkpoint-ep49.pth.tar 
