@@ -28,6 +28,7 @@ SCRATCH_CFG_FILE=configs/scratch.yaml
 TCP_PORT=18888
 MODE=pretrain-finetune #scratch #linearprobe
 BACKBONE=minkunet
+OTHER_DATASETS=false
 
 PRETRAINED_CKPT="default"
 LINEARPROBE_LAST_N_CKPTS=-1
@@ -193,6 +194,9 @@ while :; do
             die 'ERROR: "--linearprobe_epochs" requires a non-empty option argument.'
         fi
         ;;
+    -n|--other_datasets)       # Takes an option argument; ensure it has been specified.
+        OTHER_DATASETS="true"
+        ;;
         
     # Additional parameters
     -?*)
@@ -237,6 +241,8 @@ export LINEARPROBE_EPOCHS=$LINEARPROBE_EPOCHS
 
 export MODEL_NAME=$MODEL_NAME
 export DOWNSTREAM_MODEL_DIR=$DOWNSTREAM_MODEL_DIR
+
+export OTHER_DATASETS=$OTHER_DATASETS
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
 

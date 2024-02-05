@@ -158,230 +158,231 @@ fi
 
 
 
+if [[ "$OTHER_DATASETS" == "true" ]]; then 
+    if [[ "$MODE" == "pretrain-finetune" ]]; then
+        # Extract Semantic Kitti 
+        # echo "Remove waymo dataset"
+        # ls -l $TMP_DATA_DIR
+        # rm -r $TMP_DATA_DIR/*
+        # ls -l $TMP_DATA_DIR
+        # echo "Done removing waymo"
+        FINETUNE_CFG_FILE=configs/semantickitti_fine1lr_$BACKBONE.yaml
+        
+        # TMP_DATA_DIR=$SLURM_TMPDIR/semantickitti_data
+        # echo "unzipping semantic kitti"
+        # for file in $KITTI_DATA_DIR/*.zip; do
+        #     echo "Unzipping $file to $TMP_DATA_DIR"
+        #     unzip -qq $file -d $TMP_DATA_DIR
+        # done
+        # echo "Done extracting semantic kitti data"
 
-if [[ "$MODE" == "pretrain-finetune" ]]; then
-    # Extract Semantic Kitti 
-    # echo "Remove waymo dataset"
-    # ls -l $TMP_DATA_DIR
-    # rm -r $TMP_DATA_DIR/*
-    # ls -l $TMP_DATA_DIR
-    # echo "Done removing waymo"
-    FINETUNE_CFG_FILE=configs/semantickitti_fine1lr_$BACKBONE.yaml
-    
-    # TMP_DATA_DIR=$SLURM_TMPDIR/semantickitti_data
-    # echo "unzipping semantic kitti"
-    # for file in $KITTI_DATA_DIR/*.zip; do
-    #     echo "Unzipping $file to $TMP_DATA_DIR"
-    #     unzip -qq $file -d $TMP_DATA_DIR
-    # done
-    # echo "Done extracting semantic kitti data"
+        BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
+        SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
+        SINGULARITYENV_WANDB_MODE=offline
+        SINGULARITYENV_NCCL_BLOCKING_WAIT=1
+        singularity exec
+        --nv
+        --pwd /DepthContrast
+        --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
+        --bind $PROJ_DIR/configs:/DepthContrast/configs
+        --bind $PROJ_DIR/criterions:/DepthContrast/criterions
+        --bind $PROJ_DIR/output:/DepthContrast/output
+        --bind $PROJ_DIR/datasets:/DepthContrast/datasets
+        --bind $PROJ_DIR/tools:/DepthContrast/tools
+        --bind $PROJ_DIR/models:/DepthContrast/models
+        --bind $PROJ_DIR/scripts:/DepthContrast/scripts
+        --bind $PROJ_DIR/utils:/DepthContrast/utils
+        --bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
+        --bind $PROJ_DIR/lib:/DepthContrast/lib
+        $DEPTH_CONTRAST_BINDS
+        $SING_IMG
+        "
+        FINETUNE_CMD=$BASE_CMD
 
-    BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
-    SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-    SINGULARITYENV_WANDB_MODE=offline
-    SINGULARITYENV_NCCL_BLOCKING_WAIT=1
-    singularity exec
-    --nv
-    --pwd /DepthContrast
-    --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
-    --bind $PROJ_DIR/configs:/DepthContrast/configs
-    --bind $PROJ_DIR/criterions:/DepthContrast/criterions
-    --bind $PROJ_DIR/output:/DepthContrast/output
-    --bind $PROJ_DIR/datasets:/DepthContrast/datasets
-    --bind $PROJ_DIR/tools:/DepthContrast/tools
-    --bind $PROJ_DIR/models:/DepthContrast/models
-    --bind $PROJ_DIR/scripts:/DepthContrast/scripts
-    --bind $PROJ_DIR/utils:/DepthContrast/utils
-    --bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
-    --bind $PROJ_DIR/lib:/DepthContrast/lib
-    $DEPTH_CONTRAST_BINDS
-    $SING_IMG
-    "
-    FINETUNE_CMD=$BASE_CMD
+        FINETUNE_CMD+="python -m torch.distributed.launch
+        --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        /DepthContrast/tools/downstream_segmentation.py
+        --launcher pytorch
+        --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
+        --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+        --epochs $FINETUNE_EPOCHS
+        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+        --model_name $MODEL_NAME
+        --pretrained_ckpt $PRETRAINED_CKPT 
+        --workers $WORKERS_PER_GPU
+        "
+        echo "Running Finetuning"
+        echo "$FINETUNE_CMD"
+        eval $FINETUNE_CMD
+        echo "Done Finetuning"
 
-    FINETUNE_CMD+="python -m torch.distributed.launch
-    --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-    /DepthContrast/tools/downstream_segmentation.py
-    --launcher pytorch
-    --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
-    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
-    --epochs $FINETUNE_EPOCHS
-    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-    --downstream_model_dir $DOWNSTREAM_MODEL_DIR
-    --model_name $MODEL_NAME
-    --pretrained_ckpt $PRETRAINED_CKPT 
-    --workers $WORKERS_PER_GPU
-    "
-    echo "Running Finetuning"
-    echo "$FINETUNE_CMD"
-    eval $FINETUNE_CMD
-    echo "Done Finetuning"
+        # Extract NuScenes  
+        # echo "Remove semantic kitti dataset"
+        # ls -l $TMP_DATA_DIR
+        # rm -r $TMP_DATA_DIR/*
+        # ls -l $TMP_DATA_DIR
+        # echo "Done removing semantic kitti"
+        FINETUNE_CFG_FILE=configs/nuscenes_fine1lr_$BACKBONE.yaml
 
-    # Extract NuScenes  
-    # echo "Remove semantic kitti dataset"
-    # ls -l $TMP_DATA_DIR
-    # rm -r $TMP_DATA_DIR/*
-    # ls -l $TMP_DATA_DIR
-    # echo "Done removing semantic kitti"
-    FINETUNE_CFG_FILE=configs/nuscenes_fine1lr_$BACKBONE.yaml
+        # TMP_DATA_DIR=$SLURM_TMPDIR/nuscenes_data
+        # echo "unzipping nuscenes"
+        # for file in $NUSCENES_DATA_DIR/*.zip; do
+        #     echo "Unzipping $file to $TMP_DATA_DIR"
+        #     unzip -qq $file -d $TMP_DATA_DIR
+        # done
+        # echo "Done extracting nuscenes data"
 
-    # TMP_DATA_DIR=$SLURM_TMPDIR/nuscenes_data
-    # echo "unzipping nuscenes"
-    # for file in $NUSCENES_DATA_DIR/*.zip; do
-    #     echo "Unzipping $file to $TMP_DATA_DIR"
-    #     unzip -qq $file -d $TMP_DATA_DIR
-    # done
-    # echo "Done extracting nuscenes data"
+        BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
+        SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
+        SINGULARITYENV_WANDB_MODE=offline
+        SINGULARITYENV_NCCL_BLOCKING_WAIT=1
+        singularity exec
+        --nv
+        --pwd /DepthContrast
+        --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
+        --bind $PROJ_DIR/configs:/DepthContrast/configs
+        --bind $PROJ_DIR/criterions:/DepthContrast/criterions
+        --bind $PROJ_DIR/output:/DepthContrast/output
+        --bind $PROJ_DIR/datasets:/DepthContrast/datasets
+        --bind $PROJ_DIR/tools:/DepthContrast/tools
+        --bind $PROJ_DIR/models:/DepthContrast/models
+        --bind $PROJ_DIR/scripts:/DepthContrast/scripts
+        --bind $PROJ_DIR/utils:/DepthContrast/utils
+        --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
+        --bind $PROJ_DIR/lib:/DepthContrast/lib
+        $DEPTH_CONTRAST_BINDS
+        $SING_IMG
+        "
+        FINETUNE_CMD=$BASE_CMD
 
-    BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
-    SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-    SINGULARITYENV_WANDB_MODE=offline
-    SINGULARITYENV_NCCL_BLOCKING_WAIT=1
-    singularity exec
-    --nv
-    --pwd /DepthContrast
-    --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
-    --bind $PROJ_DIR/configs:/DepthContrast/configs
-    --bind $PROJ_DIR/criterions:/DepthContrast/criterions
-    --bind $PROJ_DIR/output:/DepthContrast/output
-    --bind $PROJ_DIR/datasets:/DepthContrast/datasets
-    --bind $PROJ_DIR/tools:/DepthContrast/tools
-    --bind $PROJ_DIR/models:/DepthContrast/models
-    --bind $PROJ_DIR/scripts:/DepthContrast/scripts
-    --bind $PROJ_DIR/utils:/DepthContrast/utils
-    --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
-    --bind $PROJ_DIR/lib:/DepthContrast/lib
-    $DEPTH_CONTRAST_BINDS
-    $SING_IMG
-    "
-    FINETUNE_CMD=$BASE_CMD
+        FINETUNE_CMD+="python -m torch.distributed.launch
+        --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        /DepthContrast/tools/downstream_segmentation.py
+        --launcher pytorch
+        --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
+        --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+        --epochs $FINETUNE_EPOCHS
+        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+        --model_name $MODEL_NAME
+        --pretrained_ckpt $PRETRAINED_CKPT 
+        --workers $WORKERS_PER_GPU
+        "
+        echo "Running Finetuning"
+        echo "$FINETUNE_CMD"
+        eval $FINETUNE_CMD
+        echo "Done Finetuning"
 
-    FINETUNE_CMD+="python -m torch.distributed.launch
-    --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-    /DepthContrast/tools/downstream_segmentation.py
-    --launcher pytorch
-    --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
-    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
-    --epochs $FINETUNE_EPOCHS
-    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-    --downstream_model_dir $DOWNSTREAM_MODEL_DIR
-    --model_name $MODEL_NAME
-    --pretrained_ckpt $PRETRAINED_CKPT 
-    --workers $WORKERS_PER_GPU
-    "
-    echo "Running Finetuning"
-    echo "$FINETUNE_CMD"
-    eval $FINETUNE_CMD
-    echo "Done Finetuning"
+    elif [[ "$MODE" == "scratch" ]]; then
 
-elif [[ "$MODE" == "scratch" ]]; then
+        SCRATCH_CFG_FILE=configs/semantickitti_scratch_$BACKBONE.yaml
+        
+        # TMP_DATA_DIR=$SLURM_TMPDIR/semantickitti_data
+        # echo "unzipping semantic kitti"
+        # for file in $KITTI_DATA_DIR/*.zip; do
+        #     echo "Unzipping $file to $TMP_DATA_DIR"
+        #     unzip -qq $file -d $TMP_DATA_DIR
+        # done
+        # echo "Done extracting semantic kitti data"
 
-    SCRATCH_CFG_FILE=configs/semantickitti_scratch_$BACKBONE.yaml
-    
-    # TMP_DATA_DIR=$SLURM_TMPDIR/semantickitti_data
-    # echo "unzipping semantic kitti"
-    # for file in $KITTI_DATA_DIR/*.zip; do
-    #     echo "Unzipping $file to $TMP_DATA_DIR"
-    #     unzip -qq $file -d $TMP_DATA_DIR
-    # done
-    # echo "Done extracting semantic kitti data"
+        BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
+        SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
+        SINGULARITYENV_WANDB_MODE=offline
+        SINGULARITYENV_NCCL_BLOCKING_WAIT=1
+        singularity exec
+        --nv
+        --pwd /DepthContrast
+        --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
+        --bind $PROJ_DIR/configs:/DepthContrast/configs
+        --bind $PROJ_DIR/criterions:/DepthContrast/criterions
+        --bind $PROJ_DIR/output:/DepthContrast/output
+        --bind $PROJ_DIR/datasets:/DepthContrast/datasets
+        --bind $PROJ_DIR/tools:/DepthContrast/tools
+        --bind $PROJ_DIR/models:/DepthContrast/models
+        --bind $PROJ_DIR/scripts:/DepthContrast/scripts
+        --bind $PROJ_DIR/utils:/DepthContrast/utils
+        --bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
+        --bind $PROJ_DIR/lib:/DepthContrast/lib
+        $DEPTH_CONTRAST_BINDS
+        $SING_IMG
+        "
+        SCRATCH_CMD=$BASE_CMD
 
-    BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
-    SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-    SINGULARITYENV_WANDB_MODE=offline
-    SINGULARITYENV_NCCL_BLOCKING_WAIT=1
-    singularity exec
-    --nv
-    --pwd /DepthContrast
-    --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
-    --bind $PROJ_DIR/configs:/DepthContrast/configs
-    --bind $PROJ_DIR/criterions:/DepthContrast/criterions
-    --bind $PROJ_DIR/output:/DepthContrast/output
-    --bind $PROJ_DIR/datasets:/DepthContrast/datasets
-    --bind $PROJ_DIR/tools:/DepthContrast/tools
-    --bind $PROJ_DIR/models:/DepthContrast/models
-    --bind $PROJ_DIR/scripts:/DepthContrast/scripts
-    --bind $PROJ_DIR/utils:/DepthContrast/utils
-    --bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
-    --bind $PROJ_DIR/lib:/DepthContrast/lib
-    $DEPTH_CONTRAST_BINDS
-    $SING_IMG
-    "
-    SCRATCH_CMD=$BASE_CMD
+        SCRATCH_CMD+="python -m torch.distributed.launch
+        --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        /DepthContrast/tools/downstream_segmentation.py
+        --launcher pytorch
+        --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $WORLD_SIZE 
+        --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+        --epochs $FINETUNE_EPOCHS
+        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+        --pretrained_ckpt $PRETRAINED_CKPT 
+        --workers $WORKERS_PER_GPU
+        "
+        echo "Running Scratch training"
+        echo "$SCRATCH_CMD"
+        eval $SCRATCH_CMD
+        echo "Done scratch training"
 
-    SCRATCH_CMD+="python -m torch.distributed.launch
-    --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-    /DepthContrast/tools/downstream_segmentation.py
-    --launcher pytorch
-    --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $WORLD_SIZE 
-    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
-    --epochs $FINETUNE_EPOCHS
-    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-    --downstream_model_dir $DOWNSTREAM_MODEL_DIR
-    --pretrained_ckpt $PRETRAINED_CKPT 
-    --workers $WORKERS_PER_GPU
-    "
-    echo "Running Scratch training"
-    echo "$SCRATCH_CMD"
-    eval $SCRATCH_CMD
-    echo "Done scratch training"
+        # Extract NuScenes  
+        # echo "Remove semantic kitti dataset"
+        # ls -l $TMP_DATA_DIR
+        # rm -r $TMP_DATA_DIR/*
+        # ls -l $TMP_DATA_DIR
+        # echo "Done removing semantic kitti"
+        SCRATCH_CFG_FILE=configs/nuscenes_scratch_$BACKBONE.yaml
 
-    # Extract NuScenes  
-    # echo "Remove semantic kitti dataset"
-    # ls -l $TMP_DATA_DIR
-    # rm -r $TMP_DATA_DIR/*
-    # ls -l $TMP_DATA_DIR
-    # echo "Done removing semantic kitti"
-    SCRATCH_CFG_FILE=configs/nuscenes_scratch_$BACKBONE.yaml
+        # TMP_DATA_DIR=$SLURM_TMPDIR/nuscenes_data
 
-    # TMP_DATA_DIR=$SLURM_TMPDIR/nuscenes_data
+        # echo "unzipping nuscenes"
+        # for file in $NUSCENES_DATA_DIR/*.zip; do
+        #     echo "Unzipping $file to $TMP_DATA_DIR"
+        #     unzip -qq $file -d $TMP_DATA_DIR
+        # done
+        # echo "Done extracting nuscenes data"
 
-    # echo "unzipping nuscenes"
-    # for file in $NUSCENES_DATA_DIR/*.zip; do
-    #     echo "Unzipping $file to $TMP_DATA_DIR"
-    #     unzip -qq $file -d $TMP_DATA_DIR
-    # done
-    # echo "Done extracting nuscenes data"
+        BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
+        SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
+        SINGULARITYENV_WANDB_MODE=offline
+        SINGULARITYENV_NCCL_BLOCKING_WAIT=1
+        singularity exec
+        --nv
+        --pwd /DepthContrast
+        --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
+        --bind $PROJ_DIR/configs:/DepthContrast/configs
+        --bind $PROJ_DIR/criterions:/DepthContrast/criterions
+        --bind $PROJ_DIR/output:/DepthContrast/output
+        --bind $PROJ_DIR/datasets:/DepthContrast/datasets
+        --bind $PROJ_DIR/tools:/DepthContrast/tools
+        --bind $PROJ_DIR/models:/DepthContrast/models
+        --bind $PROJ_DIR/scripts:/DepthContrast/scripts
+        --bind $PROJ_DIR/utils:/DepthContrast/utils
+        --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
+        --bind $PROJ_DIR/lib:/DepthContrast/lib
+        $DEPTH_CONTRAST_BINDS
+        $SING_IMG
+        "
+        SCRATCH_CMD=$BASE_CMD
 
-    BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
-    SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-    SINGULARITYENV_WANDB_MODE=offline
-    SINGULARITYENV_NCCL_BLOCKING_WAIT=1
-    singularity exec
-    --nv
-    --pwd /DepthContrast
-    --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
-    --bind $PROJ_DIR/configs:/DepthContrast/configs
-    --bind $PROJ_DIR/criterions:/DepthContrast/criterions
-    --bind $PROJ_DIR/output:/DepthContrast/output
-    --bind $PROJ_DIR/datasets:/DepthContrast/datasets
-    --bind $PROJ_DIR/tools:/DepthContrast/tools
-    --bind $PROJ_DIR/models:/DepthContrast/models
-    --bind $PROJ_DIR/scripts:/DepthContrast/scripts
-    --bind $PROJ_DIR/utils:/DepthContrast/utils
-    --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
-    --bind $PROJ_DIR/lib:/DepthContrast/lib
-    $DEPTH_CONTRAST_BINDS
-    $SING_IMG
-    "
-    SCRATCH_CMD=$BASE_CMD
+        SCRATCH_CMD+="python -m torch.distributed.launch
+        --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        /DepthContrast/tools/downstream_segmentation.py
+        --launcher pytorch
+        --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $WORLD_SIZE 
+        --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+        --epochs $FINETUNE_EPOCHS
+        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+        --pretrained_ckpt $PRETRAINED_CKPT 
+        --workers $WORKERS_PER_GPU
+        "
 
-    SCRATCH_CMD+="python -m torch.distributed.launch
-    --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-    /DepthContrast/tools/downstream_segmentation.py
-    --launcher pytorch
-    --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $WORLD_SIZE 
-    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
-    --epochs $FINETUNE_EPOCHS
-    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-    --downstream_model_dir $DOWNSTREAM_MODEL_DIR
-    --pretrained_ckpt $PRETRAINED_CKPT 
-    --workers $WORKERS_PER_GPU
-    "
-
-    echo "Running Scratch training"
-    echo "$SCRATCH_CMD"
-    eval $SCRATCH_CMD
-    echo "Done scratch training"
-    
+        echo "Running Scratch training"
+        echo "$SCRATCH_CMD"
+        eval $SCRATCH_CMD
+        echo "Done scratch training"
+        
+    fi
 fi
