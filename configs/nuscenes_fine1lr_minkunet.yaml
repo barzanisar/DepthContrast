@@ -23,7 +23,7 @@ dataset:
   VERSION: v1.0-trainval
   FRAME_SAMPLING_INTERVAL: {'train': 100, 'val': 1} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
   BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
-  POINT_CLOUD_RANGE:  [-75.0, -75.0, -5, 75.0, 75.0, 3] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
+  POINT_CLOUD_RANGE:  [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
   CLASS_NAMES: ['Object']
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
@@ -36,7 +36,7 @@ dataset:
 
   SAMPLE_NUM_POINTS: 80000
   INPUT: sparse_tensor
-  RESOLUTION: 0.05
+  RESOLUTION: 0.1
 
   COLLATE_FUNCTION: "sparse_downstream_collator"
   DROP_LAST: True
