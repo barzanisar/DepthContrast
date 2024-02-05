@@ -153,9 +153,9 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/waymo_finetune_minkunet_test.yaml",
+                "configs/nuscenes_finetune_minkunet_test.yaml",
                 "--pretrained_ckpt",
-                "checkpoint-ep0.pth.tar"
+                "checkpoint-ep3.pth.tar"
             ]
         },
         {
