@@ -1,6 +1,6 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/downstream_segmentation.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_lpseg_test.yaml
 # python tools/downstream_segmentation.py --cfg configs/waymo_pointrcnn_lpseg_test.yaml
-wb_extra_tags: ['minkunet', 'finetune_segmentation_semantickitti']
+wb_extra_tags: ['minkunet', 'finetune_segmentation_nuscenes']
 resume: true
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 load_pretrained_checkpoint: 'all'
@@ -19,12 +19,13 @@ WANDB:
   dir: '/DepthContrast/output'
 
 dataset:
-  DATASET_NAMES: [SemanticKittiDataset]
+  DATASET_NAMES: [NuscenesDataset]
+  VERSION: v1.0-trainval
   FRAME_SAMPLING_INTERVAL: {'train': 100, 'val': 1} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
   BATCHSIZE_PER_REPLICA: 4 #Change to 14, if input moco feats is false, use 8
-  POINT_CLOUD_RANGE:  [0., -40., -3., 70.4, 40., 1.] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
+  POINT_CLOUD_RANGE:  [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
   CLASS_NAMES: ['Object']
-  
+
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
     - NAME: random_world_flip
       ALONG_AXIS_LIST: ['x', 'y']
@@ -35,7 +36,7 @@ dataset:
 
   SAMPLE_NUM_POINTS: 80000
   INPUT: sparse_tensor
-  RESOLUTION: 0.05
+  RESOLUTION: 0.1
 
   COLLATE_FUNCTION: "sparse_downstream_collator"
   DROP_LAST: True
@@ -53,9 +54,9 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "from_command_line"
+  name: "minkunet_scratch_nuscenes"
   linear_probe: false #meaning lp vs finetune
-  downstream_model_dir: "finetune_semantickitti_1percent"
+  downstream_model_dir: "scratch_epochs15"
 
   MODEL_BASE:
     NAME: Segmentor
@@ -64,6 +65,6 @@ model:
       NAME: MinkUNet
 
   SEGMENTATION_HEAD:
-    CLS_FC: [96, 20]
+    CLS_FC: [96, 17]
     loss_types: ['CELoss', 'LovLoss']
     loss_weights: [1.0, 1.0]

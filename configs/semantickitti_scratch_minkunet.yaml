@@ -53,9 +53,9 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "from_command_line"
+  name: "minkunet_scratch_semkitti"
   linear_probe: false #meaning lp vs finetune
-  downstream_model_dir: "finetune_semantickitti_1percent"
+  downstream_model_dir: "scratch_epochs15"
 
   MODEL_BASE:
     NAME: Segmentor

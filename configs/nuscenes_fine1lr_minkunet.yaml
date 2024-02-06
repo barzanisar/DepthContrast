@@ -50,7 +50,7 @@ optimizer:
   warmup_epochs: 0
   lr:
     name: "cosine_warm_up"
-    base_lr: 0.24 #0.1 for linear_probe #0.12
+    base_lr: 0.24
 
 model:
   model_dir: "checkpoints/minkunet"
@@ -68,4 +68,3 @@ model:
     CLS_FC: [96, 17]
     loss_types: ['CELoss', 'LovLoss']
     loss_weights: [1.0, 1.0]
-    # label_smoothing: 0.1

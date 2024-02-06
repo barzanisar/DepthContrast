@@ -21,12 +21,12 @@ WANDB:
 dataset:
   DATASET_NAMES: [WaymoDataset]
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train, 'val': train}
+  DATA_SPLIT: {'train': train, 'val': val}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 15} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
-  BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
+  FRAME_SAMPLING_INTERVAL: {'train': 15, 'val': 1} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
+  BATCHSIZE_PER_REPLICA: 4 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75.2, -75.2, -2, 75.2, 75.2, 4]
-  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist'] #['Vehicle', 'Pedestrian', 'Cyclist']
+  CLASS_NAMES: ['Object']
  
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
@@ -36,21 +36,10 @@ dataset:
       WORLD_ROT_ANGLE: [-0.78539816, 0.78539816] #-45deg, + 45deg
     - NAME: random_world_scaling
       WORLD_SCALE_RANGE: [0.95, 1.05]
-    - NAME: random_local_translation
-      LOCAL_TRANSLATION_RANGE: [-0.3, 0.3]
-      ALONG_AXIS_LIST: ['x', 'y']
-    - NAME: random_local_rotation
-      LOCAL_ROT_ANGLE: [-0.78539816, 0.78539816]
-    - NAME: random_local_scaling
-      LOCAL_SCALE_RANGE: [0.95, 1.05]
-
-    # - NAME: random_cuboid_lidar
-    #   npoints: 10000
-    # - NAME: random_drop
 
   SAMPLE_NUM_POINTS: 80000
   INPUT: sparse_tensor
-  RESOLUTION: 0.05
+  RESOLUTION: 0.1
 
   COLLATE_FUNCTION: "sparse_downstream_collator"
   DROP_LAST: True
@@ -64,11 +53,11 @@ optimizer:
   warmup_epochs: 0
   lr:
     name: "cosine_warm_up"
-    base_lr: 0.24 #0.1 for linear_probe #0.12
+    base_lr: 0.24
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_scratch"
+  name: "minkunet_scratch_waymo"
   linear_probe: false #meaning lp vs finetune
   downstream_model_dir: "scratch_epochs15"
 
@@ -83,4 +72,3 @@ model:
     CLS_FC: [96, 23]
     loss_types: ['CELoss', 'LovLoss']
     loss_weights: [1.0, 1.0]
-    # label_smoothing: 0.1

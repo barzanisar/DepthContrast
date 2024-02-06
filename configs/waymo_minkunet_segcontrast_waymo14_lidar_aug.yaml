@@ -24,20 +24,13 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  FRAME_SAMPLING_INTERVAL: {'train': 7} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4]
-  CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'OtherSmall', 'OtherMedium', 'OtherLong', 'OtherLonger', 'OtherBig'] #['Vehicle', 'Pedestrian', 'Cyclist']
-  MEAN_SIZES: [[4.7, 2.1, 1.7],
-                [0.91, 0.86, 1.73],
-                [1.78, 0.84, 1.78],
-                [0.5, 0.5, 1.0],
-                [3, 2, 1.5],
-                [10, 2.5, 1.7],
-                [20, 2.5, 1.7],
-                [20, 20, 1.7]]
+  CLASS_NAMES: ['Object']
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
+    - NAME: random_cuboid_lidar
     - NAME: random_world_flip
       ALONG_AXIS_LIST: ['x', 'y']
     - NAME: random_world_rotation
@@ -53,10 +46,14 @@ dataset:
       LOCAL_SCALE_RANGE: [0.95, 1.05]
     - NAME: random_drop_n_cuboids 
 
+  LIDAR_AUG:
+    n_crops: 3
+    lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
+    prob: [0.3, 0.3, 0.4]
 
   SAMPLE_NUM_POINTS: 20000
   INPUT: sparse_tensor
-  RESOLUTION: 0.05
+  RESOLUTION: 0.1
 
   COLLATE_FUNCTION: "sparse_moco_collator"
   DROP_LAST: True
@@ -73,7 +70,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_segcontrast_waymo5" 
+  name: "minkunet_pretrain_segcontrast_waymo14_lidar_aug" 
 
   MODEL_BASE:
     NAME: Segmentor
@@ -90,6 +87,6 @@ model:
 
 NCE_LOSS:
   LOSS_WEIGHT: 1.0
-  TEMPERATURE: 0.1
+  TEMPERATURE: 0.04
   NUM_NEGATIVES: 65536
   EMBEDDING_DIM: 128
