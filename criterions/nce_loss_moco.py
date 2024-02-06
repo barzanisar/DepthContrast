@@ -63,6 +63,7 @@ class NCELossMoco(nn.Module):
         self.shape_guidance = False
         self.gt_guidance = False
         self.neg_queue_filled = False
+        self.use_custom_cross_entropy = False
         if self.cluster:
             self.weight_inside = config.get("WEIGHT_INSIDE", True)
             self.use_custom_cross_entropy = config.get("CUSTOM_CROSS_ENTROPY", False)
