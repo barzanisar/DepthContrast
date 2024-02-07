@@ -111,7 +111,7 @@ SCRATCH_CMD+="python -m torch.distributed.launch
 --epochs $FINETUNE_EPOCHS
 --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
 --downstream_model_dir $DOWNSTREAM_MODEL_DIR
---pretrained_ckpt $PRETRAINED_CKPT 
+--pretrained_ckpt checkpoint-ep0.pth.tar 
 --workers $WORKERS_PER_GPU
 "
 
@@ -318,7 +318,7 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
         --downstream_model_dir $DOWNSTREAM_MODEL_DIR
-        --pretrained_ckpt $PRETRAINED_CKPT 
+        --pretrained_ckpt checkpoint-ep0.pth.tar 
         --workers $WORKERS_PER_GPU
         "
         echo "Running Scratch training"
@@ -375,7 +375,7 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
         --downstream_model_dir $DOWNSTREAM_MODEL_DIR
-        --pretrained_ckpt $PRETRAINED_CKPT 
+        --pretrained_ckpt checkpoint-ep0.pth.tar 
         --workers $WORKERS_PER_GPU
         "
 
