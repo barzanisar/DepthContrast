@@ -28,12 +28,12 @@ class NuscenesDataset(DepthContrastDataset):
         
         # create a list of all keyframe scenes
         skip_counter = 0
-        phase_scenes = create_splits_scenes()[mode]
+        phase_scenes = create_splits_scenes()[mode] #scene names of train
         for scene_idx in range(len(self.nusc.scene)):
             scene = self.nusc.scene[scene_idx]
             if scene["name"] in phase_scenes:
                 skip_counter += 1
-                if skip_counter % self.frame_sampling_interval == 0:
+                if skip_counter % self.frame_sampling_interval == 0: #skip whole scenes so it is scene_sampling_interval
                     self.create_list_of_tokens(scene)
         
         self.logger.add_line(f'Total Nuscenes samples loaded: {len(self.list_tokens)}')
