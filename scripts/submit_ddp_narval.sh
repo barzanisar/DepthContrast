@@ -43,7 +43,7 @@ DOWNSTREAM_MODEL_DIR="default"
 
 # Additional parameters
 WAYMO_DATA_DIR=/home/$USER/scratch/Datasets/Waymo
-NUSCENES_DATA_DIR=/home/$USER/projects/def-swasland-ab/datasets/nuscenes
+NUSCENES_DATA_DIR=/home/$USER/projects/def-swasland-ab/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
 KITTI_DATA_DIR=/home/$USER/scratch/Datasets/semantic_kitti
 SING_IMG=/home/$USER/scratch/singularity/ssl_nuscenes_lidar_aug.sif
 

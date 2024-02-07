@@ -29,7 +29,7 @@ DOWNSTREAM_MODEL_DIR="default"
 SING_IMG=/raid/home/nisarbar/singularity/ssl_nuscenes_lidar_aug.sif
 DATA_DIR=/raid/datasets/Waymo
 KITTI_DATA_DIR=/raid/datasets/semantic_kitti
-NUSCENES_DATA_DIR=/raid/datasets/nuscenes
+NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
 NUM_GPUS=2
 CUDA_VISIBLE_DEVICES=0,1
 MASTER_ADDR=$CLUSTER_NAME
@@ -405,7 +405,7 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --bind $PROJ_DIR/models:/DepthContrast/models
         --bind $PROJ_DIR/scripts:/DepthContrast/scripts
         --bind $PROJ_DIR/utils:/DepthContrast/utils
-        --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
+        --bind $NUSCENES_DATA_DIR
         --bind $PROJ_DIR/lib:/DepthContrast/lib
         $DEPTH_CONTRAST_BINDS
         $SING_IMG
@@ -492,7 +492,7 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --bind $PROJ_DIR/models:/DepthContrast/models
         --bind $PROJ_DIR/scripts:/DepthContrast/scripts
         --bind $PROJ_DIR/utils:/DepthContrast/utils
-        --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
+        --bind $NUSCENES_DATA_DIR
         --bind $PROJ_DIR/lib:/DepthContrast/lib
         $DEPTH_CONTRAST_BINDS
         $SING_IMG

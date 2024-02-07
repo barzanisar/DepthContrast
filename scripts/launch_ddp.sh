@@ -249,7 +249,7 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --bind $PROJ_DIR/models:/DepthContrast/models
         --bind $PROJ_DIR/scripts:/DepthContrast/scripts
         --bind $PROJ_DIR/utils:/DepthContrast/utils
-        --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
+        --bind $NUSCENES_DATA_DIR
         --bind $PROJ_DIR/lib:/DepthContrast/lib
         $DEPTH_CONTRAST_BINDS
         $SING_IMG
@@ -359,7 +359,7 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --bind $PROJ_DIR/models:/DepthContrast/models
         --bind $PROJ_DIR/scripts:/DepthContrast/scripts
         --bind $PROJ_DIR/utils:/DepthContrast/utils
-        --bind $NUSCENES_DATA_DIR:/DepthContrast/data/nuscenes
+        --bind $NUSCENES_DATA_DIR
         --bind $PROJ_DIR/lib:/DepthContrast/lib
         $DEPTH_CONTRAST_BINDS
         $SING_IMG
