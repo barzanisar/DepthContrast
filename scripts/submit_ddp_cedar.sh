@@ -42,9 +42,9 @@ DOWNSTREAM_MODEL_DIR="default"
 
 # Additional parameters
 WAYMO_DATA_DIR=/home/$USER/scratch/Datasets/Waymo
-SING_IMG=/home/$USER/scratch/singularity/ssl_lidar_aug.sif
-# NUSCENES_DATA_DIR=
-# KITTI_DATA_DIR=
+SING_IMG=/home/$USER/scratch/singularity/ssl_nuscenes_lidar_aug.sif
+NUSCENES_DATA_DIR=/home/$USER/projects/def-swasland-ab/Datasets/nuscenes
+KITTI_DATA_DIR=/home/$USER/projects/def-swasland-ab/Datasets/semantic_kitti
 
 
 # Usage info
@@ -72,7 +72,7 @@ while :; do
             PRETRAIN_CFG_FILE=$2
 
             # Get model
-            echo "Checking BACKBONE in $PRETRAIN_CFG_FILE"
+            echo "Checking BACKBONE"
             if [[ "$PRETRAIN_CFG_FILE"  == *"minkunet"* ]]; then
                 BACKBONE=minkunet
                 LINEARPROBE_CFG_FILE=configs/waymo_lpseg_minkunet.yaml
@@ -193,6 +193,9 @@ while :; do
             die 'ERROR: "--linearprobe_epochs" requires a non-empty option argument.'
         fi
         ;;
+    -n|--other_datasets)       # Takes an option argument; ensure it has been specified.
+        OTHER_DATASETS="true"
+        ;;
         
     # Additional parameters
     -?*)
@@ -237,7 +240,7 @@ export LINEARPROBE_EPOCHS=$LINEARPROBE_EPOCHS
 
 export MODEL_NAME=$MODEL_NAME
 export DOWNSTREAM_MODEL_DIR=$DOWNSTREAM_MODEL_DIR
-export BACKBONE=$BACKBONE
+
+export OTHER_DATASETS=$OTHER_DATASETS
 
 srun scripts/launch_ddp.sh #$MASTER_ADDR $TCP_PORT $CFG_FILE $SING_IMG $DATA_DIR
-
