@@ -249,7 +249,8 @@ def prep_environment(args, cfg, pretraining=True):
     
     if args.rank == 0:
         if not pretraining:
-            assert os.path.isdir(model_dir.split(f'/{phase_name}')[0])
+            n= model_dir.split(f'/{phase_name}')[0]
+            assert os.path.isdir(n), f'{n} does not exist!'
         prep_output_folder(model_dir)
 
     log_fn = '{}/{}.log'.format(model_dir, datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
