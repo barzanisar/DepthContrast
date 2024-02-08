@@ -24,7 +24,7 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 7} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  FRAME_SAMPLING_INTERVAL: {'train': 10} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Object']
@@ -70,8 +70,8 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_segcontrast_waymo14_lidar_aug" 
-
+  name: "minkunet_pretrain_depthcontrast_waymo10_lidar_aug_dethead_0p8w" 
+  
   MODEL_BASE:
     NAME: Segmentor
 
@@ -80,13 +80,42 @@ model:
 
     PRETEXT_HEAD: 
       NAME: ProjectionSparseVoxHead
-      cluster: True
+      cluster: False
       use_mlp: True
       mlp_dim: [96, 128, 128]
+  
+  MODEL_DET_HEAD:
+    NAME: PointRCNN
+
+    INPUT_MOCO_FEATS: True
+
+    POINT_HEAD:
+      NAME: PointHeadBox
+      INPUT_FEATURES: 96
+      REG_FC: [256, 256]
+      CLASS_AGNOSTIC: True
+      USE_POINT_FEATURES_BEFORE_FUSION: False
+      TARGET_CONFIG:
+        GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
+        BOX_CODER: PointResidualCoder
+        BOX_CODER_CONFIG: {
+            'use_mean_size': True,
+            'mean_size': [
+                [1,1,1]
+            ]
+          }
+
+      LOSS_CONFIG:
+        LOSS_REG: WeightedSmoothL1Loss
+        LOSS_WEIGHTS: {
+            'point_box_weight': 0.8,
+            'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
+        }
 
 
 NCE_LOSS:
   LOSS_WEIGHT: 1.0
-  TEMPERATURE: 0.04
-  NUM_NEGATIVES: 65536
+  TEMPERATURE: 0.1
+  NUM_NEGATIVES: 8152 # for 14% waymo as suggested in segcontrast
   EMBEDDING_DIM: 128
