@@ -66,7 +66,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_segcontrast_waymo10_iou_knn_weight_0p01_t0p02" 
+  name: "minkunet_pretrain_segcontrast_waymo10_iou_knn_weight" 
 
   MODEL_BASE:
     NAME: Segmentor
