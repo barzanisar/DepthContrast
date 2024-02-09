@@ -380,10 +380,10 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         FINETUNE_CMD=$BASE_CMD
 
         FINETUNE_CMD+="python -m torch.distributed.launch
-        --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
         /DepthContrast/tools/downstream_segmentation.py
         --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
+        --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $NUM_GPUS 
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
@@ -424,10 +424,10 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         FINETUNE_CMD=$BASE_CMD
 
         FINETUNE_CMD+="python -m torch.distributed.launch
-        --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
         /DepthContrast/tools/downstream_segmentation.py
         --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
+        --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $NUM_GPUS 
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
@@ -469,10 +469,10 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         SCRATCH_CMD=$BASE_CMD
 
         SCRATCH_CMD+="python -m torch.distributed.launch
-        --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
         /DepthContrast/tools/downstream_segmentation.py
         --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $WORLD_SIZE 
+        --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $NUM_GPUS 
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
@@ -511,10 +511,10 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         SCRATCH_CMD=$BASE_CMD
 
         SCRATCH_CMD+="python -m torch.distributed.launch
-        --nproc_per_node=$NUM_GPUS --nnodes=$SLURM_NNODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
         /DepthContrast/tools/downstream_segmentation.py
         --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $WORLD_SIZE 
+        --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $NUM_GPUS 
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
