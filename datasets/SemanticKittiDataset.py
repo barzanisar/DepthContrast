@@ -35,7 +35,7 @@ class SemanticKittiDataset(DepthContrastDataset):
             point_seq_label = os.listdir(label_seq_path)
             point_seq_label.sort()
             labels_datapath += [ os.path.join(label_seq_path, label_file) for label_file in point_seq_label ]
-
+            assert len(point_seq_bin) == len(point_seq_label), f'len(point_seq_bin): {len(point_seq_bin)} not equal to len(point_seq_label) {len(point_seq_label)}: \n point_seq_bin:\n{point_seq_bin} \npoint_seq_label:\n{point_seq_label}'
             equal = [True if point_seq_label[i].split('.')[0] == point_seq_bin[i].split('.')[0] else False for i in range(len(point_seq_label))]
             assert np.all(equal), f'sort problematic: {point_seq_bin[:10]}, {point_seq_label[:10]}'
         if self.frame_sampling_interval > 1:
