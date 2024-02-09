@@ -73,8 +73,8 @@ def main():
     if args.batchsize_per_gpu > 0:
         cfg['dataset']['BATCHSIZE_PER_REPLICA']=args.batchsize_per_gpu
     if args.frame_sampling_div > 0:
-        cfg['dataset']['frame_sampling_interval']['train'] /= args.frame_sampling_div
-        cfg['dataset']['frame_sampling_interval']['train'] = int(cfg['dataset']['frame_sampling_interval']['train'])
+        cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] /= args.frame_sampling_div
+        cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] = int(cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'])
     if args.epochs > 0:
         cfg['optimizer']['num_epochs']=args.epochs
     if args.model_name != 'default':
