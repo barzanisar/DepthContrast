@@ -82,10 +82,11 @@ class SemanticKittiDataset(DepthContrastDataset):
     def get_item_downstream(self, index):
         points_path = self.points_data_path[index]
         labels_path = self.labels_data_path[index]
-
+        # points_path = '/home/barza/DepthContrast/001933.bin'
+        # labels_path = '/home/barza/DepthContrast/001933.label'
         points = self.get_lidar(points_path)
         pt_seg_labels = self.get_seglabels(labels_path)
-        assert points.shape[0] == pt_seg_labels.shape[0], f'Missing labels for {labels_path}!!!!!!!!'
+        assert points.shape[0] == pt_seg_labels.shape[0], f'Missing labels for {labels_path}! {points_path}!, {points.shape[0]} points, {pt_seg_labels.shape[0]} labels'
         points = np.hstack([points[:,:4], pt_seg_labels.reshape(-1, 1)]) #xyzi, seglabel
 
         input_dict = {

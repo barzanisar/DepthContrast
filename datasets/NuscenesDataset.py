@@ -58,6 +58,7 @@ class NuscenesDataset(DepthContrastDataset):
         pointsensor = self.nusc.get("sample_data", lidar_token)
         pcl_path = os.path.join(self.nusc.dataroot, pointsensor["filename"])
         points = LidarPointCloud.from_file(pcl_path).points.T
+        points[:, 3] = np.tanh(points[:, 3]) * 255.0
         # get the points (4th coordinate is the point intensity)
         #TODO check if necessary
         lidarseg_labels_filename = os.path.join(
