@@ -54,6 +54,8 @@ parser.add_argument('--batchsize_per_gpu', default=-1, type=int,
                     help='batchsize_per_gpu')
 parser.add_argument('--epochs', default=-1, type=int,
                     help='num epochs')
+parser.add_argument('--frame_sampling_div', default=-1, type=int,
+                    help='frame_sampling_interval')
 parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
@@ -70,6 +72,9 @@ def main():
     cfg_from_yaml_file(args.cfg, cfg)
     if args.batchsize_per_gpu > 0:
         cfg['dataset']['BATCHSIZE_PER_REPLICA']=args.batchsize_per_gpu
+    if args.frame_sampling_div > 0:
+        cfg['dataset']['frame_sampling_interval']['train'] /= args.frame_sampling_div
+        cfg['dataset']['frame_sampling_interval']['train'] = int(cfg['dataset']['frame_sampling_interval']['train'])
     if args.epochs > 0:
         cfg['optimizer']['num_epochs']=args.epochs
     if args.model_name != 'default':

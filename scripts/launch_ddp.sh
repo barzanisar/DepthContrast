@@ -94,10 +94,11 @@ FINETUNE_CMD+="python -m torch.distributed.launch
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
 --epochs $FINETUNE_EPOCHS
 --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
---downstream_model_dir $DOWNSTREAM_MODEL_DIR
+--downstream_model_dir finetune_waymo_"$FRAME_SAMPLING_DIV"percent
 --model_name $MODEL_NAME
 --pretrained_ckpt $PRETRAINED_CKPT 
---workers $WORKERS_PER_GPU
+--workers $WORKERS_PER_GPU 
+--frame_sampling_div $FRAME_SAMPLING_DIV
 "
 
 SCRATCH_CMD=$BASE_CMD
@@ -112,7 +113,8 @@ SCRATCH_CMD+="python -m torch.distributed.launch
 --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
 --downstream_model_dir $DOWNSTREAM_MODEL_DIR
 --pretrained_ckpt checkpoint-ep0.pth.tar 
---workers $WORKERS_PER_GPU
+--workers $WORKERS_PER_GPU 
+--frame_sampling_div $FRAME_SAMPLING_DIV
 "
 
 LINEARPROBE_CMD=$BASE_CMD
@@ -128,7 +130,8 @@ LINEARPROBE_CMD+="python -m torch.distributed.launch
 --downstream_model_dir $DOWNSTREAM_MODEL_DIR
 --model_name $MODEL_NAME
 --linear_probe_last_n_ckpts $LINEARPROBE_LAST_N_CKPTS 
---workers $WORKERS_PER_GPU
+--workers $WORKERS_PER_GPU 
+--frame_sampling_div $FRAME_SAMPLING_DIV
 "
 
 if [[ "$MODE" == "pretrain-finetune" ]]; then
@@ -207,10 +210,11 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+        --downstream_model_dir finetune_semantickitti_"$FRAME_SAMPLING_DIV"percent
         --model_name $MODEL_NAME
         --pretrained_ckpt $PRETRAINED_CKPT 
-        --workers $WORKERS_PER_GPU
+        --workers $WORKERS_PER_GPU 
+        --frame_sampling_div $FRAME_SAMPLING_DIV
         "
         echo "Running Finetuning"
         echo "$FINETUNE_CMD"
@@ -264,10 +268,11 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+        --downstream_model_dir finetune_nuscenes_"$FRAME_SAMPLING_DIV"percent
         --model_name $MODEL_NAME
         --pretrained_ckpt $PRETRAINED_CKPT 
-        --workers $WORKERS_PER_GPU
+        --workers $WORKERS_PER_GPU 
+        --frame_sampling_div $FRAME_SAMPLING_DIV
         "
         echo "Running Finetuning"
         echo "$FINETUNE_CMD"
@@ -319,7 +324,8 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
         --downstream_model_dir $DOWNSTREAM_MODEL_DIR
         --pretrained_ckpt checkpoint-ep0.pth.tar 
-        --workers $WORKERS_PER_GPU
+        --workers $WORKERS_PER_GPU 
+        --frame_sampling_div $FRAME_SAMPLING_DIV
         "
         echo "Running Scratch training"
         echo "$SCRATCH_CMD"
@@ -376,7 +382,8 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
         --downstream_model_dir $DOWNSTREAM_MODEL_DIR
         --pretrained_ckpt checkpoint-ep0.pth.tar 
-        --workers $WORKERS_PER_GPU
+        --workers $WORKERS_PER_GPU 
+        --frame_sampling_div $FRAME_SAMPLING_DIV
         "
 
         echo "Running Scratch training"

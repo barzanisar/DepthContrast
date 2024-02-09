@@ -39,6 +39,7 @@ FINETUNE_EPOCHS=-1
 LINEARPROBE_EPOCHS=-1
 MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
+FRAME_SAMPLING_DIV=1
 
 # Additional parameters
 WAYMO_DATA_DIR=/home/$USER/scratch/Datasets/Waymo
@@ -185,6 +186,14 @@ while :; do
             die 'ERROR: "--pretrain_epochs" requires a non-empty option argument.'
         fi
         ;;
+    -s|--frame_sampling_div)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            FRAME_SAMPLING_DIV=$2
+            shift
+        else
+            die 'ERROR: "--frame_sampling_div" requires a non-empty option argument.'
+        fi
+        ;;
     -i|--linearprobe_epochs)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             LINEARPROBE_EPOCHS=$2
@@ -222,6 +231,7 @@ export WAYMO_DATA_DIR=$WAYMO_DATA_DIR
 export NUSCENES_DATA_DIR=$NUSCENES_DATA_DIR
 export KITTI_DATA_DIR=$KITTI_DATA_DIR
 export BACKBONE=$BACKBONE
+export FRAME_SAMPLING_DIV=$FRAME_SAMPLING_DIV
 
 export PRETRAIN_CFG_FILE=$PRETRAIN_CFG_FILE
 export LINEARPROBE_CFG_FILE=$LINEARPROBE_CFG_FILE

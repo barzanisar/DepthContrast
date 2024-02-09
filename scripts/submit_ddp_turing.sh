@@ -25,6 +25,7 @@ FINETUNE_EPOCHS=-1
 LINEARPROBE_EPOCHS=-1
 MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
+FRAME_SAMPLING_DIV=1
 
 SING_IMG=/raid/home/nisarbar/singularity/ssl_nuscenes_lidar_aug.sif
 DATA_DIR=/raid/datasets/Waymo
@@ -175,6 +176,14 @@ while :; do
             die 'ERROR: "--pretrain_epochs" requires a non-empty option argument.'
         fi
         ;;
+    -s|--frame_sampling_div)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            FRAME_SAMPLING_DIV=$2
+            shift
+        else
+            die 'ERROR: "--frame_sampling_div" requires a non-empty option argument.'
+        fi
+        ;;
     -i|--linearprobe_epochs)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             LINEARPROBE_EPOCHS=$2
@@ -279,10 +288,11 @@ FINETUNE_CMD+="python -m torch.distributed.launch
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
 --epochs $FINETUNE_EPOCHS
 --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
---downstream_model_dir $DOWNSTREAM_MODEL_DIR
+--downstream_model_dir finetune_waymo_"$FRAME_SAMPLING_DIV"percent
 --model_name $MODEL_NAME
 --pretrained_ckpt $PRETRAINED_CKPT 
---workers $WORKERS_PER_GPU
+--workers $WORKERS_PER_GPU 
+--frame_sampling_div $FRAME_SAMPLING_DIV
 "
 
 SCRATCH_CMD=$BASE_CMD
@@ -297,7 +307,8 @@ SCRATCH_CMD+="python -m torch.distributed.launch
 --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
 --downstream_model_dir $DOWNSTREAM_MODEL_DIR
 --pretrained_ckpt checkpoint-ep0.pth.tar 
---workers $WORKERS_PER_GPU
+--workers $WORKERS_PER_GPU 
+--frame_sampling_div $FRAME_SAMPLING_DIV
 "
 
 LINEARPROBE_CMD=$BASE_CMD
@@ -313,7 +324,8 @@ LINEARPROBE_CMD+="python -m torch.distributed.launch
 --downstream_model_dir $DOWNSTREAM_MODEL_DIR
 --model_name $MODEL_NAME
 --linear_probe_last_n_ckpts $LINEARPROBE_LAST_N_CKPTS 
---workers $WORKERS_PER_GPU
+--workers $WORKERS_PER_GPU 
+--frame_sampling_div $FRAME_SAMPLING_DIV
 "
 
 if [[ "$MODE" == "pretrain-finetune" ]]; then
@@ -375,10 +387,11 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+        --downstream_model_dir finetune_semantickitti_"$FRAME_SAMPLING_DIV"percent
         --model_name $MODEL_NAME
         --pretrained_ckpt $PRETRAINED_CKPT 
-        --workers $WORKERS_PER_GPU
+        --workers $WORKERS_PER_GPU 
+        --frame_sampling_div $FRAME_SAMPLING_DIV
         "
         echo "Running Finetuning on semkitti"
         echo "$FINETUNE_CMD"
@@ -418,10 +431,11 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
+        --downstream_model_dir finetune_nuscenes_"$FRAME_SAMPLING_DIV"percent
         --model_name $MODEL_NAME
         --pretrained_ckpt $PRETRAINED_CKPT 
-        --workers $WORKERS_PER_GPU
+        --workers $WORKERS_PER_GPU 
+        --frame_sampling_div $FRAME_SAMPLING_DIV
         "
         echo "Running Finetuning on nuscenes"
         echo "$FINETUNE_CMD"
@@ -464,7 +478,8 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
         --downstream_model_dir $DOWNSTREAM_MODEL_DIR
         --pretrained_ckpt checkpoint-ep0.pth.tar 
-        --workers $WORKERS_PER_GPU
+        --workers $WORKERS_PER_GPU 
+        --frame_sampling_div $FRAME_SAMPLING_DIV
         "
         echo "Running Scratch training on semkitti"
         echo "$SCRATCH_CMD"
@@ -505,7 +520,8 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
         --downstream_model_dir $DOWNSTREAM_MODEL_DIR
         --pretrained_ckpt checkpoint-ep0.pth.tar 
-        --workers $WORKERS_PER_GPU
+        --workers $WORKERS_PER_GPU 
+        --frame_sampling_div $FRAME_SAMPLING_DIV
         "
 
         echo "Running Scratch training on nuscenes"
