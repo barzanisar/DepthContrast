@@ -36,8 +36,14 @@ class SemanticKittiDataset(DepthContrastDataset):
             point_seq_label.sort()
             labels_datapath += [ os.path.join(label_seq_path, label_file) for label_file in point_seq_label ]
 
+            equal = [True if point_seq_label[i].split('.')[0] == point_seq_bin[i].split('.')[0] else False for i in range(len(point_seq_label))]
+            assert np.all(equal), f'sort problematic: {point_seq_bin[:10]}, {point_seq_label[:10]}'
         if self.frame_sampling_interval > 1:
             for k in range(0, len(points_datapath), self.frame_sampling_interval):
+                id = points_datapath[k].split('.')[0].split('/')[-1]
+                seq = points_datapath[k].split('.')[0].split('/')[-3]
+                assert id == labels_datapath[k].split('.')[0].split('/')[-1]
+                assert seq == labels_datapath[k].split('.')[0].split('/')[-3]
                 self.points_data_path.append(points_datapath[k])
                 self.labels_data_path.append(labels_datapath[k])
         else:
