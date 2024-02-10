@@ -216,9 +216,9 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --workers $WORKERS_PER_GPU 
         --frame_sampling_div $FRAME_SAMPLING_DIV
         "
-        echo "Running Finetuning"
-        echo "$FINETUNE_CMD"
-        eval $FINETUNE_CMD
+        echo "Not finetuning on semkitti"
+        # echo "$FINETUNE_CMD"
+        # eval $FINETUNE_CMD
         echo "Done Finetuning"
 
         # Extract NuScenes  
