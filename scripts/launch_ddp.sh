@@ -92,10 +92,10 @@ FINETUNE_CMD+="python -m torch.distributed.launch
 --launcher pytorch
 --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $WORLD_SIZE 
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
---epochs $FINETUNE_EPOCHS
+--epochs $FINETUNE_EPOCHS 
 --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
---downstream_model_dir finetune_waymo_"$FRAME_SAMPLING_DIV"percent
---model_name $MODEL_NAME
+--downstream_model_dir finetune_waymo_"$FRAME_SAMPLING_DIV"percent 
+--model_name $MODEL_NAME 
 --pretrained_ckpt $PRETRAINED_CKPT 
 --workers $WORKERS_PER_GPU 
 --frame_sampling_div $FRAME_SAMPLING_DIV
