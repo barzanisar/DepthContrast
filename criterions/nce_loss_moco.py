@@ -62,7 +62,7 @@ class NCELossMoco(nn.Module):
         self.iou_guidance = False
         self.shape_guidance = False
         self.gt_guidance = False
-        self.neg_queue_filled = False
+        self.register_buffer("neg_queue_filled", torch.zeros(1, dtype=torch.bool))
         self.use_custom_cross_entropy = False
         if self.cluster:
             self.weight_inside = config.get("WEIGHT_INSIDE", True)
@@ -192,7 +192,7 @@ class NCELossMoco(nn.Module):
             self.queue[:, :head_size] = keys.T[:, tail_size:]
         
         if ptr + batch_size >= self.K:
-            self.neg_queue_filled = True
+            self.neg_queue_filled[0] = True
         
         ptr = (ptr + batch_size) % self.K  # move pointer
 
