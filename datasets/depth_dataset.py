@@ -314,7 +314,12 @@ class DepthContrastDataset(Dataset):
 
 
         if 'LIDAR_AUG' in cfg:
-            method = np.random.choice(['mixed', 'single', 'none'], p=[0.2, 0.4, 0.4])
+            if cfg['LIDAR_AUG']['mode'] == 'single':
+                method = 'single'
+            elif cfg['LIDAR_AUG']['mode'] == 'mixed':
+                method = 'mixed'
+            else:
+                method = np.random.choice(['mixed', 'single'], p=[0.5, 0.5])
             choice = np.random.choice(2)
             target_pc = ['points', 'points_moco'][choice]
             target_gt = ['gt_boxes', 'gt_boxes_moco'][choice]

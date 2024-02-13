@@ -24,7 +24,7 @@ dataset:
   PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
   DATA_SPLIT: {'train': train_one}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 1} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75, -75 ,  -3 ,  75 ,  75 ,   3 ] #
   CLASS_NAMES: ['Object']
@@ -49,10 +49,12 @@ dataset:
     #   npoints: 10000
     # - NAME: random_drop
 
-  # LIDAR_AUG:
-  #   n_crops: 3
-  #   lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
-  #   prob: [0.3, 0.3, 0.4]
+  LIDAR_AUG:
+    mode: 'mixed' # or 'single'
+    random_lidar_height: True
+    n_crops: 3
+    lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
+    prob: [0.3, 0.3, 0.4]
     
   SAMPLE_NUM_POINTS: 20000
   INPUT: sparse_tensor
@@ -87,7 +89,7 @@ model:
 
     PRETEXT_HEAD: 
       NAME: ProjectionSparseVoxHead
-      cluster: False
+      cluster: True
       use_mlp: True
       mlp_dim: [96, 128, 128]
   
@@ -131,7 +133,7 @@ NCE_LOSS:
   EMBEDDING_DIM: 128
   # # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
   # IOU_WEIGHT: 1.0
-  # IOU_QUANTILE_THRESHOLD: 0.23
+  IOU_QUANTILE_THRESHOLD: 0.23
   # SHAPE_WEIGHT: 1.0
   # # SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
   # SHAPE_DIST_QUANTILE_THRESHOLD: 0.23

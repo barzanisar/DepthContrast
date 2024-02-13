@@ -10,58 +10,67 @@ class LiDAR_aug_manager:
         self.lidars = lidar_aug_cfg['lidars']
         self.lidar_augs = {}
         self.lidar_height = 1.73
+        self.random_lidar_height = lidar_aug_cfg.get('random_lidar_height', False)
 
         for lidar in self.lidars:
             aug_cfg_path = root_path / 'configs' / 'Lidar_configs' / f'LiDAR_config_{lidar}.yaml' 
             self.lidar_augs[lidar] = LiDAR_aug(aug_cfg_path)
     
-    def generate_frame_with_gt_boxes(self, src_pc, gt_boxes_lidar, lidar=None, readjust_height=True):
+    def generate_frame_with_gt_boxes(self, src_pc, gt_boxes_lidar, lidar=None, readjust_height=True, lidar_height=None):
         if lidar is None:
             lidar = np.random.choice(self.lidars, p=self.cfg['prob'])
         
         # shift pc down by the height of a car 
         # bcz waymo dataset has lidar origin on the ground
+        if lidar_height is None:
+            lidar_height = self.lidar_height 
+            if self.random_lidar_height:
+                lidar_height += np.random.uniform(-0.25, 0.02)
         shifted_pc = np.copy(src_pc)
-        shifted_pc[:, 2] -= self.lidar_height
+        shifted_pc[:, 2] -= lidar_height
 
         shifted_gt_boxes = np.copy(gt_boxes_lidar)
-        shifted_gt_boxes[:, 2] -= self.lidar_height
+        shifted_gt_boxes[:, 2] -= lidar_height
 
         
         pts, gt_boxes = self.lidar_augs[lidar].generate_frame_with_gt_boxes(shifted_pc, 
                                                                           shifted_gt_boxes)
             
         if readjust_height:
-            pts[:,2] += self.lidar_height
-            gt_boxes[:,2] += self.lidar_height
+            pts[:,2] += lidar_height
+            gt_boxes[:,2] += lidar_height
 
         return pts, gt_boxes
     
-    def generate_frame(self, src_pc, src_labels, lidar=None, readjust_height=True):
-        if lidar is None:
-            lidar = np.random.choice(self.lidars, p=self.cfg['prob'])
+    # def generate_frame(self, src_pc, src_labels, lidar=None, readjust_height=True):
+    #     if lidar is None:
+    #         lidar = np.random.choice(self.lidars, p=self.cfg['prob'])
         
-        # shift pc down by the height of a car 
-        # bcz waymo dataset has lidar origin on the ground
-        shifted_pc = np.copy(src_pc)
-        shifted_pc[:, 2] -= self.lidar_height
-        src_p, src_l = self.lidar_augs[lidar].generate_frame_src(shifted_pc, src_labels)
+    #     # shift pc down by the height of a car 
+    #     # bcz waymo dataset has lidar origin on the ground
+    #     shifted_pc = np.copy(src_pc)
+    #     shifted_pc[:, 2] -= self.lidar_height
+    #     src_p, src_l = self.lidar_augs[lidar].generate_frame_src(shifted_pc, src_labels)
 
-        if readjust_height:
-            src_p[:,2] += self.lidar_height
+    #     if readjust_height:
+    #         src_p[:,2] += self.lidar_height
 
-        return src_p, src_l
+    #     return src_p, src_l
     
     def generate_lidar_mix_frame_with_gt_boxes(self, src_pc, src_gt_boxes, lidars=None):
         if lidars is None:
             lidars = self.lidars
         
+        lidar_height = self.lidar_height 
+        if self.random_lidar_height:
+            lidar_height += np.random.uniform(-0.25, 0.02)
+
         n_crops = self.cfg['n_crops']
         all_frames = []
         all_gt_boxes = []
 
         for lidar in self.lidars:
-            pts, gt_boxes = self.generate_frame_with_gt_boxes(src_pc, src_gt_boxes, lidar, readjust_height=False)
+            pts, gt_boxes = self.generate_frame_with_gt_boxes(src_pc, src_gt_boxes, lidar, readjust_height=False, lidar_height=lidar_height)
             assert (src_gt_boxes[:,-1] - gt_boxes[:,-1]).sum() == 0
             all_frames.append(pts)
             all_gt_boxes.append(gt_boxes)
@@ -74,12 +83,12 @@ class LiDAR_aug_manager:
         delta_azimuths = azimuth_max_bounds - azimuth_min_bounds #[0, 2pi]
 
         pc = np.copy(src_pc)
-        pc[:,2] -= self.lidar_height
+        pc[:,2] -= lidar_height
         azimuth_src = np.arctan2(pc[:,1], pc[:,0])
         azimuth_src[azimuth_src < 0] += 2*np.pi #to make azimuth 0 to 2pi
 
         gtb = np.copy(src_gt_boxes)
-        gtb[:,2] -= self.lidar_height
+        gtb[:,2] -= lidar_height
         # gtb_azimuth_src = np.arctan2(gtb[:,1], gtb[:,0])
         # gtb_azimuth_src[gtb_azimuth_src < 0] += 2*np.pi #to make azimuth 0 to 2pi
 
@@ -143,62 +152,62 @@ class LiDAR_aug_manager:
             # gtb_azimuth_src[gtb_azimuth_src < 0] += 2*np.pi
 
 
-        pc[:,2] += self.lidar_height
-        gtb[:,2] += self.lidar_height
+        pc[:,2] += lidar_height
+        gtb[:,2] += lidar_height
 
         return pc, gtb 
     
-    def generate_lidar_mix_frame(self, src_pc, src_labels, lidars=None):
-        if lidars is None:
-            lidars = self.lidars
+    # def generate_lidar_mix_frame(self, src_pc, src_labels, lidars=None):
+    #     if lidars is None:
+    #         lidars = self.lidars
         
-        n_crops = self.cfg['n_crops']
-        all_frames = []
-        all_labels = []
+    #     n_crops = self.cfg['n_crops']
+    #     all_frames = []
+    #     all_labels = []
 
-        for lidar in self.lidars:
-            pts, labels = self.generate_frame(src_pc, src_labels, lidar, readjust_height=False)
-            all_frames.append(pts)
-            all_labels.append(labels)
+    #     for lidar in self.lidars:
+    #         pts, labels = self.generate_frame(src_pc, src_labels, lidar, readjust_height=False)
+    #         all_frames.append(pts)
+    #         all_labels.append(labels)
         
-        azimuth_bound_1 = np.random.uniform(0, 2*np.pi, n_crops)
-        delta_azimuths = np.random.uniform(np.deg2rad(10), np.pi/2, n_crops)
-        azimuth_bound_2 = (azimuth_bound_1 + delta_azimuths) % (2*np.pi)
-        azimuth_max_bounds = np.max((azimuth_bound_1,azimuth_bound_2), axis=0)
-        azimuth_min_bounds = np.min((azimuth_bound_1,azimuth_bound_2), axis=0)
-        delta_azimuths = azimuth_max_bounds - azimuth_min_bounds
+    #     azimuth_bound_1 = np.random.uniform(0, 2*np.pi, n_crops)
+    #     delta_azimuths = np.random.uniform(np.deg2rad(10), np.pi/2, n_crops)
+    #     azimuth_bound_2 = (azimuth_bound_1 + delta_azimuths) % (2*np.pi)
+    #     azimuth_max_bounds = np.max((azimuth_bound_1,azimuth_bound_2), axis=0)
+    #     azimuth_min_bounds = np.min((azimuth_bound_1,azimuth_bound_2), axis=0)
+    #     delta_azimuths = azimuth_max_bounds - azimuth_min_bounds
 
-        pc = np.copy(src_pc)
-        pc[:,2] -= self.lidar_height
-        l_src = np.copy(src_labels)
-        azimuth_src = np.arctan2(pc[:,1], pc[:,0])
-        azimuth_src[azimuth_src < 0] += 2*np.pi
+    #     pc = np.copy(src_pc)
+    #     pc[:,2] -= self.lidar_height
+    #     l_src = np.copy(src_labels)
+    #     azimuth_src = np.arctan2(pc[:,1], pc[:,0])
+    #     azimuth_src[azimuth_src < 0] += 2*np.pi
 
-        for i in range(delta_azimuths.shape[0]):
-            lidar_ind = i%len(lidars)
-            pts = all_frames[lidar_ind]
-            labels = all_labels[lidar_ind]
-            azimuth = np.arctan2(pts[:,1], pts[:,0])
-            azimuth[azimuth < 0] += 2*np.pi
+    #     for i in range(delta_azimuths.shape[0]):
+    #         lidar_ind = i%len(lidars)
+    #         pts = all_frames[lidar_ind]
+    #         labels = all_labels[lidar_ind]
+    #         azimuth = np.arctan2(pts[:,1], pts[:,0])
+    #         azimuth[azimuth < 0] += 2*np.pi
 
-            min_azimuth = azimuth_min_bounds[i]
-            max_azimuth = azimuth_max_bounds[i]
-            if delta_azimuths[i] > np.pi:
-                cond = np.logical_or(azimuth < min_azimuth, azimuth > max_azimuth)
-                cond_src = np.logical_or(azimuth_src < min_azimuth, azimuth_src > max_azimuth)
-            else:
-                cond = np.logical_and(azimuth < max_azimuth, azimuth > min_azimuth)
-                cond_src = np.logical_and(azimuth_src < max_azimuth, azimuth_src > min_azimuth)
+    #         min_azimuth = azimuth_min_bounds[i]
+    #         max_azimuth = azimuth_max_bounds[i]
+    #         if delta_azimuths[i] > np.pi:
+    #             cond = np.logical_or(azimuth < min_azimuth, azimuth > max_azimuth)
+    #             cond_src = np.logical_or(azimuth_src < min_azimuth, azimuth_src > max_azimuth)
+    #         else:
+    #             cond = np.logical_and(azimuth < max_azimuth, azimuth > min_azimuth)
+    #             cond_src = np.logical_and(azimuth_src < max_azimuth, azimuth_src > min_azimuth)
 
-            cond_src = np.logical_not(cond_src)
-            pc = np.vstack([pc[cond_src], pts[cond]])
-            l_src = np.concatenate((l_src[cond_src], labels[cond]))
-            azimuth_src = np.arctan2(pc[:,1], pc[:,0])
-            azimuth_src[azimuth_src < 0] += 2*np.pi
+    #         cond_src = np.logical_not(cond_src)
+    #         pc = np.vstack([pc[cond_src], pts[cond]])
+    #         l_src = np.concatenate((l_src[cond_src], labels[cond]))
+    #         azimuth_src = np.arctan2(pc[:,1], pc[:,0])
+    #         azimuth_src[azimuth_src < 0] += 2*np.pi
 
-        pc[:,2] += self.lidar_height
+    #     pc[:,2] += self.lidar_height
 
-        return pc, l_src
+    #     return pc, l_src
 
 
 class LiDAR_aug:
@@ -374,11 +383,11 @@ class LiDAR_aug:
          
         return new_pc, src_pc_selected
     
-    def generate_frame_src(self, pc, labels):
+    # def generate_frame_src(self, pc, labels):
 
-        _, _, _, selected_src_inds = self.spherical_projection(pc, labels)
+    #     _, _, _, selected_src_inds = self.spherical_projection(pc, labels)
          
-        return pc[selected_src_inds], labels[selected_src_inds]
+    #     return pc[selected_src_inds], labels[selected_src_inds]
 
 
     
