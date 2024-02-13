@@ -322,7 +322,7 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir scratch_"$FRAME_SAMPLING_DIV"percent_vs0p1
+        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
         --pretrained_ckpt checkpoint-ep0.pth.tar 
         --workers $WORKERS_PER_GPU 
         --frame_sampling_div $FRAME_SAMPLING_DIV
