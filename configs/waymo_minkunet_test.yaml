@@ -1,7 +1,7 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_minkunet_test.yaml
 # python tools/main_dist.py --cfg configs/waymo_minkunet_test.yaml
 wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
-resume: false
+resume: False
 num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
@@ -48,13 +48,17 @@ dataset:
     # - NAME: random_cuboid_lidar
     #   npoints: 10000
     # - NAME: random_drop
-
   LIDAR_AUG:
-    mode: 'mixed' # or 'single'
+    mode: 'single'
     random_lidar_height: True
-    n_crops: 3
-    lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
-    prob: [0.3, 0.3, 0.4]
+    lidars: ['v32'] # 'v16', 'o64', 'o128', 
+    prob: [1.0]
+  # LIDAR_AUG:
+  #   mode: 'mixed' # or 'single'
+  #   random_lidar_height: True
+  #   n_crops: 3
+  #   lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
+  #   prob: [0.3, 0.3, 0.4]
     
   SAMPLE_NUM_POINTS: 20000
   INPUT: sparse_tensor
@@ -71,7 +75,7 @@ optimizer:
   weight_decay: 0.0001
   momentum: 0.9
   nesterov: True
-  num_epochs: 10
+  num_epochs: 50
   warmup_epochs: 0
   lr:
     name: "cosine_warm_up"
@@ -93,37 +97,37 @@ model:
       use_mlp: True
       mlp_dim: [96, 128, 128]
   
-  MODEL_DET_HEAD:
-    NAME: PointRCNN
+  # MODEL_DET_HEAD:
+  #   NAME: PointRCNN
 
-    INPUT_MOCO_FEATS: True
+  #   INPUT_MOCO_FEATS: True
 
-    POINT_HEAD:
-      NAME: PointHeadBox
-      # CLS_FC: [256, 256]
-      INPUT_FEATURES: 96
-      REG_FC: [256, 256]
-      CLASS_AGNOSTIC: True
-      USE_POINT_FEATURES_BEFORE_FUSION: False
-      TARGET_CONFIG:
-        GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
-        BOX_CODER: PointResidualCoder
-        BOX_CODER_CONFIG: {
-            'use_mean_size': True,
-            'mean_size': [
-                [1,1,1]
-            ]
-          }
+  #   POINT_HEAD:
+  #     NAME: PointHeadBox
+  #     # CLS_FC: [256, 256]
+  #     INPUT_FEATURES: 96
+  #     REG_FC: [256, 256]
+  #     CLASS_AGNOSTIC: True
+  #     USE_POINT_FEATURES_BEFORE_FUSION: False
+  #     TARGET_CONFIG:
+  #       GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
+  #       BOX_CODER: PointResidualCoder
+  #       BOX_CODER_CONFIG: {
+  #           'use_mean_size': True,
+  #           'mean_size': [
+  #               [1,1,1]
+  #           ]
+  #         }
 
-      LOSS_CONFIG:
-        LOSS_REG: WeightedSmoothL1Loss
-        LOSS_WEIGHTS: {
-            # 'point_cls_weight': 0.5,
-            'point_box_weight': 0.2,
-            'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-            # 'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
-            'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
-        }
+  #     LOSS_CONFIG:
+  #       LOSS_REG: WeightedSmoothL1Loss
+  #       LOSS_WEIGHTS: {
+  #           # 'point_cls_weight': 0.5,
+  #           'point_box_weight': 0.2,
+  #           'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  #           # 'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
+  #           'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
+  #       }
 
 
 NCE_LOSS:
@@ -133,7 +137,7 @@ NCE_LOSS:
   EMBEDDING_DIM: 128
   # # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
   # IOU_WEIGHT: 1.0
-  IOU_QUANTILE_THRESHOLD: 0.23
+  # IOU_QUANTILE_THRESHOLD: 0.23
   # SHAPE_WEIGHT: 1.0
   # # SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
   # SHAPE_DIST_QUANTILE_THRESHOLD: 0.23
