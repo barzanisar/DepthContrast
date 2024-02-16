@@ -155,7 +155,7 @@
                 "--cfg",
                 "configs/nuscenes_finetune_minkunet_test.yaml",
                 "--pretrained_ckpt",
-                "checkpoint-ep3.pth.tar"
+                "checkpoint-ep4.pth.tar"
             ]
         },
         {
