@@ -11,6 +11,7 @@ import random
 import time
 import warnings
 import yaml
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 import torch
 import torch.nn.parallel
