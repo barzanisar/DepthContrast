@@ -82,59 +82,59 @@
                 "waymo_processed_data_10"
             ]
         },
-        {
-            "name": "Waymo: pretrain minkunet",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/tools/main_dist.py",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--cfg",
-                "configs/waymo_minkunet_test.yaml"
-            ]
-        },
-        {
-            "name": "Waymo: lpseg minkunet",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/tools/downstream_segmentation.py",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--cfg",
-                "configs/waymo_lpseg_minkunet_test.yaml"
-            ]
-        },
-        {
-            "name": "Waymo: lpseg-dist-minkunet",
-            "type": "python",
-            "request": "launch",
-            "module": "torch.distributed.launch",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--nproc_per_node=1",
-                "--max_restarts=0",
-                "${workspaceFolder}/tools/downstream_segmentation.py",
-                "--launcher",
-                "pytorch",
-                "--multiprocessing-distributed",
-                "--cfg",
-                "configs/waymo_lpseg_minkunet_test.yaml",
-                "--linear_probe_last_n_ckpts", 
-                "3"
-            ]
-        },
+        // {
+        //     "name": "Waymo: pretrain minkunet",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "program": "${workspaceFolder}/tools/main_dist.py",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceRoot}"
+        //     },
+        //     "args": [
+        //         "--cfg",
+        //         "configs/waymo_minkunet_test.yaml"
+        //     ]
+        // },
+        // {
+        //     "name": "Waymo: lpseg minkunet",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "program": "${workspaceFolder}/tools/downstream_segmentation.py",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceRoot}"
+        //     },
+        //     "args": [
+        //         "--cfg",
+        //         "configs/waymo_lpseg_minkunet_test.yaml"
+        //     ]
+        // },
+        // {
+        //     "name": "Waymo: lpseg-dist-minkunet",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "torch.distributed.launch",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceRoot}"
+        //     },
+        //     "args": [
+        //         "--nproc_per_node=1",
+        //         "--max_restarts=0",
+        //         "${workspaceFolder}/tools/downstream_segmentation.py",
+        //         "--launcher",
+        //         "pytorch",
+        //         "--multiprocessing-distributed",
+        //         "--cfg",
+        //         "configs/waymo_lpseg_minkunet_test.yaml",
+        //         "--linear_probe_last_n_ckpts", 
+        //         "3"
+        //     ]
+        // },
         {
             "name": "Waymo: finetune-dist-minkunet",
             "type": "python",
@@ -158,29 +158,29 @@
                 "checkpoint-ep4.pth.tar"
             ]
         },
-        {
-            "name": "Waymo: finetune-dist-pt",
-            "type": "python",
-            "request": "launch",
-            "module": "torch.distributed.launch",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--nproc_per_node=1",
-                "--max_restarts=0",
-                "${workspaceFolder}/tools/downstream_segmentation.py",
-                "--launcher",
-                "pytorch",
-                "--multiprocessing-distributed",
-                "--cfg",
-                "configs/waymo_finetune_pointrcnn_test.yaml",
-                "--pretrained_ckpt",
-                "checkpoint-ep1.pth.tar"
-            ]
-        },
+        // {
+        //     "name": "Waymo: finetune-dist-pt",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "torch.distributed.launch",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceRoot}"
+        //     },
+        //     "args": [
+        //         "--nproc_per_node=1",
+        //         "--max_restarts=0",
+        //         "${workspaceFolder}/tools/downstream_segmentation.py",
+        //         "--launcher",
+        //         "pytorch",
+        //         "--multiprocessing-distributed",
+        //         "--cfg",
+        //         "configs/waymo_finetune_pointrcnn_test.yaml",
+        //         "--pretrained_ckpt",
+        //         "checkpoint-ep1.pth.tar"
+        //     ]
+        // },
         {
             "name": "Waymo: pretrain-dist-minkunet",
             "type": "python",
@@ -202,69 +202,69 @@
                 "configs/waymo_minkunet_test.yaml"
             ]
         },
-        {
-            "name": "Waymo: pretrain-dist-pts",
-            "type": "python",
-            "request": "launch",
-            "module": "torch.distributed.launch",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--nproc_per_node=1",
-                "--max_restarts=0",
-                "${workspaceFolder}/tools/main_dist.py",
-                "--launcher",
-                "pytorch",
-                "--multiprocessing-distributed",
-                "--cfg",
-                "configs/waymo_pointrcnn_test.yaml"
-            ]
-        },
-        {
-            "name": "Waymo: pretrain-dist-pts-stage2",
-            "type": "python",
-            "request": "launch",
-            "module": "torch.distributed.launch",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--nproc_per_node=1",
-                "--max_restarts=0",
-                "${workspaceFolder}/tools/main_dist.py",
-                "--launcher",
-                "pytorch",
-                "--multiprocessing-distributed",
-                "--cfg",
-                "configs/waymo_pointrcnn_pseudo8_test_stage2.yaml"
-            ]
-        },
-        {
-            "name": "Waymo: lpseg dist pts",
-            "type": "python",
-            "request": "launch",
-            "module": "torch.distributed.launch",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--nproc_per_node=1",
-                "--max_restarts=0",
-                "${workspaceFolder}/tools/downstream_segmentation.py",
-                "--launcher",
-                "pytorch",
-                "--multiprocessing-distributed",
-                "--cfg",
-                "configs/waymo_lpseg_pointrcnn_test.yaml"
-            ]
-        },
+        // {
+        //     "name": "Waymo: pretrain-dist-pts",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "torch.distributed.launch",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceRoot}"
+        //     },
+        //     "args": [
+        //         "--nproc_per_node=1",
+        //         "--max_restarts=0",
+        //         "${workspaceFolder}/tools/main_dist.py",
+        //         "--launcher",
+        //         "pytorch",
+        //         "--multiprocessing-distributed",
+        //         "--cfg",
+        //         "configs/waymo_pointrcnn_test.yaml"
+        //     ]
+        // },
+        // {
+        //     "name": "Waymo: pretrain-dist-pts-stage2",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "torch.distributed.launch",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceRoot}"
+        //     },
+        //     "args": [
+        //         "--nproc_per_node=1",
+        //         "--max_restarts=0",
+        //         "${workspaceFolder}/tools/main_dist.py",
+        //         "--launcher",
+        //         "pytorch",
+        //         "--multiprocessing-distributed",
+        //         "--cfg",
+        //         "configs/waymo_pointrcnn_pseudo8_test_stage2.yaml"
+        //     ]
+        // },
+        // {
+        //     "name": "Waymo: lpseg dist pts",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "torch.distributed.launch",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceRoot}"
+        //     },
+        //     "args": [
+        //         "--nproc_per_node=1",
+        //         "--max_restarts=0",
+        //         "${workspaceFolder}/tools/downstream_segmentation.py",
+        //         "--launcher",
+        //         "pytorch",
+        //         "--multiprocessing-distributed",
+        //         "--cfg",
+        //         "configs/waymo_lpseg_pointrcnn_test.yaml"
+        //     ]
+        // },
         // {
         //     "name": "Waymo: pretrain vox v1",
         //     "type": "python",
@@ -280,27 +280,27 @@
         //         "configs/waymo_centerpoint.yaml"
         //     ]
         // },
-        {
-            "name": "Waymo: pretrain-dist-vox",
-            "type": "python",
-            "request": "launch",
-            "module": "torch.distributed.launch",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceRoot}"
-            },
-            "args": [
-                "--nproc_per_node=1",
-                "--max_restarts=0",
-                "${workspaceFolder}/tools/main_dist.py",
-                "--launcher",
-                "pytorch",
-                "--multiprocessing-distributed",
-                "--cfg",
-                "configs/waymo_centerpoint_pseudo8_test.yaml"
-            ]
-        },
+        // {
+        //     "name": "Waymo: pretrain-dist-vox",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "torch.distributed.launch",
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceRoot}"
+        //     },
+        //     "args": [
+        //         "--nproc_per_node=1",
+        //         "--max_restarts=0",
+        //         "${workspaceFolder}/tools/main_dist.py",
+        //         "--launcher",
+        //         "pytorch",
+        //         "--multiprocessing-distributed",
+        //         "--cfg",
+        //         "configs/waymo_centerpoint_pseudo8_test.yaml"
+        //     ]
+        // },
         // {
         //     "name": "Seg: pretrain",
         //     "type": "python",

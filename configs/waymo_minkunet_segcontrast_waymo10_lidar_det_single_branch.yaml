@@ -1,11 +1,11 @@
-# python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_minkunet_test.yaml
-# python tools/main_dist.py --cfg configs/waymo_minkunet_test.yaml
-wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
-resume: False
-num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
+# python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_pseudo8_test.yaml
+# python tools/main_dist.py --cfg configs/waymo_pointrcnn_pseudo8_test.yaml
+wb_extra_tags: ['minkunet', 'waymo', 'pretrain_segmentation']
+resume: true
+num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
-log2wb: false
+log2wb: true
 
 test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
@@ -13,7 +13,7 @@ ckpt_save_interval: 1 #save only models to finetune for object detection
 save_ckpt_after_epochs: 0
 
 WANDB:
-  ENABLED: False 
+  ENABLED: True 
   PROJECT: SSL3dObject
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
@@ -21,12 +21,12 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train_one}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train}
   DATA_PATH: 'data/waymo'
-  FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
-  BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
-  POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4] #[-75, -75 ,  -3 ,  75 ,  75 ,   3 ] #
+  FRAME_SAMPLING_INTERVAL: {'train': 10} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
+  BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
+  POINT_CLOUD_RANGE:  [-75.2, -75.2, -2, 75.2, 75.2, 4]
   CLASS_NAMES: ['Object']
 
   POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
@@ -45,27 +45,16 @@ dataset:
     - NAME: random_local_scaling
       LOCAL_SCALE_RANGE: [0.95, 1.05]
     - NAME: random_drop_n_cuboids 
-    # - NAME: random_cuboid_lidar
-    #   npoints: 10000
-    # - NAME: random_drop
+
   LIDAR_AUG:
     mode: 'single'
     random_lidar_height: True
-    lidars: ['v32'] # 'v16', 'o64', 'o128', 
-    prob: [1.0]
-  # LIDAR_AUG:
-  #   mode: 'mixed' # or 'single'
-  #   random_lidar_height: True
-  #   n_crops: 3
-  #   lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
-  #   prob: [0.3, 0.3, 0.4]
-    
+    lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
+    prob: [0.6, 0.2, 0.2]
+
   SAMPLE_NUM_POINTS: 20000
   INPUT: sparse_tensor
   RESOLUTION: 0.1
-  # USE_GT_PRIOR: True
-  # USE_GT_DATASET: True
-  # EXTRACT_SHAPE_DESCRIPTORS: esf
 
   COLLATE_FUNCTION: "sparse_moco_collator"
   DROP_LAST: True
@@ -76,14 +65,13 @@ optimizer:
   momentum: 0.9
   nesterov: True
   num_epochs: 50
-  warmup_epochs: 0
   lr:
-    name: "cosine_warm_up"
-    base_lr: 0.012 #0.1 for linear_probe #0.12
+    name: "cosine"
+    base_lr: 0.12 #0.1 for linear_probe #0.12
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_test" 
+  name: "minkunet_pretrain_segcontrast_waymo10_lidar_det_single_branch" 
 
   MODEL_BASE:
     NAME: Segmentor
@@ -96,7 +84,6 @@ model:
       cluster: True
       use_mlp: True
       mlp_dim: [96, 128, 128]
-      proposal_attn_encoder: True
   
   MODEL_DET_HEAD:
     NAME: PointRCNN
@@ -105,7 +92,6 @@ model:
 
     POINT_HEAD:
       NAME: PointHeadBox
-      # CLS_FC: [256, 256]
       INPUT_FEATURES: 96
       REG_FC: [256, 256]
       CLASS_AGNOSTIC: True
@@ -123,22 +109,14 @@ model:
       LOSS_CONFIG:
         LOSS_REG: WeightedSmoothL1Loss
         LOSS_WEIGHTS: {
-            # 'point_cls_weight': 0.5,
-            'point_box_weight': 0.2,
+            'point_box_weight': 0.5,
             'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-            # 'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
             'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
         }
 
 
 NCE_LOSS:
   LOSS_WEIGHT: 1.0
-  TEMPERATURE: 0.1
-  NUM_NEGATIVES: 1000 #65536
+  TEMPERATURE: 0.04
+  NUM_NEGATIVES: 65536
   EMBEDDING_DIM: 128
-  # # IOU_DIST_THRESHOLD: 0.8 # filter out neg samples if their iou with query is > iou_thresh
-  # IOU_WEIGHT: 1.0
-  # IOU_QUANTILE_THRESHOLD: 0.23
-  # SHAPE_WEIGHT: 1.0
-  # # SHAPE_DIST_THRESHOLD: 0.3 # 0.2, 0.4, 0.5 filter out neg samples if their shape desc DIST with query is < rmse_thresh
-  # SHAPE_DIST_QUANTILE_THRESHOLD: 0.23
