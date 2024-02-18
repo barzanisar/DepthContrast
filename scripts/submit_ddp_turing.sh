@@ -27,7 +27,7 @@ MODEL_NAME="default"
 DOWNSTREAM_MODEL_DIR="default"
 FRAME_SAMPLING_DIV=1
 
-SING_IMG=/raid/home/nisarbar/singularity/ssl_nuscenes_lidar_aug.sif
+SING_IMG=/raid/home/nisarbar/singularity/ssl_proposal.sif
 DATA_DIR=/raid/datasets/Waymo
 KITTI_DATA_DIR=/raid/datasets/semantic_kitti
 NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
