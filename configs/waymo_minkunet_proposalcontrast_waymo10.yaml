@@ -47,7 +47,7 @@ dataset:
     - NAME: random_drop_n_cuboids 
 
 
-  SAMPLE_NUM_POINTS: 20000
+  SAMPLE_NUM_POINTS: 40000
   INPUT: sparse_tensor
   RESOLUTION: 0.1
 

@@ -265,7 +265,7 @@ $SING_IMG
 "
 
 PRETRAIN_CMD=$BASE_CMD
-PRETRAIN_CMD+="python -m torch.distributed.launch
+PRETRAIN_CMD+="CUDA_LAUNCH_BLOCKING=1 python -m torch.distributed.launch
 --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
 /DepthContrast/tools/main_dist.py
 --launcher pytorch
