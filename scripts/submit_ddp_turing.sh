@@ -331,7 +331,7 @@ LINEARPROBE_CMD+="python -m torch.distributed.launch
 if [[ "$MODE" == "pretrain-finetune" ]]; then
     echo "Running Pretraining"
     echo "$PRETRAIN_CMD"
-    eval $PRETRAIN_CMD
+    # eval $PRETRAIN_CMD
     echo "Done pretraining"
 
     echo "Running Finetuning"
