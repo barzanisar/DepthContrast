@@ -230,14 +230,18 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             try:
                 output_dict = model(sample)
             except Exception as e:
-                logger.error('Failed to forward pass: %s', repr(e))
+                logger.add_line('Failed to forward pass: %s', repr(e))
                 raise
         else:
             with torch.no_grad():
                 output_dict = model(sample)
 
          # contrastive loss
-        loss = criterion(output_dict['output'], output_dict['output_moco'])
+        try:
+            loss = criterion(output_dict['output'], output_dict['output_moco'])
+        except Exception as e:
+            logger.add_line('Failed to compute loss: %s', repr(e))
+            raise
         nce_loss_meter.update(loss.item())
 
 
@@ -277,7 +281,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             try:
                 loss.backward()
             except Exception as e:
-                logger.error('Failed to backward pass: %s', repr(e))
+                logger.add_line('Failed to backward pass: %s', repr(e))
                 raise
             clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
