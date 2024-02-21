@@ -193,6 +193,10 @@ class NCELossMoco(nn.Module):
         
         if ptr + batch_size >= self.K:
             self.neg_queue_filled[0] = True
+            print("neg queue filled!!!!!!!!!")
+            print("neg queue filled!!!!!!!!!")
+            print("neg queue filled!!!!!!!!!")
+
         
         ptr = (ptr + batch_size) % self.K  # move pointer
 
