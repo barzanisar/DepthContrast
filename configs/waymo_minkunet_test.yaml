@@ -98,37 +98,37 @@ model:
       mlp_dim: [96, 128, 128]
       proposal_attn_encoder: True
   
-  MODEL_DET_HEAD:
-    NAME: PointRCNN
+  # MODEL_DET_HEAD:
+  #   NAME: PointRCNN
 
-    # INPUT_MOCO_FEATS: True
+  #   # INPUT_MOCO_FEATS: True
 
-    POINT_HEAD:
-      NAME: PointHeadBox
-      # CLS_FC: [256, 256]
-      INPUT_FEATURES: 96
-      REG_FC: [256, 256]
-      CLASS_AGNOSTIC: True
-      USE_POINT_FEATURES_BEFORE_FUSION: False
-      TARGET_CONFIG:
-        GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
-        BOX_CODER: PointResidualCoder
-        BOX_CODER_CONFIG: {
-            'use_mean_size': True,
-            'mean_size': [
-                [1,1,1]
-            ]
-          }
+  #   POINT_HEAD:
+  #     NAME: PointHeadBox
+  #     # CLS_FC: [256, 256]
+  #     INPUT_FEATURES: 96
+  #     REG_FC: [256, 256]
+  #     CLASS_AGNOSTIC: True
+  #     USE_POINT_FEATURES_BEFORE_FUSION: False
+  #     TARGET_CONFIG:
+  #       GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
+  #       BOX_CODER: PointResidualCoder
+  #       BOX_CODER_CONFIG: {
+  #           'use_mean_size': True,
+  #           'mean_size': [
+  #               [1,1,1]
+  #           ]
+  #         }
 
-      LOSS_CONFIG:
-        LOSS_REG: WeightedSmoothL1Loss
-        LOSS_WEIGHTS: {
-            # 'point_cls_weight': 0.5,
-            'point_box_weight': 0.2,
-            'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-            # 'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
-            'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
-        }
+  #     LOSS_CONFIG:
+  #       LOSS_REG: WeightedSmoothL1Loss
+  #       LOSS_WEIGHTS: {
+  #           # 'point_cls_weight': 0.5,
+  #           'point_box_weight': 0.2,
+  #           'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  #           # 'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
+  #           'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
+  #       }
 
 
 NCE_LOSS:
