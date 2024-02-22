@@ -142,7 +142,7 @@ if [[ "$MODE" == "pretrain-finetune" ]]; then
 
     echo "Running Finetuning"
     echo "$FINETUNE_CMD"
-    eval $FINETUNE_CMD
+    # eval $FINETUNE_CMD
     echo "Done Finetuning"
 
 elif [[ "$MODE" == "linearprobe" ]]; then
