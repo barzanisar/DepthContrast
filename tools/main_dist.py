@@ -28,12 +28,12 @@ from third_party.OpenPCDet.pcdet.config import cfg, cfg_from_yaml_file
   
 import utils.logger
 from utils import main_utils, wandb_utils
+os.environ["TORCH_DISTRIBUTED_DEBUG"] = "DETAIL" 
 # import warnings
 
 # Disable prototype warnings and such
 # warnings.filterwarnings(action='ignore', category=UserWarning)
 # warnings.filterwarnings('ignore')
-
 
 parser = argparse.ArgumentParser(description='PyTorch Self Supervised Training in 3D')
 
@@ -235,7 +235,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
                 try:
                     output_dict = model(sample)
                 except Exception as e:
-                    logger.add_line('Failed to forward pass: %s', repr(e))
+                    logger.add_line(f'Failed to forward pass: {repr(e)}')
                     raise
             else:
                 with torch.no_grad():
@@ -245,7 +245,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
             try:
                 loss = criterion(output_dict['output'], output_dict['output_moco'])
             except Exception as e:
-                logger.add_line('Failed to compute loss: %s', repr(e))
+                logger.add_line(f'Failed to compute loss: {repr(e)}')
                 raise
             nce_loss_meter.update(loss.item())
 
@@ -308,7 +308,7 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
                 # wandb_utils.log(cfg, args, metrics_dict, step)
 
     except Exception as e:
-        logger.add_line('Failed to train!!!!!!!!!!!: %s', repr(e))
+        logger.add_line(f'Failed to train!!!!!!!!!!!: {repr(e)}')
         raise
 
     # Sync metrics across all GPUs and print final averages
