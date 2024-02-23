@@ -226,7 +226,7 @@ sbatch --time=8:00:00 --array=1-5%1 --job-name=t2_dc_lidaraug_single_randh_det0p
 sbatch --time=8:00:00 --array=1-5%1 --job-name=sc_lidaraug_single_randh_det0p5 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19563 --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml --model_name minkunet_pretrain_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w --pretrained_ckpt checkpoint-ep49.pth.tar --other_datasets
 sbatch --time=8:00:00 --array=1-5%1 --job-name=t2_sc_lidaraug_single_randh_det0p5 scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19564 --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml --model_name minkunet_pretrain_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w_t2 --pretrained_ckpt checkpoint-ep49.pth.tar --other_datasets
 
-sbatch --time=8:00:00 --array=1-5%1 --job-name=pc scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19563 --cfg_file configs/waymo_minkunet_proposalcontrast_waymo10.yaml --model_name minkunet_pretrain_proposalcontrast_waymo10 --pretrained_ckpt checkpoint-ep49.pth.tar --other_datasets
+sbatch --time=1:00:00 --array=1-1%1 --job-name=pc scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19563 --cfg_file configs/waymo_minkunet_proposalcontrast_waymo10.yaml --model_name minkunet_pretrain_proposalcontrast_waymo10 --pretrained_ckpt checkpoint-ep49.pth.tar --other_datasets
 sbatch --time=8:00:00 --array=1-5%1 --job-name=t2_pc scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19564 --cfg_file configs/waymo_minkunet_proposalcontrast_waymo10.yaml --model_name minkunet_pretrain_proposalcontrast_waymo10_t2 --pretrained_ckpt checkpoint-ep49.pth.tar --other_datasets
 
 sbatch --time=8:00:00 --array=1-5%1 --job-name=sc_lidar_single_det scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19163 --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_det_single_branch.yaml --model_name minkunet_pretrain_segcontrast_waymo10_lidar_det_single_branch --pretrained_ckpt checkpoint-ep49.pth.tar --other_datasets
@@ -257,6 +257,9 @@ scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 
 scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19835 --cfg_file configs/waymo_minkunet_proposalcontrast_waymo10.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_proposalcontrast_waymo10 --other_datasets --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/pc_$(date +%Y-%m-%d_%H:%M).out 2>&1
 scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19836 --cfg_file configs/waymo_minkunet_proposalcontrast_waymo10.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_proposalcontrast_waymo10_t2 --other_datasets --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/pc_t2_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19835 --cfg_file configs/waymo_minkunet_segcontrast_waymo10_reghead.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_segcontrast_waymo10_reghead --other_datasets --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/screg_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19836 --cfg_file configs/waymo_minkunet_segcontrast_waymo10_reghead.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_segcontrast_waymo10_reghead_t2 --other_datasets --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/screg_t2_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
 
 # # run after pretraining
 sbatch --time=10:00:00 --array=1-10%1 --job-name=fine5_dc scripts/submit_ddp_$CLUSTER_NAME.sh --tcp_port 19558 --cfg_file configs/waymo_minkunet_depthcontrast_waymo10.yaml --model_name minkunet_pretrain_depthcontrast_waymo10 --pretrained_ckpt checkpoint-ep49.pth.tar --other_datasets --frame_sampling_div 5
@@ -271,6 +274,9 @@ scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 
 
 scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19835 --cfg_file configs/waymo_scratch_minkunet.yaml --mode scratch --finetune_epochs 15 --other_datasets --downstream_model_dir scratch_1percent > ./output/log/scratch_1perc_$(date +%Y-%m-%d_%H:%M).out 2>&1
 scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19836 --cfg_file configs/waymo_scratch_minkunet.yaml --mode scratch --finetune_epochs 15 --other_datasets --downstream_model_dir scratch_1percent_try2 > ./output/log/scratch_1perc_t2_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 0,1 --tcp_port 19835 --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_segcontrast_waymo10_lidar_aug_single_randh_t2 --other_datasets --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/sc_lidar_s_randh_t2_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing.sh --num_gpus 2 --cuda_visible_devices 2,3 --tcp_port 19836 --cfg_file configs/waymo_minkunet_segcontrast_waymo10_dethead_0p5w.yaml --pretrain_batchsize_per_gpu 16 --finetune_batchsize_per_gpu 8 --model_name minkunet_pretrain_segcontrast_waymo10_dethead_0p5w_t2 --other_datasets --pretrained_ckpt checkpoint-ep49.pth.tar > ./output/log/sc_det5_t2_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # To see hanging threads
 #ps -ef | grep -i '[p]ython'

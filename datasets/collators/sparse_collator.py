@@ -259,6 +259,7 @@ def sparse_moco_collator(batch):
                      'gt_boxes_cluster_ids': gt_boxes_cluster_ids,
                     'common_unscaled_lwhz': common_unscaled_lwhz,
                     'common_gt_box_class_ids': common_gt_box_class_ids,
+                    'common_cluster_gtbox_idx': common_cluster_gtbox_idx,
                      'batch_size': batch_size},
                     
                     'input_moco': 
@@ -267,6 +268,7 @@ def sparse_moco_collator(batch):
                      'cluster_ids': cluster_ids_moco,
                      'gt_boxes': batch_gt_boxes3d_moco,
                      'gt_boxes_cluster_ids': gt_boxes_moco_cluster_ids,
+                     'common_cluster_gtbox_idx': common_cluster_gtbox_moco_idx,
                      'batch_size': batch_size}
                     
                     }
