@@ -96,20 +96,20 @@ model:
       cluster: True
       use_mlp: True
       mlp_dim: [96, 128, 128]
-      # proposal_attn_encoder: True
+      proposal_attn_encoder: True
   
-  MODEL_AUX_HEAD:
-    NAME: Segmentor
+  # MODEL_AUX_HEAD:
+  #   NAME: Segmentor
     
-    PRETEXT_HEAD: 
-      NAME: RegHead
-      REG_FC: [256, 256]
-      LOSS_CONFIG:
-        LOSS_REG: WeightedSmoothL1Loss
-        LOSS_WEIGHTS: {
-            'loss_weight': 0.5,
-            'code_weights': [1.0, 1.0, 1.0]
-        }
+  #   PRETEXT_HEAD: 
+  #     NAME: RegHead
+  #     REG_FC: [256, 256]
+  #     LOSS_CONFIG:
+  #       LOSS_REG: WeightedSmoothL1Loss
+  #       LOSS_WEIGHTS: {
+  #           'loss_weight': 0.5,
+  #           'code_weights': [1.0, 1.0, 1.0]
+  #       }
   
   # MODEL_DET_HEAD:
   #   NAME: PointRCNN
