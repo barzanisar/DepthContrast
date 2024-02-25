@@ -224,92 +224,88 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     # switch to train mode
     model.train(phase == 'train')
     end = time.time()
-    try:
-        for i, sample in enumerate(loader):
-            torch.cuda.empty_cache()
 
-            # measure data loading time
-            data_time.update(time.time() - end) # Time to load one batch
+    for i, sample in enumerate(loader):
+        torch.cuda.empty_cache()
 
-            if phase == 'train':
-                try:
-                    output_dict = model(sample)
-                except Exception as e:
-                    logger.add_line(f'Failed to forward pass: {repr(e)}')
-                    raise
-            else:
-                with torch.no_grad():
-                    output_dict = model(sample)
+        # measure data loading time
+        data_time.update(time.time() - end) # Time to load one batch
 
-            # contrastive loss
+        if phase == 'train':
             try:
-                loss = criterion(output_dict['output'], output_dict['output_moco'])
+                output_dict = model(sample)
             except Exception as e:
-                logger.add_line(f'Failed to compute loss: {repr(e)}')
+                logger.add_line(f'Failed to forward pass: {repr(e)}')
                 raise
-            nce_loss_meter.update(loss.item())
+        else:
+            with torch.no_grad():
+                output_dict = model(sample)
+
+        # contrastive loss
+        try:
+            loss = criterion(output_dict['output'], output_dict['output_moco'])
+        except Exception as e:
+            logger.add_line(f'Failed to compute loss: {repr(e)}')
+            raise
+        nce_loss_meter.update(loss.item())
 
 
-            # detection loss
-            if 'MODEL_DET_HEAD' in cfg['model']:
-                loss += output_dict['loss_det_head']
-                det_cls_loss_meter.update(output_dict['loss_det_cls'])
-                det_reg_loss_meter.update(output_dict['loss_det_reg'])
-                if 'ROI_HEAD' in cfg.model:
-                    det_cls_rcnn_loss_meter.update(output_dict['loss_det_cls_rcnn'])
-                    det_reg_rcnn_loss_meter.update(output_dict['loss_det_reg_rcnn'])
+        # detection loss
+        if 'MODEL_DET_HEAD' in cfg['model']:
+            loss += output_dict['loss_det_head']
+            det_cls_loss_meter.update(output_dict['loss_det_cls'])
+            det_reg_loss_meter.update(output_dict['loss_det_reg'])
+            if 'ROI_HEAD' in cfg.model:
+                det_cls_rcnn_loss_meter.update(output_dict['loss_det_cls_rcnn'])
+                det_reg_rcnn_loss_meter.update(output_dict['loss_det_reg_rcnn'])
 
-            
-            # aux head loss
-            if 'MODEL_AUX_HEAD' in cfg['model']:
-                loss += output_dict['loss_aux_head']
-                aux_rot_loss_meter.update(output_dict['loss_aux_head_rot'])
-                aux_scale_loss_meter.update(output_dict['loss_aux_head_scale'])
-
-            loss_meter.update(loss.item())
         
-            # def getBack(var_grad_fn):
-            #     print(var_grad_fn)
-            #     for n in var_grad_fn.next_functions:
-            #         if n[0]:
-            #             try:
-            #                 tensor = getattr(n[0], 'variable')
-            #                 print(n[0])
-            #                 print('Tensor with grad found:', tensor)
-            #                 print(' - gradient:', tensor.grad)
-            #                 print()
-            #             except AttributeError as e:
-            #                 getBack(n[0])
-            # compute gradient and do SGD step during training
-            if phase == 'train':
-                optimizer.zero_grad()
-                try:
-                    loss.backward()
-                except Exception as e:
-                    logger.add_line('Failed to backward pass: %s', repr(e))
-                    raise
-                clip_grad_norm_(model.parameters(), 10)
-                optimizer.step()
+        # aux head loss
+        if 'MODEL_AUX_HEAD' in cfg['model']:
+            loss += output_dict['loss_aux_head']
+            aux_rot_loss_meter.update(output_dict['loss_aux_head_rot'])
+            aux_scale_loss_meter.update(output_dict['loss_aux_head_scale'])
+
+        loss_meter.update(loss.item())
+    
+        # def getBack(var_grad_fn):
+        #     print(var_grad_fn)
+        #     for n in var_grad_fn.next_functions:
+        #         if n[0]:
+        #             try:
+        #                 tensor = getattr(n[0], 'variable')
+        #                 print(n[0])
+        #                 print('Tensor with grad found:', tensor)
+        #                 print(' - gradient:', tensor.grad)
+        #                 print()
+        #             except AttributeError as e:
+        #                 getBack(n[0])
+        # compute gradient and do SGD step during training
+        if phase == 'train':
+            optimizer.zero_grad()
+            try:
+                loss.backward()
+            except Exception as e:
+                logger.add_line('Failed to backward pass: %s', repr(e))
+                raise
+            clip_grad_norm_(model.parameters(), 10)
+            optimizer.step()
 
 
-            # measure elapsed time
-            batch_time.update(time.time() - end) # This is printed as Time # Time to train one batch
-            end = time.time()
+        # measure elapsed time
+        batch_time.update(time.time() - end) # This is printed as Time # Time to train one batch
+        end = time.time()
 
-            # print to terminal and tensorboard
-            step = epoch * len(loader) + i #step:total iters, sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
-            if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
-                progress.display(i+1)
-                
-                # # Log to wb
-                # metrics_dict = {'epoch': epoch, 'step': step}
-                # for meter in progress.meters:
-                #     metrics_dict[meter.name + '-batch'] = meter.avg
-                # wandb_utils.log(cfg, args, metrics_dict, step)
-
-    except Exception as e:
-        logger.add_line(f'Failed to train!!!!!!!!!!!: {repr(e)}')
-        raise
+        # print to terminal and tensorboard
+        # step = epoch * len(loader) + i #step:total iters, sample is a batch of 8 transformed point clouds, len(loader) is the total number of batches
+        if (i+1) % cfg['print_freq'] == 0 or i == 0 or i+1 == len(loader):
+            progress.display(i+1)
+            
+            # # Log to wb
+            # metrics_dict = {'epoch': epoch, 'step': step}
+            # for meter in progress.meters:
+            #     metrics_dict[meter.name + '-batch'] = meter.avg
+            # wandb_utils.log(cfg, args, metrics_dict, step)
 
     # Sync metrics across all GPUs and print final averages
     if args.multiprocessing_distributed:
