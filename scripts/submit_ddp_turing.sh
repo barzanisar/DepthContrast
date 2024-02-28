@@ -288,7 +288,7 @@ FINETUNE_CMD+="python -m torch.distributed.launch
 --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
 --epochs $FINETUNE_EPOCHS
 --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
---downstream_model_dir finetune_waymo_"$FRAME_SAMPLING_DIV"percent
+--downstream_model_dir finetune_waymo_"$FRAME_SAMPLING_DIV"percent_"$FINETUNE_EPOCHS"epochs
 --model_name $MODEL_NAME
 --pretrained_ckpt $PRETRAINED_CKPT 
 --workers $WORKERS_PER_GPU 
@@ -331,7 +331,7 @@ LINEARPROBE_CMD+="python -m torch.distributed.launch
 if [[ "$MODE" == "pretrain-finetune" ]]; then
     echo "Running Pretraining"
     echo "$PRETRAIN_CMD"
-    eval $PRETRAIN_CMD
+    # eval $PRETRAIN_CMD
     echo "Done pretraining"
 
     echo "Running Finetuning"
@@ -387,7 +387,7 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir finetune_semantickitti_"$FRAME_SAMPLING_DIV"percent
+        --downstream_model_dir finetune_semantickitti_"$FRAME_SAMPLING_DIV"percent_"$FINETUNE_EPOCHS"epochs
         --model_name $MODEL_NAME
         --pretrained_ckpt $PRETRAINED_CKPT 
         --workers $WORKERS_PER_GPU 
@@ -431,7 +431,7 @@ if [[ "$OTHER_DATASETS" == "true" ]]; then
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir finetune_nuscenes_"$FRAME_SAMPLING_DIV"percent
+        --downstream_model_dir finetune_nuscenes_"$FRAME_SAMPLING_DIV"percent_"$FINETUNE_EPOCHS"epochs
         --model_name $MODEL_NAME
         --pretrained_ckpt $PRETRAINED_CKPT 
         --workers $WORKERS_PER_GPU 
