@@ -153,7 +153,9 @@ def sparse_moco_collator(batch):
     #     coords_moco.append(coor_pad_moco)
     # voxel_coords = np.concatenate(coords, axis=0) #(N1 + ... Nbs, 5=bxyz vox coord)
     # voxel_coords_moco = np.concatenate(coords_moco, axis=0) #(N1 + ... Nbs, 5=bxyz vox coord)
-
+    
+    if 'lidar_aug' in batch[0]:
+        lidar_aug_batch_mask = [x['lidar_aug'] for x in batch]
     points = [x['points'][:,:-1] for x in batch] # (bs, 20k, xyzi)
     points_moco = [x['points_moco'][:,:-1] for x in batch] # (bs, 20k, xyzi)
 
@@ -273,7 +275,9 @@ def sparse_moco_collator(batch):
                     
                     }
 
-        
+    if 'lidar_aug' in batch[0]:
+        output_batch['input'].update({'lidar_aug_batch_mask': lidar_aug_batch_mask})
+
     if shape_descs_required:
         output_batch['input'].update({
                      'shape_descs': shape_descs,

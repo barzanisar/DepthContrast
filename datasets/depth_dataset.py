@@ -34,7 +34,32 @@ def sort_matrix(matrix, column_index=-1, col_vals=None):
 
     return sorted_matrix
 
-def visualize_pcd_clusters(points, labels, img_name='screenshot', max_label=None):
+def translate_boxes_to_open3d_instance(gt_boxes):
+    """
+             4-------- 6
+           /|         /|
+          5 -------- 3 .
+          | |        | |
+          . 7 -------- 1
+          |/         |/
+          2 -------- 0
+    """
+    center = gt_boxes[0:3]
+    lwh = gt_boxes[3:6]
+    axis_angles = np.array([0, 0, gt_boxes[6] + 1e-10])
+    rot = o3d.geometry.get_rotation_matrix_from_axis_angle(axis_angles)
+    box3d = o3d.geometry.OrientedBoundingBox(center, rot, lwh)
+
+    line_set = o3d.geometry.LineSet.create_from_oriented_bounding_box(box3d)
+
+    # import ipdb; ipdb.set_trace(context=20)
+    lines = np.asarray(line_set.lines)
+    lines = np.concatenate([lines, np.array([[1, 4], [7, 6]])], axis=0)
+
+    line_set.lines = o3d.utility.Vector2iVector(lines)
+
+    return line_set, box3d
+def visualize_pcd_clusters(points, labels, boxes=None, img_name='screenshot', max_label=None):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points[:,:3])
 
@@ -73,7 +98,13 @@ def visualize_pcd_clusters(points, labels, img_name='screenshot', max_label=None
     # # Set viewpoint (rotation)
     # view_control.rotate(0.0, 45.0)  # Rotate around the y-axis by 45 degrees
 
+    if boxes is not None:
+        for i in range(boxes.shape[0]):
+            line_set, box3d = translate_boxes_to_open3d_instance(boxes[i])
+            line_set.paint_uniform_color((1,0, 0))
+            vis.add_geometry(line_set)
 
+    vis.get_render_option().line_width = 5
     vis.run()  # Adjust your viewpoint in the window as needed
     vis.capture_screen_image(f"{img_name}.png")
     import subprocess
@@ -176,6 +207,8 @@ class DepthContrastDataset(Dataset):
     def prepare_data_downstream(self, data_dict):
         #points: xyzi, seglabel
         cfg = self.cfg
+        #visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1], img_name='points_with_gt_seg_labels')
+
 
         #remove points outside range
         if cfg["INPUT"] == 'voxels':
@@ -311,9 +344,18 @@ class DepthContrastDataset(Dataset):
 
         #     visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], cluster_ids_for_shape_descs[idx_knn])
          #######################################################
-
-
         if 'LIDAR_AUG' in cfg:
+            lidar_aug_cond = True
+            if 'aug_prob' in cfg['LIDAR_AUG']:
+                if np.random.choice([True, False], p=[cfg['LIDAR_AUG']['aug_prob'], 1-cfg['LIDAR_AUG']['aug_prob']]):
+                    data_dict['lidar_aug'] = True
+                else:
+                    data_dict['lidar_aug'] = False    
+                    lidar_aug_cond = False
+
+        if 'LIDAR_AUG' in cfg and lidar_aug_cond:
+            if 'aug_prob' in cfg['LIDAR_AUG']:
+                data_dict['lidar_aug'] = True
             if cfg['LIDAR_AUG']['mode'] == 'single':
                 method = 'single'
             elif cfg['LIDAR_AUG']['mode'] == 'mixed':
@@ -324,13 +366,14 @@ class DepthContrastDataset(Dataset):
             target_pc = ['points', 'points_moco'][choice]
             target_gt = ['gt_boxes', 'gt_boxes_moco'][choice]
             num_boxes=data_dict[target_gt].shape[0]
+            # visualize_pcd_clusters(data_dict['points'][:,:-1], -1*np.ones(data_dict['points'].shape[0]), img_name='points_before_process')
+            # visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1],boxes=data_dict["gt_boxes"][:,:7], img_name='points_after_process')
             # visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1], img_name='points_before_aug')
-
             
             if method == 'single':
                 pts, boxes = self.lidar_aug.generate_frame_with_gt_boxes(data_dict[target_pc], data_dict[target_gt])
                 #pts, labels = self.lidar_aug.generate_frame(data_dict[target_pc][:,:-1], data_dict[target_pc][:,-1]) #, lidar='v32'
-                # visualize_pcd_clusters(pts, labels, img_name='single_aug')
+                #visualize_pcd_clusters(pts[:,:-1], pts[:,-1], img_name='single_aug')
                 # V.draw_scenes(points=data_dict[target_pc][:,:4], gt_boxes=data_dict[target_gt][:,:7], color_feature='intensity')
                 # V.draw_scenes(points=pts[:,:4], gt_boxes=boxes[:,:7], color_feature='intensity')
             elif method == 'mixed':
@@ -377,10 +420,12 @@ class DepthContrastDataset(Dataset):
         #     frame_id = data_dict['frame_id']
         #     assert cluster_id in data_dict['gt_boxes_moco'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
         
-        if PLOT:
-            # After augmenting both views
-            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
-            V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
+        # if True:
+        #     # After augmenting both views
+        #     visualize_pcd_clusters(data_dict["points"][:,:-1], data_dict["points"][:,-1], boxes=data_dict["gt_boxes"][:,:7], img_name='single_aug')
+        #     visualize_pcd_clusters(data_dict["points_moco"][:,:-1], data_dict["points_moco"][:,-1], boxes=data_dict["gt_boxes_moco"][:,:7], img_name='single_aug_moco')
+        #     V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
+        #     V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
 
         # max_label = max(data_dict['points'][:,-1].max(),  data_dict['points_moco'][:,-1].max())
         # visualize_pcd_clusters(data_dict['points'][:,:-1], data_dict['points'][:,-1], max_label=max_label, img_name='points_after_aug')
@@ -401,6 +446,16 @@ class DepthContrastDataset(Dataset):
             # If augmentor removes a patch with gt box, remove its gt box and label its points as -1
             data_dict['points'], data_dict['gt_boxes'], _ = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'], pt_cluster_ids=data_dict['points'][:, -1], numpts=20)
             data_dict['points_moco'], data_dict['gt_boxes_moco'], _ = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'], pt_cluster_ids=data_dict['points_moco'][:, -1], numpts=20)
+
+        if PLOT:
+            # After augmenting both views
+            visualize_pcd_clusters(data_dict["points"][:,:-1], data_dict["points"][:,-1], img_name='single_aug')
+            visualize_pcd_clusters(data_dict["points_moco"][:,:-1], data_dict["points_moco"][:,-1], img_name='single_aug_moco')
+
+            # visualize_pcd_clusters(data_dict["points"][:,:-1], data_dict["points"][:,-1], boxes=data_dict["gt_boxes"][:,:7], img_name='single_aug')
+            # visualize_pcd_clusters(data_dict["points_moco"][:,:-1], data_dict["points_moco"][:,-1], boxes=data_dict["gt_boxes_moco"][:,:7], img_name='single_aug_moco')
+            V.draw_scenes(points=data_dict["points"][:,:4], gt_boxes=data_dict["gt_boxes"][:,:7])
+            V.draw_scenes(points=data_dict["points_moco"][:,:4], gt_boxes=data_dict["gt_boxes_moco"][:,:7])
 
         
         # if vox then transform points to voxels else save points as tensor

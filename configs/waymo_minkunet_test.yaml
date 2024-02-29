@@ -21,8 +21,8 @@ WANDB:
 
 dataset:
   DATASET_NAMES: [WaymoDataset]
-  PROCESSED_DATA_TAG: 'waymo_processed_data_one' #single return, but waymo_short has second return as well
-  DATA_SPLIT: {'train': train_one}
+  PROCESSED_DATA_TAG: 'waymo_processed_data_v_1_2_0' #single return, but waymo_short has second return as well
+  DATA_SPLIT: {'train': train_short_one}
   DATA_PATH: 'data/waymo'
   FRAME_SAMPLING_INTERVAL: {'train': 20} # 1/3rd of waymo pick every 10th frame to pretrain on so 10% waymo, if it is 2 then it is (1/2)=50% waymo
   BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
@@ -49,6 +49,7 @@ dataset:
     #   npoints: 10000
     # - NAME: random_drop
   LIDAR_AUG:
+    aug_prob: 0.5
     mode: 'single'
     random_lidar_height: True
     lidars: ['v32'] # 'v16', 'o64', 'o128', 
@@ -111,37 +112,37 @@ model:
   #           'code_weights': [1.0, 1.0, 1.0]
   #       }
   
-  # MODEL_DET_HEAD:
-  #   NAME: PointRCNN
+  MODEL_DET_HEAD:
+    NAME: PointRCNN
 
-  #   # INPUT_MOCO_FEATS: True
+    INPUT_MOCO_FEATS: True
 
-  #   POINT_HEAD:
-  #     NAME: PointHeadBox
-  #     # CLS_FC: [256, 256]
-  #     INPUT_FEATURES: 96
-  #     REG_FC: [256, 256]
-  #     CLASS_AGNOSTIC: True
-  #     USE_POINT_FEATURES_BEFORE_FUSION: False
-  #     TARGET_CONFIG:
-  #       GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
-  #       BOX_CODER: PointResidualCoder
-  #       BOX_CODER_CONFIG: {
-  #           'use_mean_size': True,
-  #           'mean_size': [
-  #               [1,1,1]
-  #           ]
-  #         }
+    POINT_HEAD:
+      NAME: PointHeadBox
+      # CLS_FC: [256, 256]
+      INPUT_FEATURES: 96
+      REG_FC: [256, 256]
+      CLASS_AGNOSTIC: True
+      USE_POINT_FEATURES_BEFORE_FUSION: False
+      TARGET_CONFIG:
+        GT_EXTRA_WIDTH: [0.2, 0.2, 0.2]
+        BOX_CODER: PointResidualCoder
+        BOX_CODER_CONFIG: {
+            'use_mean_size': True,
+            'mean_size': [
+                [1,1,1]
+            ]
+          }
 
-  #     LOSS_CONFIG:
-  #       LOSS_REG: WeightedSmoothL1Loss
-  #       LOSS_WEIGHTS: {
-  #           # 'point_cls_weight': 0.5,
-  #           'point_box_weight': 0.2,
-  #           'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-  #           # 'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
-  #           'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
-  #       }
+      LOSS_CONFIG:
+        LOSS_REG: WeightedSmoothL1Loss
+        LOSS_WEIGHTS: {
+            # 'point_cls_weight': 0.5,
+            'point_box_weight': 0.5,
+            'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            # 'class_wise_cls_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5], 
+            #'class_wise_reg_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0]
+        }
 
 
 NCE_LOSS:
