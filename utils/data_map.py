@@ -113,28 +113,28 @@ content_indoor = {
   12: 0.12212566337045223,
 }
 
-SEMANTIC_KITTI_LABELS = {
-  0: "unlabeled",
-  1: "car",
-  2: "bicycle",
-  3: "motorcycle",
-  4: "truck",
-  5: "other-vehicle",
-  6: "person",
-  7: "bicyclist",
-  8: "motorcyclist",
-  9: "road",
-  10: "parking",
-  11: "sidewalk",
-  12: "other-ground",
-  13: "building",
-  14: "fence",
-  15: "vegetation",
-  16: "trunk",
-  17: "terrain",
-  18: "pole",
-  19: "traffic-sign",
-}
+# SEMANTIC_KITTI_LABELS = {
+#   0: "unlabeled",
+#   1: "car",
+#   2: "bicycle",
+#   3: "motorcycle",
+#   4: "truck",
+#   5: "other-vehicle",
+#   6: "person",
+#   7: "bicyclist",
+#   8: "motorcyclist",
+#   9: "road",
+#   10: "parking",
+#   11: "sidewalk",
+#   12: "other-ground",
+#   13: "building",
+#   14: "fence",
+#   15: "vegetation",
+#   16: "trunk",
+#   17: "terrain",
+#   18: "pole",
+#   19: "traffic-sign",
+# }
 
 color_map = {
   0: [0, 0, 0],
@@ -164,7 +164,7 @@ nuscenes_labels_map = {0: 0, 1: 0, 2: 7, 3: 7, 4: 7, 5: 0, 6: 7, 7: 0, 8: 0, 9: 
             12: 8, 13: 0, 14: 2, 15: 3, 16: 3, 17: 4, 18: 5, 19: 0, 20: 0, 21: 6, 22: 9,
             23: 10, 24: 11, 25: 12, 26: 13, 27: 14, 28: 15, 29: 0, 30: 16, 31: 0,
         }
-CLASSES_NUSCENES = [
+NUSCENES_LABELS = [
     "noise",
     "barrier",
     "bicycle",
@@ -188,3 +188,24 @@ CLASSES_NUSCENES = [
 WAYMO_LABELS = ['UNDEFINED', 'CAR', 'TRUCK', 'BUS', 'OTHER_VEHICLE', 'MOTORCYCLIST', 'BICYCLIST', 'PEDESTRIAN', 'SIGN',
                   'TRAFFIC_LIGHT', 'POLE', 'CONSTRUCTION_CONE', 'BICYCLE', 'MOTORCYCLE', 'BUILDING', 'VEGETATION',
                   'TREE_TRUNK', 'CURB', 'ROAD', 'LANE_MARKER', 'OTHER_GROUND', 'WALKABLE', 'SIDEWALK']
+
+SEMANTIC_KITTI_LABELS = ["unlabeled", 
+                         "car",
+                         "bicycle",
+                         "motorcycle",
+                         "truck",
+                         "other-vehicle",
+                         "person",
+                         "bicyclist",
+                         "motorcyclist",
+                         "road",
+                         "parking",
+                         "sidewalk",
+                         "other-ground",
+                         "building",
+                         "fence",
+                         "vegetation",
+                         "trunk",
+                         "terrain",
+                         "pole",
+                         "traffic-sign"]

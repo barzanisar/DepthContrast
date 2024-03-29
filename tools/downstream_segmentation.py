@@ -28,7 +28,7 @@ from pathlib import Path
 
 import numpy as np
 from utils.ioueval import iouEval, EvalMetrics
-from utils.data_map import WAYMO_LABELS
+from utils.data_map import WAYMO_LABELS, NUSCENES_LABELS, SEMANTIC_KITTI_LABELS
 from models.base_ssl3d_model import parameter_description
 import MinkowskiEngine as ME
 
@@ -239,10 +239,16 @@ def eval_one_ckpt(args, cfg, logger,
 
     if 'SEGMENTATION_HEAD' in cfg['model']:
         #num_classes = cfg['model']['SEGMENTATION_HEAD']['CLS_FC'][-1]
-        class_names = WAYMO_LABELS
+        class_name_dict = {'SemanticKittiDataset': SEMANTIC_KITTI_LABELS,
+                           'NuscenesDataset': NUSCENES_LABELS,
+                           'WaymoDataset': WAYMO_LABELS
+                           }
+        class_names = class_name_dict[cfg['dataset']['DATASET_NAMES'][0]]
     else:
-        # num_classes = 3
-        class_names = cfg['dataset']['CLASS_NAMES']
+        raise NotImplementedError
+    # else:
+    #     # num_classes = 3
+    #     class_names = cfg['dataset']['CLASS_NAMES']
 
     cfg['num_classes'] = len(class_names)
     cfg['class_names'] = class_names
