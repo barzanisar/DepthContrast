@@ -197,8 +197,19 @@ def main_worker(args, cfg):
 def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logger, tb_writter, lr):
     from utils import metrics_utils
     logger.add_line('\n{}: Epoch {}'.format(phase, epoch))
-    batch_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Process Time', ':6.3f', window_size=100)
-    data_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Load Time', ':6.3f', window_size=100)
+    batch_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Process Time', ':6.3f') #, window_size=100
+    data_time = metrics_utils.AverageMeter(f'{phase}-Avg Batch Load Time', ':6.3f') #, window_size=100
+    lidar_aug_time = metrics_utils.AverageMeter(f'{phase}-Avg LiDAR Aug Time per PC', ':6.3f') #, window_size=100
+    other_aug_time = metrics_utils.AverageMeter(f'{phase}-Avg Other Aug Time per PC', ':6.3f')
+    shuffle_mask_time = metrics_utils.AverageMeter(f'{phase}-Avg ShuffleMask Time per PC', ':6.3f')
+    voxelize_time = metrics_utils.AverageMeter(f'{phase}-Avg Voxelize  Time per PC', ':6.3f')
+    num_pts_before_aug = metrics_utils.AverageMeter(f'{phase}-Avg num_pts_before_aug per PC', ':6.3f')
+    num_boxes_before_aug = metrics_utils.AverageMeter(f'{phase}-Avg num_boxes_before_aug per PC', ':6.3f')
+    num_pts_after_laug = metrics_utils.AverageMeter(f'{phase}-Avg num_pts_after_laug per PC', ':6.3f')
+    num_boxes_after_laug = metrics_utils.AverageMeter(f'{phase}-Avg num_boxes_after_laug per PC', ':6.3f')
+    num_pts_input = metrics_utils.AverageMeter(f'{phase}-Avg num_pts_input per PC', ':6.3f')
+    num_boxes_input = metrics_utils.AverageMeter(f'{phase}-Avg num_boxes_input per PC', ':6.3f')
+
     loss_meter = metrics_utils.AverageMeter(f'{phase}-Total Loss', ':.3e') # total loss
     det_cls_loss_meter = metrics_utils.AverageMeter(f'det_cls_loss', ':.3e')
     det_reg_loss_meter = metrics_utils.AverageMeter(f'det_reg_loss', ':.3e')
@@ -208,7 +219,10 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
     aux_scale_loss_meter = metrics_utils.AverageMeter(f'aux_scale_loss', ':.3e')
     nce_loss_meter = metrics_utils.AverageMeter(f'nce_loss', ':.3e')
 
-    list_of_meters = [batch_time, data_time, loss_meter, nce_loss_meter]
+    list_of_meters = [num_pts_before_aug, num_boxes_before_aug, num_pts_after_laug, num_boxes_after_laug,
+                      num_pts_input, num_boxes_input,
+                      batch_time, data_time, lidar_aug_time, other_aug_time, shuffle_mask_time, voxelize_time, 
+                      loss_meter, nce_loss_meter]
     
     if 'MODEL_DET_HEAD' in cfg.model:
         list_of_meters += [det_cls_loss_meter, det_reg_loss_meter]
@@ -231,6 +245,20 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         # measure data loading time
         data_time.update(time.time() - end) # Time to load one batch
 
+        if 'lidar_aug_time_per_pc' in sample['input']:
+            lidar_aug_time.update(sample['input']['lidar_aug_time_per_pc'])
+            other_aug_time.update(sample['input']['other_aug_time_per_pc'])
+            shuffle_mask_time.update(sample['input']['shuffle_mask_time_per_pc'])
+            voxelize_time.update(sample['input']['voxelize_time_per_pc'])
+            num_pts_before_aug.update(sample['input']['num_pts_before_aug'])
+            num_boxes_before_aug.update(sample['input']['num_boxes_before_aug'])
+            num_pts_after_laug.update(sample['input']['num_pts_after_laug'])
+            num_boxes_after_laug.update(sample['input']['num_boxes_after_laug'])
+            num_pts_input.update(sample['input']['num_pts_input'])
+            num_boxes_input.update(sample['input']['num_boxes_input'])
+
+
+        end = time.time()
         if phase == 'train':
             try:
                 output_dict = model(sample)

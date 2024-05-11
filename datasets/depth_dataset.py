@@ -21,6 +21,7 @@ from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 # from utils.pcd_preprocess import visualize_selected_labels
 import open3d as o3d
 import matplotlib.pyplot as plt
+import time 
 
 def sort_matrix(matrix, column_index=-1, col_vals=None):
     # Get the indices that would sort the specified column
@@ -344,6 +345,10 @@ class DepthContrastDataset(Dataset):
 
         #     visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], cluster_ids_for_shape_descs[idx_knn])
          #######################################################
+        data_dict["num_pts"] = data_dict['points'].shape[0]
+        data_dict["num_boxes"] = data_dict['gt_boxes'].shape[0]
+
+        start_time = time.time()
         if 'LIDAR_AUG' in cfg:
             lidar_aug_cond = True
             if 'aug_prob' in cfg['LIDAR_AUG']:
@@ -389,9 +394,17 @@ class DepthContrastDataset(Dataset):
                 boxes = sort_matrix(boxes, column_index=-1)
                 data_dict[target_pc] = pts
                 data_dict[target_gt] = boxes
+                data_dict["num_pts_after_lidar_aug"] = pts.shape[0]
+                data_dict["num_boxes_after_lidar_aug"] = boxes.shape[0]
+
+        data_dict["lidar_aug_time"] = time.time() - start_time
+
+        if 'LIDAR_AUG' not in cfg:
+            data_dict["num_pts_after_lidar_aug"] = data_dict["num_pts"]
+            data_dict["num_boxes_after_lidar_aug"] = data_dict["num_boxes"]
 
 
-
+        start_time = time.time()
         # transform data_dict points and gt_boxes
         gt_cluster_ids = data_dict["gt_boxes"][:,-1].reshape(-1,1)
         gt_classes_idx = data_dict["gt_boxes"][:,-2].reshape(-1,1)
@@ -405,7 +418,7 @@ class DepthContrastDataset(Dataset):
         #reappend the gt class indexes and cluster ids
         data_dict["gt_boxes"] = np.hstack([data_dict["gt_boxes"], gt_classes_idx, gt_cluster_ids])
         data_dict["gt_boxes_moco"] = np.hstack([data_dict["gt_boxes_moco"], gt_moco_classes_idx, gt_moco_cluster_ids])
-        
+        data_dict["other_aug_time"] = time.time() - start_time
         # cluster_ids, cnts = np.unique(data_dict['points'][:,-1], return_counts=True)
         # for cluster_id, cnt in zip(cluster_ids, cnts):
         #     if cluster_id == -1:
@@ -432,6 +445,7 @@ class DepthContrastDataset(Dataset):
         # visualize_pcd_clusters(data_dict['points_moco'][:,:-1], data_dict['points_moco'][:,-1],  max_label=max_label, img_name='points_moco_after_aug')
         # data processor
         # sample points if pointnet backbone
+        start_time = time.time()
         if cfg['INPUT'] == 'points':
             data_dict['points'] = data_processor.sample_points(data_dict['points'], self.cfg["SAMPLE_NUM_POINTS"] )
             data_dict['points_moco'] = data_processor.sample_points(data_dict['points_moco'], self.cfg["SAMPLE_NUM_POINTS"])
@@ -446,6 +460,7 @@ class DepthContrastDataset(Dataset):
             # If augmentor removes a patch with gt box, remove its gt box and label its points as -1
             data_dict['points'], data_dict['gt_boxes'], _ = data_processor.mask_boxes_with_few_points(data_dict['points'], data_dict['gt_boxes'], pt_cluster_ids=data_dict['points'][:, -1], numpts=20)
             data_dict['points_moco'], data_dict['gt_boxes_moco'], _ = data_processor.mask_boxes_with_few_points(data_dict['points_moco'], data_dict['gt_boxes_moco'], pt_cluster_ids=data_dict['points_moco'][:, -1], numpts=20)
+        data_dict["shuffle_mask_time"] = time.time() - start_time
 
         if PLOT:
             # After augmenting both views
@@ -466,12 +481,14 @@ class DepthContrastDataset(Dataset):
             vox_dict = self.toVox(data_dict["points_moco"])
             data_dict["vox_moco"] = vox_dict
 
+        start_time = time.time()
         if cfg['INPUT'] == 'sparse_tensor':
             data_dict['voxel_coords'], feats, cluster_p = point_set_to_coord_feats(data_dict["points"][:,:-1], data_dict["points"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"], frame_id=data_dict['frame_id'])
             data_dict["points"] = np.hstack([feats, cluster_p[:,None]])
 
             data_dict['voxel_coords_moco'], feats_moco, cluster_p_moco = point_set_to_coord_feats(data_dict["points_moco"][:,:-1], data_dict["points_moco"][:,-1], self.cfg["RESOLUTION"], self.cfg["SAMPLE_NUM_POINTS"], frame_id=data_dict['frame_id'])
             data_dict["points_moco"] = np.hstack([feats_moco, cluster_p_moco[:,None]])
+        data_dict["voxelize_time"] = time.time() - start_time
 
         if False:
             # After sampling points and removing empty boxes

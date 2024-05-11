@@ -154,6 +154,18 @@ def sparse_moco_collator(batch):
     # voxel_coords = np.concatenate(coords, axis=0) #(N1 + ... Nbs, 5=bxyz vox coord)
     # voxel_coords_moco = np.concatenate(coords_moco, axis=0) #(N1 + ... Nbs, 5=bxyz vox coord)
     
+    if 'lidar_aug_time' in batch[0]:
+        lidar_aug_time_per_pc = np.mean([x['lidar_aug_time'] for x in batch])
+        other_aug_time_per_pc = np.mean([x['other_aug_time'] for x in batch])
+        shuffle_mask_time_per_pc = np.mean([x['shuffle_mask_time'] for x in batch])
+        voxelize_time_per_pc = np.mean([x['voxelize_time'] for x in batch])
+        num_pts_before_aug = np.mean([x['num_pts'] for x in batch])
+        num_boxes_before_aug = np.mean([x['num_boxes'] for x in batch])
+        num_pts_after_laug = np.mean([x['num_pts_after_lidar_aug'] for x in batch])
+        num_boxes_after_laug = np.mean([x['num_boxes_after_lidar_aug'] for x in batch])
+        num_pts_input = np.mean([x['points'].shape[0] for x in batch])
+        num_boxes_input = np.mean([x['gt_boxes'].shape[0] for x in batch])
+
     if 'lidar_aug' in batch[0]:
         lidar_aug_batch_mask = [x['lidar_aug'] for x in batch]
     points = [x['points'][:,:-1] for x in batch] # (bs, 20k, xyzi)
@@ -278,6 +290,18 @@ def sparse_moco_collator(batch):
     if 'lidar_aug' in batch[0]:
         output_batch['input'].update({'lidar_aug_batch_mask': lidar_aug_batch_mask})
 
+    if 'lidar_aug_time' in batch[0]:
+        output_batch['input'].update({'lidar_aug_time_per_pc': lidar_aug_time_per_pc, 
+                                      'other_aug_time_per_pc': other_aug_time_per_pc, 
+                                      'shuffle_mask_time_per_pc': shuffle_mask_time_per_pc,
+                                      'voxelize_time_per_pc': voxelize_time_per_pc,
+                                      'num_pts_before_aug': num_pts_before_aug,
+                                      'num_boxes_before_aug': num_boxes_before_aug,
+                                      'num_pts_after_laug': num_pts_after_laug,
+                                      'num_boxes_after_laug': num_boxes_after_laug,
+                                      'num_pts_input': num_pts_input,
+                                      'num_boxes_input': num_boxes_input})
+    
     if shape_descs_required:
         output_batch['input'].update({
                      'shape_descs': shape_descs,
