@@ -72,7 +72,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w" 
+  name: "minkunet_pretrain_segcontrast_waymo10_lidar_aug_or_dethead_0p5w" 
 
   MODEL_BASE:
     NAME: Segmentor
