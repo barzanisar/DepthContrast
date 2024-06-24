@@ -159,6 +159,14 @@ while :; do
             die 'ERROR: "--cuda_visible_devices" requires a non-empty option argument.'
         fi
         ;;
+    -m|--tcp_port)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            TCP_PORT=$2
+            shift
+        else
+            die 'ERROR: "--tcp_port" requires a non-empty option argument.'
+        fi
+        ;;
         
     # Additional parameters
     -?*)
