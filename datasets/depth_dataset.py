@@ -17,9 +17,9 @@ from datasets.transforms.LiDAR_augmentation import LiDAR_aug_manager
 # from datasets.features import global_descriptors
 from datasets.collators.sparse_collator import point_set_to_coord_feats
 
-from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
+# from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 # from utils.pcd_preprocess import visualize_selected_labels
-import open3d as o3d
+# import open3d as o3d
 import matplotlib.pyplot as plt
 
 def sort_matrix(matrix, column_index=-1, col_vals=None):
