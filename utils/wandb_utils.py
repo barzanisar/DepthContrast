@@ -13,7 +13,7 @@ def is_wandb_enabled(cfg, args):
     return wandb_enabled
 
 
-def init(cfg, args, job_type='train'):
+def init(cfg, args, run_file, pretraining=True):
     """
         Initialize wandb by passing in config
     """
@@ -23,16 +23,37 @@ def init(cfg, args, job_type='train'):
     dir = cfg['WANDB'].get('dir', None)
 
     run_name = cfg['model']['name']
-    if job_type != 'pretrain':
-        run_name += '-' + job_type
+    if pretraining:
+        # pretraining
+        job_type = 'pretrain'
+        group_name = cfg['model']['extra_tag']
+    elif 'scratch' in run_name:
+        # scratch training
+        job_type = cfg['model']['job_type']
+        group_name = cfg['model']['extra_tag']
+    else:
+        #finetuning
+        job_type = cfg['model']['job_type']
+        group_name = 'pretrain_{}_finetine_{}'.format(cfg['model']['pretrain_extra_tag'], cfg['model']['extra_tag'])
 
-    wandb.init(name=run_name,
-               config=cfg,
-               tags=cfg['wb_extra_tags'],
-               project=cfg['WANDB']['PROJECT'],
-               entity=cfg['WANDB']['ENTITY'],
-               job_type=job_type,
-               dir= dir)
+    if run_file.exists():
+        resume_id = run_file.read_text()
+        wandb.init(name=run_name, config=cfg,
+                            project=cfg['WANDB']['PROJECT'],
+                            entity=cfg['WANDB']['ENTITY'],
+                            group=group_name,
+                            job_type=job_type,
+                            id=resume_id, resume='must', dir=dir)
+    else:
+        # if the run_id doesn't exist, then create a new run
+        # and write the run id the file
+        run = wandb.init(name=run_name, config=cfg,
+                            project=cfg['WANDB']['PROJECT'],
+                            entity=cfg['WANDB']['ENTITY'],
+                            group=group_name,
+                            job_type=job_type,
+                            dir=dir)
+        run_file.write_text(str(run.id))
     return True
 
 def reinit(cfg, args, job_type='train'):

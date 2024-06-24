@@ -12,6 +12,7 @@ import argparse
 import os
 import random
 import time
+from pathlib import Path
 # import warnings
 import yaml
 # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -61,6 +62,7 @@ parser.add_argument('--workers', default=-1, type=int,
                     help='workers per gpu')
 parser.add_argument('--model_name', default='default', type=str,
                     help='model_name')
+parser.add_argument('--extra_tag', type=str, default='default', help='model extra_tag')
 parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
@@ -78,6 +80,8 @@ def main():
         cfg['num_workers']=args.workers
     if args.model_name != 'default':
         cfg['model']['name'] = args.model_name
+    if args.extra_tag != 'default':
+        cfg['model']['extra_tag'] = args.extra_tag
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -99,8 +103,7 @@ def main_worker(args, cfg):
     # Run on every GPU with args.local_rank
     # Setup environment
     args = main_utils.initialize_distributed_backend(args) ### Use other method instead
-    logger, tb_writter, model_dir, _, _ = main_utils.prep_environment(args, cfg)
-    wandb_utils.init(cfg, args, job_type='pretrain')
+    logger, tb_writter, model_dir, _= main_utils.prep_environment(args, cfg)
     # print("=" * 30 + "   DDP   " + "=" * 30)
     # print(f"world_size: {args.world_size}")
     # print(f"local_rank: {args.local_rank}")
@@ -118,8 +121,6 @@ def main_worker(args, cfg):
     cfg['model']['INPUT'] = cfg['dataset']['INPUT']
 
 
-
-    
     # Define dataloaders
     train_loader = main_utils.build_dataloader(cfg['dataset'], cfg['num_workers'],  pretraining=True, mode='train', logger=logger)  
 
@@ -134,11 +135,11 @@ def main_worker(args, cfg):
         if 'MODEL_AUX_HEAD' in cfg['model']:
             model.aux_head = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model.aux_head)
 
-    # Optionally load any pretrained ckpt
-    if 'pretrain_model_dir' in cfg:
-        ckp_manager_pretrained_model = main_utils.CheckpointManager(cfg['pretrain_model_dir'], logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
-        # ckp_manager_pretrained_model.restore(fn=args.pretrained_ckpt, model=model)
-        ckp_manager_pretrained_model.restore(restore_last=True, model=model)
+    # # Optionally load any pretrained ckpt
+    # if 'pretrain_model_dir' in cfg:
+    #     ckp_manager_pretrained_model = main_utils.CheckpointManager(cfg['pretrain_model_dir'], logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
+    #     # ckp_manager_pretrained_model.restore(fn=args.pretrained_ckpt, model=model)
+    #     ckp_manager_pretrained_model.restore(restore_last=True, model=model)
 
     model, args = main_utils.distribute_model_to_cuda(model, args) #, find_unused_params=CLUSTER
 
@@ -152,7 +153,7 @@ def main_worker(args, cfg):
         cfg=cfg['optimizer'],
         total_iters_each_epoch=len(train_loader),
         logger=logger)
-    ckp_manager = main_utils.CheckpointManager(model_dir, logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
+    ckp_manager = main_utils.CheckpointManager(f'{model_dir}/ckpt', logger=logger, rank=args.rank, dist=args.multiprocessing_distributed)
     
     # Optionally resume from a checkpoint
     start_epoch, end_epoch = 0, cfg['optimizer']['num_epochs']
@@ -168,9 +169,10 @@ def main_worker(args, cfg):
     cudnn.enabled = False
 
     ############################ TRAIN #########################################
-    test_freq = cfg['test_freq'] if 'test_freq' in cfg else 1
+    wandb_utils.init(cfg, args, Path(f'{model_dir}/wandb_run_id.txt'), pretraining=True)
+
     for epoch in range(start_epoch, end_epoch):
-        if (epoch >= cfg['save_ckpt_after_epochs'] and epoch % cfg['ckpt_save_interval']== 0):
+        if (cfg['ckpt_save_interval']>0 and epoch % cfg['ckpt_save_interval']== 0) or epoch == (end_epoch-1) or epoch == (end_epoch-2):
             #Use these checkpoints for object detection
             ckp_manager.save(epoch, model=model, filename='checkpoint-ep{}.pth.tar'.format(epoch))
             logger.add_line(f'Saved checkpoint for finetuning checkpoint-ep{epoch}.pth.tar before beginning epoch {epoch}')
@@ -184,11 +186,10 @@ def main_worker(args, cfg):
 
         run_phase('train', train_loader, model, optimizer, train_criterion, epoch, args, cfg, logger, tb_writter, lr=scheduler.get_last_lr()[0])
         scheduler.step(epoch*len(train_loader))
-
-        if ((epoch % test_freq) == 0) or (epoch == end_epoch - 1):
-            #resume training from this checkpoint bcz we are saving optimizer and train criterion
-            ckp_manager.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
-            logger.add_line(f'Saved checkpoint for resuming {ckp_manager.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
+        
+        #resume training from this checkpoint bcz we are saving optimizer and train criterion
+        ckp_manager.save(epoch+1, model=model, optimizer=optimizer, train_criterion=train_criterion)
+        logger.add_line(f'Saved checkpoint for resuming {ckp_manager.last_checkpoint_fn()} after ending epoch {epoch}, {epoch+1} is recorded for this chkp')
 
     if args.multiprocessing_distributed:
         dist.destroy_process_group()
@@ -316,9 +317,10 @@ def run_phase(phase, loader, model, optimizer, criterion, epoch, args, cfg, logg
         for meter in progress.meters:
             tb_writter.add_scalar('{}-epoch/{}'.format(phase, meter.name), meter.avg, epoch)
     
-    metrics_dict = {'epoch': epoch, 'lr': lr}
+    metrics_dict = {'pretrain/epoch': epoch, 'pretrain/lr': lr}
     for meter in progress.meters:
-        metrics_dict[meter.name +'-epoch'] = meter.avg
+        k = f'pretrain/{meter.name}'
+        metrics_dict[k] = meter.avg
     
     wandb_utils.log(cfg, args, metrics_dict, epoch)
 

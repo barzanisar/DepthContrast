@@ -6,47 +6,35 @@ die() { echo "$*" 1>&2 ; exit 1; }
 # Default Command line args
 # main.py script parameters
 PRETRAIN_CFG_FILE=configs/waymo.yaml
-LINEARPROBE_CFG_FILE=configs/linear_probe.yaml
 FINETUNE_CFG_FILE=configs/finetune.yaml
 SCRATCH_CFG_FILE=configs/scratch.yaml
 
-TCP_PORT=18888
-MODE=pretrain-finetune #scratch #linearprobe
+MODE=pfs
+DATASETS=wns
 BACKBONE=minkunet
-OTHER_DATASETS=false
 
-PRETRAINED_CKPT="default"
-LINEARPROBE_LAST_N_CKPTS=-1
+PRETRAINED_CKPT=checkpoint-ep199.pth.tar
 PRETRAIN_BATCHSIZE_PER_GPU=16
-LINEARPROBE_BATCHSIZE_PER_GPU=-1
 FINETUNE_BATCHSIZE_PER_GPU=8
-PRETRAIN_EPOCHS=-1
-FINETUNE_EPOCHS=-1
-LINEARPROBE_EPOCHS=-1
-MODEL_NAME="default"
-DOWNSTREAM_MODEL_DIR="default"
+PRETRAIN_EPOCHS=200
+FINETUNE_EPOCHS=15
 FRAME_SAMPLING_DIV=1
+
+MODEL_NAME="default"
+PRETRAIN_EXTRA_TAG="try0"
+EXTRA_TAG="try0"
 
 SING_IMG=/raid/home/nisarbar/singularity/ssl_proposal.sif
 DATA_DIR=/raid/datasets/Waymo
 KITTI_DATA_DIR=/raid/datasets/semantic_kitti
 NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
+
 NUM_GPUS=2
 CUDA_VISIBLE_DEVICES=0,1
 MASTER_ADDR=$CLUSTER_NAME
+TCP_PORT=18888
 WORKERS_PER_GPU=8 # Turing has 48 cpus so use 10 cpus/gpu
 
-
-
-# Usage info
-show_help() {
-echo "
-Usage: sbatch --job-name=JOB_NAME --mail-user=MAIL_USER --gres=gpu:GPU_ID:NUM_GPUS tools/scripts/${0##*/} [-h]
-main.py parameters
-[--cfg_file CFG_FILE]
-[--tcp_port TCP_PORT]
-"
-}
 
 # Change default data_dir and infos_dir for different datasets
 
@@ -58,7 +46,7 @@ while :; do
         exit
         ;;
     # train.py parameters
-    -c|--cfg_file)       # Takes an option argument; ensure it has been specified.
+    -a|--cfg_file)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             PRETRAIN_CFG_FILE=$2
 
@@ -66,16 +54,11 @@ while :; do
             echo "Checking BACKBONE"
             if [[ "$PRETRAIN_CFG_FILE"  == *"minkunet"* ]]; then
                 BACKBONE=minkunet
-                LINEARPROBE_CFG_FILE=configs/waymo_lpseg_minkunet.yaml
                 FINETUNE_CFG_FILE=configs/waymo_fine1lr_minkunet.yaml
                 SCRATCH_CFG_FILE=configs/waymo_scratch_minkunet.yaml
-                # LINEARPROBE_CFG_FILE=configs/waymo_lpseg_minkunet_test.yaml
-                # FINETUNE_CFG_FILE=configs/waymo_finetune_minkunet_test.yaml
-                # SCRATCH_CFG_FILE=configs/waymo_scratch_minkunet_test.yaml
                 echo "Backbone: minkunet"
             elif [[ "$PRETRAIN_CFG_FILE" == *"pointrcnn"* ]]; then
                 BACKBONE=pointrcnn
-                LINEARPROBE_CFG_FILE=configs/waymo_lpseg_pointrcnn.yaml
                 FINETUNE_CFG_FILE=configs/waymo_fine1lr_pointrcnn.yaml
                 SCRATCH_CFG_FILE=configs/waymo_scratch_pointrcnn.yaml
                 echo "Backbone: pointrcnn"
@@ -88,15 +71,7 @@ while :; do
             die 'ERROR: "--cfg_file" requires a non-empty option argument.'
         fi
         ;;
-    -o|--tcp_port)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            TCP_PORT=$2
-            shift
-        else
-            die 'ERROR: "--tcp_port" requires a non-empty option argument.'
-        fi
-        ;;
-    -d|--mode)       # Takes an option argument; ensure it has been specified.
+    -b|--mode)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             MODE=$2
             shift
@@ -104,7 +79,15 @@ while :; do
             die 'ERROR: "--mode" requires a non-empty option argument.'
         fi
         ;;
-    -l|--pretrained_ckpt)       # Takes an option argument; ensure it has been specified.
+    -c|--datasets)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            DATASETS=$2
+            shift
+        else
+            die 'ERROR: "--datasets" requires a non-empty option argument.'
+        fi
+        ;;
+    -d|--pretrained_ckpt)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             PRETRAINED_CKPT=$2
             shift
@@ -112,55 +95,31 @@ while :; do
             die 'ERROR: "--pretrained_ckpt" requires a non-empty option argument.'
         fi
         ;;
-    -m|--model_name)       # Takes an option argument; ensure it has been specified.
+    -e|--model_name)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             MODEL_NAME=$2
             shift
         else
-            die 'ERROR: "--pretrained_ckpt" requires a non-empty option argument.'
+            die 'ERROR: "--model_name" requires a non-empty option argument.'
         fi
         ;;
-    -w|--downstream_model_dir)       # Takes an option argument; ensure it has been specified.
+    -f|--pretrain_extra_tag)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
-            DOWNSTREAM_MODEL_DIR=$2
+            PRETRAIN_EXTRA_TAG=$2
             shift
         else
-            die 'ERROR: "--downstream_model_dir" requires a non-empty option argument.'
+            die 'ERROR: "--pretrain_extra_tag" requires a non-empty option argument.'
         fi
         ;;
-    -p|--linearprobe_last_n_ckpts)       # Takes an option argument; ensure it has been specified.
+    -g|--extra_tag)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
-            LINEARPROBE_LAST_N_CKPTS=$2
+            EXTRA_TAG=$2
             shift
         else
-            die 'ERROR: "--linearprobe_last_n_ckpts" requires a non-empty option argument.'
+            die 'ERROR: "--extra_tag" requires a non-empty option argument.'
         fi
         ;;
-    -x|--pretrain_batchsize_per_gpu)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            PRETRAIN_BATCHSIZE_PER_GPU=$2
-            shift
-        else
-            die 'ERROR: "--pretrain_batchsize_per_gpu" requires a non-empty option argument.'
-        fi
-        ;;
-    -y|--linearprobe_batchsize_per_gpu)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            LINEARPROBE_BATCHSIZE_PER_GPU=$2
-            shift
-        else
-            die 'ERROR: "--linearprobe_batchsize_per_gpu" requires a non-empty option argument.'
-        fi
-        ;;
-    -z|--finetune_batchsize_per_gpu)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            FINETUNE_BATCHSIZE_PER_GPU=$2
-            shift
-        else
-            die 'ERROR: "--finetune_batchsize_per_gpu" requires a non-empty option argument.'
-        fi
-        ;;
-    -e|--finetune_epochs)       # Takes an option argument; ensure it has been specified.
+    -h|--finetune_epochs)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             FINETUNE_EPOCHS=$2
             shift
@@ -168,7 +127,7 @@ while :; do
             die 'ERROR: "--finetune_epochs" requires a non-empty option argument.'
         fi
         ;;
-    -f|--pretrain_epochs)       # Takes an option argument; ensure it has been specified.
+    -i|--pretrain_epochs)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             PRETRAIN_EPOCHS=$2
             shift
@@ -176,7 +135,7 @@ while :; do
             die 'ERROR: "--pretrain_epochs" requires a non-empty option argument.'
         fi
         ;;
-    -s|--frame_sampling_div)       # Takes an option argument; ensure it has been specified.
+    -j|--frame_sampling_div)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             FRAME_SAMPLING_DIV=$2
             shift
@@ -184,15 +143,7 @@ while :; do
             die 'ERROR: "--frame_sampling_div" requires a non-empty option argument.'
         fi
         ;;
-    -i|--linearprobe_epochs)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            LINEARPROBE_EPOCHS=$2
-            shift
-        else
-            die 'ERROR: "--linearprobe_epochs" requires a non-empty option argument.'
-        fi
-        ;;
-    -n|--num_gpus)       # Takes an option argument; ensure it has been specified.
+    -k|--num_gpus)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             NUM_GPUS=$2
             shift
@@ -200,7 +151,7 @@ while :; do
             die 'ERROR: "--num_gpus" requires a non-empty option argument.'
         fi
         ;;
-    -c|--cuda_visible_devices)       # Takes an option argument; ensure it has been specified.
+    -l|--cuda_visible_devices)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             CUDA_VISIBLE_DEVICES=$2
             shift
@@ -208,10 +159,6 @@ while :; do
             die 'ERROR: "--cuda_visible_devices" requires a non-empty option argument.'
         fi
         ;;
-    -n|--other_datasets)       # Takes an option argument; ensure it has been specified.
-        OTHER_DATASETS="true"
-        ;;
-
         
     # Additional parameters
     -?*)
@@ -259,276 +206,151 @@ singularity exec
 --bind $PROJ_DIR/scripts:/DepthContrast/scripts
 --bind $PROJ_DIR/utils:/DepthContrast/utils
 --bind $DATA_DIR:/DepthContrast/data/waymo
+--bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
+--bind $NUSCENES_DATA_DIR
 --bind $PROJ_DIR/lib:/DepthContrast/lib
 $DEPTH_CONTRAST_BINDS
 $SING_IMG
 "
 
-PRETRAIN_CMD=$BASE_CMD
-PRETRAIN_CMD+="python -m torch.distributed.launch
---nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-/DepthContrast/tools/main_dist.py
---launcher pytorch
---multiprocessing-distributed --cfg /DepthContrast/$PRETRAIN_CFG_FILE --world-size $NUM_GPUS 
---dist-url tcp://$MASTER_ADDR:$TCP_PORT 
---epochs $PRETRAIN_EPOCHS 
---batchsize_per_gpu $PRETRAIN_BATCHSIZE_PER_GPU 
---workers $WORKERS_PER_GPU 
---model_name $MODEL_NAME
-"
+if [[ "$MODE" =~ p ]]; then
 
+    PRETRAIN_CMD=$BASE_CMD
+    PRETRAIN_CMD+="python -m torch.distributed.launch
+    --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+    /DepthContrast/tools/main_dist.py
+    --launcher pytorch
+    --multiprocessing-distributed --cfg /DepthContrast/$PRETRAIN_CFG_FILE --world-size $NUM_GPUS 
+    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+    --epochs $PRETRAIN_EPOCHS 
+    --batchsize_per_gpu $PRETRAIN_BATCHSIZE_PER_GPU 
+    --workers $WORKERS_PER_GPU 
+    --model_name $MODEL_NAME 
+    --extra_tag "$PRETRAIN_EPOCHS"ep_"$PRETRAIN_EXTRA_TAG"
+    "
 
-FINETUNE_CMD=$BASE_CMD
-
-FINETUNE_CMD+="python -m torch.distributed.launch
---nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-/DepthContrast/tools/downstream_segmentation.py
---launcher pytorch
---multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $NUM_GPUS 
---dist-url tcp://$MASTER_ADDR:$TCP_PORT 
---epochs $FINETUNE_EPOCHS
---batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
---downstream_model_dir finetune_waymo_"$FRAME_SAMPLING_DIV"percent_"$FINETUNE_EPOCHS"epochs
---model_name $MODEL_NAME
---pretrained_ckpt $PRETRAINED_CKPT 
---workers $WORKERS_PER_GPU 
---frame_sampling_div $FRAME_SAMPLING_DIV
-"
-
-SCRATCH_CMD=$BASE_CMD
-
-SCRATCH_CMD+="python -m torch.distributed.launch
---nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-/DepthContrast/tools/downstream_segmentation.py
---launcher pytorch
---multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $NUM_GPUS 
---dist-url tcp://$MASTER_ADDR:$TCP_PORT 
---epochs $FINETUNE_EPOCHS
---batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
---downstream_model_dir $DOWNSTREAM_MODEL_DIR
---pretrained_ckpt checkpoint-ep0.pth.tar 
---workers $WORKERS_PER_GPU 
---frame_sampling_div $FRAME_SAMPLING_DIV
-"
-
-LINEARPROBE_CMD=$BASE_CMD
-
-LINEARPROBE_CMD+="python -m torch.distributed.launch
---nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-/DepthContrast/tools/downstream_segmentation.py
---launcher pytorch
---multiprocessing-distributed --cfg /DepthContrast/$LINEARPROBE_CFG_FILE --world-size $NUM_GPUS 
---dist-url tcp://$MASTER_ADDR:$TCP_PORT 
---epochs $LINEARPROBE_EPOCHS
---batchsize_per_gpu $LINEARPROBE_BATCHSIZE_PER_GPU 
---downstream_model_dir $DOWNSTREAM_MODEL_DIR
---model_name $MODEL_NAME
---linear_probe_last_n_ckpts $LINEARPROBE_LAST_N_CKPTS 
---workers $WORKERS_PER_GPU 
---frame_sampling_div $FRAME_SAMPLING_DIV
-"
-
-if [[ "$MODE" == "pretrain-finetune" ]]; then
     echo "Running Pretraining"
     echo "$PRETRAIN_CMD"
     eval $PRETRAIN_CMD
     echo "Done pretraining"
 
-    echo "Running Finetuning"
-    echo "$FINETUNE_CMD"
-    eval $FINETUNE_CMD
-    echo "Done Finetuning"
-
-elif [[ "$MODE" == "linearprobe" ]]; then
-    echo "Running Linear Probe Only"
-    echo "$LINEARPROBE_CMD"
-    eval $LINEARPROBE_CMD
-    echo "Done linear probe"
-
-elif [[ "$MODE" == "scratch" ]]; then
-    echo "Running Scratch training"
-    echo "$SCRATCH_CMD"
-    eval $SCRATCH_CMD
-    echo "Done scratch training"
-    
 fi
 
-if [[ "$OTHER_DATASETS" == "true" ]]; then 
-    if [[ "$MODE" == "pretrain-finetune" ]]; then
-        FINETUNE_CFG_FILE=configs/semantickitti_fine1lr_$BACKBONE.yaml
+if [[ "$MODE" =~ f ]]; then
 
-        BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
-        SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-        SINGULARITYENV_NCCL_BLOCKING_WAIT=1
-        singularity exec
-        --nv
-        --pwd /DepthContrast
-        --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
-        --bind $PROJ_DIR/configs:/DepthContrast/configs
-        --bind $PROJ_DIR/criterions:/DepthContrast/criterions
-        --bind $PROJ_DIR/output:/DepthContrast/output
-        --bind $PROJ_DIR/datasets:/DepthContrast/datasets
-        --bind $PROJ_DIR/tools:/DepthContrast/tools
-        --bind $PROJ_DIR/models:/DepthContrast/models
-        --bind $PROJ_DIR/scripts:/DepthContrast/scripts
-        --bind $PROJ_DIR/utils:/DepthContrast/utils
-        --bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
-        --bind $PROJ_DIR/lib:/DepthContrast/lib
-        $DEPTH_CONTRAST_BINDS
-        $SING_IMG
+    FINETUNE_CMD=$BASE_CMD
+    FINETUNE_CMD+="python -m torch.distributed.launch
+    --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+    /DepthContrast/tools/downstream_segmentation.py
+    --launcher pytorch
+    --multiprocessing-distributed --world-size $NUM_GPUS 
+    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+    --workers $WORKERS_PER_GPU 
+    --epochs $FINETUNE_EPOCHS
+    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
+    --pretrained_ckpt $PRETRAINED_CKPT 
+    --model_name $MODEL_NAME
+    --pretrain_extra_tag "$PRETRAIN_EPOCHS"ep_"$PRETRAIN_EXTRA_TAG"
+    --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
+    --frame_sampling_div $FRAME_SAMPLING_DIV
+    "
+
+    
+    if [[ "$DATASETS" =~ w ]]; then
+        DATASET=waymo
+
+        FINETUNE_CFG_FILE=configs/"$DATASET"_fine1lr_$BACKBONE.yaml
+        FINAL_FINETUNE_CMD=$FINETUNE_CMD
+        FINAL_FINETUNE_CMD+=" --cfg /DepthContrast/$FINETUNE_CFG_FILE 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
-        FINETUNE_CMD=$BASE_CMD
+        echo "Running Finetuning"
+        echo "$FINAL_FINETUNE_CMD"
+        eval $FINAL_FINETUNE_CMD
+        echo "Done Finetuning"
+    fi
+    if [[ "$DATASETS" =~ n ]]; then
+        DATASET=nuscenes
 
-        FINETUNE_CMD+="python -m torch.distributed.launch
-        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-        /DepthContrast/tools/downstream_segmentation.py
-        --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $NUM_GPUS 
-        --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
-        --epochs $FINETUNE_EPOCHS
-        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir finetune_semantickitti_"$FRAME_SAMPLING_DIV"percent_"$FINETUNE_EPOCHS"epochs
-        --model_name $MODEL_NAME
-        --pretrained_ckpt $PRETRAINED_CKPT 
-        --workers $WORKERS_PER_GPU 
-        --frame_sampling_div $FRAME_SAMPLING_DIV
+        FINETUNE_CFG_FILE=configs/"$DATASET"_fine1lr_$BACKBONE.yaml
+        FINAL_FINETUNE_CMD=$FINETUNE_CMD
+        FINAL_FINETUNE_CMD+=" --cfg /DepthContrast/$FINETUNE_CFG_FILE 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
-        echo "Running Finetuning on semkitti"
-        echo "$FINETUNE_CMD"
-        eval $FINETUNE_CMD
-        echo "Done Finetuning on semkitti"
+        echo "Running Finetuning"
+        echo "$FINAL_FINETUNE_CMD"
+        eval $FINAL_FINETUNE_CMD
+        echo "Done Finetuning"
+    fi
+    if [[ "$DATASETS" =~ s ]]; then
+        DATASET=semantickitti
 
-
-        FINETUNE_CFG_FILE=configs/nuscenes_fine1lr_$BACKBONE.yaml
-
-        BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
-        SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-        SINGULARITYENV_NCCL_BLOCKING_WAIT=1
-        singularity exec
-        --nv
-        --pwd /DepthContrast
-        --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
-        --bind $PROJ_DIR/configs:/DepthContrast/configs
-        --bind $PROJ_DIR/criterions:/DepthContrast/criterions
-        --bind $PROJ_DIR/output:/DepthContrast/output
-        --bind $PROJ_DIR/datasets:/DepthContrast/datasets
-        --bind $PROJ_DIR/tools:/DepthContrast/tools
-        --bind $PROJ_DIR/models:/DepthContrast/models
-        --bind $PROJ_DIR/scripts:/DepthContrast/scripts
-        --bind $PROJ_DIR/utils:/DepthContrast/utils
-        --bind $NUSCENES_DATA_DIR
-        --bind $PROJ_DIR/lib:/DepthContrast/lib
-        $DEPTH_CONTRAST_BINDS
-        $SING_IMG
+        FINETUNE_CFG_FILE=configs/"$DATASET"_fine1lr_$BACKBONE.yaml
+        FINAL_FINETUNE_CMD=$FINETUNE_CMD
+        FINAL_FINETUNE_CMD+=" --cfg /DepthContrast/$FINETUNE_CFG_FILE 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
-        FINETUNE_CMD=$BASE_CMD
+        echo "Running Finetuning"
+        echo "$FINAL_FINETUNE_CMD"
+        eval $FINAL_FINETUNE_CMD
+        echo "Done Finetuning"
+    fi
 
-        FINETUNE_CMD+="python -m torch.distributed.launch
-        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-        /DepthContrast/tools/downstream_segmentation.py
-        --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/$FINETUNE_CFG_FILE --world-size $NUM_GPUS 
-        --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
-        --epochs $FINETUNE_EPOCHS
-        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir finetune_nuscenes_"$FRAME_SAMPLING_DIV"percent_"$FINETUNE_EPOCHS"epochs
-        --model_name $MODEL_NAME
-        --pretrained_ckpt $PRETRAINED_CKPT 
-        --workers $WORKERS_PER_GPU 
-        --frame_sampling_div $FRAME_SAMPLING_DIV
+fi
+
+if [[ "$MODE" =~ s ]]; then
+    SCRATCH_CMD=$BASE_CMD
+    SCRATCH_CMD+="python -m torch.distributed.launch
+    --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+    /DepthContrast/tools/downstream_segmentation.py
+    --launcher pytorch
+    --multiprocessing-distributed --world-size $NUM_GPUS 
+    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+    --epochs $FINETUNE_EPOCHS
+    --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
+    --pretrained_ckpt checkpoint-ep0.pth.tar 
+    --workers $WORKERS_PER_GPU 
+    --frame_sampling_div $FRAME_SAMPLING_DIV 
+    --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
+    "
+    if [[ "$DATASETS" =~ w ]]; then
+        DATASET=waymo
+
+        CFG_FILE=configs/"$DATASET"_scratch_$BACKBONE.yaml
+        FINAL_CMD=$SCRATCH_CMD
+        FINAL_CMD+=" --cfg /DepthContrast/$CFG_FILE 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
-        echo "Running Finetuning on nuscenes"
-        echo "$FINETUNE_CMD"
-        eval $FINETUNE_CMD
-        echo "Done Finetuning on nuscenes"
+        echo "Running Scratch"
+        echo "$FINAL_CMD"
+        eval $FINAL_CMD
+        echo "Done Scratch"
+    fi
+    if [[ "$DATASETS" =~ n ]]; then
+        DATASET=nuscenes
 
-    elif [[ "$MODE" == "scratch" ]]; then
-
-        SCRATCH_CFG_FILE=configs/semantickitti_scratch_$BACKBONE.yaml
-
-        BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
-        SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-        SINGULARITYENV_NCCL_BLOCKING_WAIT=1
-        singularity exec
-        --nv
-        --pwd /DepthContrast
-        --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
-        --bind $PROJ_DIR/configs:/DepthContrast/configs
-        --bind $PROJ_DIR/criterions:/DepthContrast/criterions
-        --bind $PROJ_DIR/output:/DepthContrast/output
-        --bind $PROJ_DIR/datasets:/DepthContrast/datasets
-        --bind $PROJ_DIR/tools:/DepthContrast/tools
-        --bind $PROJ_DIR/models:/DepthContrast/models
-        --bind $PROJ_DIR/scripts:/DepthContrast/scripts
-        --bind $PROJ_DIR/utils:/DepthContrast/utils
-        --bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
-        --bind $PROJ_DIR/lib:/DepthContrast/lib
-        $DEPTH_CONTRAST_BINDS
-        $SING_IMG
+        CFG_FILE=configs/"$DATASET"_scratch_$BACKBONE.yaml
+        FINAL_CMD=$SCRATCH_CMD
+        FINAL_CMD+=" --cfg /DepthContrast/$CFG_FILE 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
-        SCRATCH_CMD=$BASE_CMD
+        echo "Running Scratch"
+        echo "$FINAL_CMD"
+        eval $FINAL_CMD
+        echo "Done Scratch"
+    fi
+    if [[ "$DATASETS" =~ s ]]; then
+        DATASET=semantickitti
 
-        SCRATCH_CMD+="python -m torch.distributed.launch
-        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-        /DepthContrast/tools/downstream_segmentation.py
-        --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $NUM_GPUS 
-        --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
-        --epochs $FINETUNE_EPOCHS
-        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
-        --pretrained_ckpt checkpoint-ep0.pth.tar 
-        --workers $WORKERS_PER_GPU 
-        --frame_sampling_div $FRAME_SAMPLING_DIV
+        CFG_FILE=configs/"$DATASET"_scratch_$BACKBONE.yaml
+        FINAL_CMD=$SCRATCH_CMD
+        FINAL_CMD+=" --cfg /DepthContrast/$CFG_FILE 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
-        echo "Running Scratch training on semkitti"
-        echo "$SCRATCH_CMD"
-        eval $SCRATCH_CMD
-        echo "Done scratch training on semkitti"
-
-        SCRATCH_CFG_FILE=configs/nuscenes_scratch_$BACKBONE.yaml
-
-        BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
-        SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-        SINGULARITYENV_NCCL_BLOCKING_WAIT=1
-        singularity exec
-        --nv
-        --pwd /DepthContrast
-        --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
-        --bind $PROJ_DIR/configs:/DepthContrast/configs
-        --bind $PROJ_DIR/criterions:/DepthContrast/criterions
-        --bind $PROJ_DIR/output:/DepthContrast/output
-        --bind $PROJ_DIR/datasets:/DepthContrast/datasets
-        --bind $PROJ_DIR/tools:/DepthContrast/tools
-        --bind $PROJ_DIR/models:/DepthContrast/models
-        --bind $PROJ_DIR/scripts:/DepthContrast/scripts
-        --bind $PROJ_DIR/utils:/DepthContrast/utils
-        --bind $NUSCENES_DATA_DIR
-        --bind $PROJ_DIR/lib:/DepthContrast/lib
-        $DEPTH_CONTRAST_BINDS
-        $SING_IMG
-        "
-        SCRATCH_CMD=$BASE_CMD
-
-        SCRATCH_CMD+="python -m torch.distributed.launch
-        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-        /DepthContrast/tools/downstream_segmentation.py
-        --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/$SCRATCH_CFG_FILE --world-size $NUM_GPUS 
-        --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
-        --epochs $FINETUNE_EPOCHS
-        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
-        --downstream_model_dir $DOWNSTREAM_MODEL_DIR
-        --pretrained_ckpt checkpoint-ep0.pth.tar 
-        --workers $WORKERS_PER_GPU 
-        --frame_sampling_div $FRAME_SAMPLING_DIV
-        "
-
-        echo "Running Scratch training on nuscenes"
-        echo "$SCRATCH_CMD"
-        eval $SCRATCH_CMD
-        echo "Done scratch training on nuscenes"
-        
+        echo "Running Scratch"
+        echo "$FINAL_CMD"
+        eval $FINAL_CMD
+        echo "Done Scratch"
     fi
 
 fi

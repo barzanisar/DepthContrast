@@ -13,7 +13,7 @@ print_freq: 1 #print progress after processing every <freq> iters or batches
 
 WANDB:
   ENABLED: False 
-  PROJECT: SSL3dObject
+  PROJECT: SSL3dObject_new
   ENTITY: trailab
   SUMMARY_HIGHEST_METRIC: None
   dir: '/DepthContrast/output'

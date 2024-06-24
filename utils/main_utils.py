@@ -228,30 +228,29 @@ def get_ckpts_to_eval(cfg, logger, pretrain_model_dir, eval_list_dir):
 
 def prep_environment(args, cfg, pretraining=True):
     from torch.utils.tensorboard import SummaryWriter
-    DATASET_NAMES = { 'WaymoDataset': 'waymo', 'SemanticKittiDataset': 'semantickitti', 'NuscenesDataset': 'nuscenes'}
-    dataset_name = DATASET_NAMES[cfg['dataset']['DATASET_NAMES'][0]]
-    if pretraining:
-        phase_name = f'pretrain_waymo'
-    else:
-        downstream_task = 'segmentation' #if 'SEGMENTATION_HEAD' in cfg['model'] else 'detection'
-        if 'downstream_model_dir' in cfg['model']:
-            phase_name = cfg['model']['downstream_model_dir']
-        else:
-            if cfg['model']['linear_probe']:
-                phase_name = f'linearprobe_{downstream_task}_{dataset_name}'
-            else:
-                phase_name = f'finetune_{downstream_task}_{dataset_name}'
+    # DATASET_NAMES = { 'WaymoDataset': 'waymo', 'SemanticKittiDataset': 'semantickitti', 'NuscenesDataset': 'nuscenes'}
+    # dataset_name = DATASET_NAMES[cfg['dataset']['DATASET_NAMES'][0]]
+    # job_type = cfg['model']['job_type']
+    # extra_tag = cfg['model']['extra_tag']
 
-    # Prepare loggers (must be configured after initialize_distributed_backend())
-    model_dir = '{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], phase_name)
-    pretrain_model_dir = '{}/{}/pretrain_waymo'.format(cfg['model']['model_dir'], cfg['model']['name'])
+    pretrain_model_dir = None
+    if pretraining:
+        model_dir = '{}/{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], 'pretrain' , cfg['model']['extra_tag'])
+    elif 'scratch' in cfg['model']['name']:
+        pretrain_model_dir =  '{}/{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], cfg['model']['job_type'])
+        model_dir = '{}/{}'.format(pretrain_model_dir, cfg['model']['extra_tag'])
+    else:
+        pretrain_model_dir = '{}/{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], 'pretrain', cfg['model']['pretrain_extra_tag'])
+        model_dir = '{}/{}/{}'.format(pretrain_model_dir, cfg['model']['job_type'], cfg['model']['extra_tag'])
     
+    ckpt_dir = f'{model_dir}/ckpt'
+    # pretrain_ckpt_dir = f'{pretrain_model_dir}/ckpt'  if not pretraining else None
+
+    #minkunet/segcontrast_waymo_10perc_minkunet/pretrain/200ep_try0/ckpt or wanbd_id.txt or finetune_nuscenes_1perc/15ep_try0/ckpt or wanbd_id.txt
+    #minkunet/scratch_minkunet/finetune_nuscenes_1perc/15ep_try0/ckpt or wanbd_id.txt
     
     if args.rank == 0:
-        if not pretraining:
-            n= model_dir.split(f'/{phase_name}')[0]
-            assert os.path.isdir(n), f'{n} does not exist!'
-        prep_output_folder(model_dir)
+        prep_output_folder(ckpt_dir)
 
     log_fn = '{}/{}.log'.format(model_dir, datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     logger = Logger(quiet=args.quiet, log_fn=log_fn, rank=args.rank)
@@ -283,7 +282,7 @@ def prep_environment(args, cfg, pretraining=True):
         os.system('mkdir -p {}'.format(tb_dir))
         tb_writter = SummaryWriter(tb_dir)
 
-    return logger, tb_writter, model_dir, pretrain_model_dir, phase_name
+    return logger, tb_writter, model_dir, pretrain_model_dir
 
 
 def build_model(cfg, pretraining, dataset, logger=None):

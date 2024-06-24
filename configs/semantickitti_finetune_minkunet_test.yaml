@@ -1,21 +1,18 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/downstream_segmentation.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_lpseg_test.yaml
 # python tools/downstream_segmentation.py --cfg configs/waymo_pointrcnn_lpseg_test.yaml
-wb_extra_tags: ['minkunet', 'finetune_segmentation_semantickitti']
 resume: true
 num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 load_pretrained_checkpoint: 'all'
 
 log2tb: false
-log2wb: false
+log2wb: true
 
-test_freq: 1 #save chkp after every <freq> epochs, resume will load the last saved chkp
 print_freq: 1 #print progress after processing every <freq> iters or batches
 
 WANDB:
-  ENABLED: False 
-  PROJECT: SSL3dObject
+  ENABLED: True 
+  PROJECT: SSL3dObject_new
   ENTITY: trailab
-  SUMMARY_HIGHEST_METRIC: None
   dir: '/DepthContrast/output'
 
 dataset:
@@ -53,9 +50,11 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "minkunet_pretrain_test"
+  name: "segcontrast_10perc_waymo_minkunet"
   linear_probe: false #meaning lp vs finetune
-  downstream_model_dir: "finetune_semantickitti_1percent"
+  job_type: "finetune_semantickitti_1percent"
+  pretrain_extra_tag: try0 #200ep_try0
+  extra_tag: 15ep_try0
 
   MODEL_BASE:
     NAME: Segmentor
@@ -67,4 +66,3 @@ model:
     CLS_FC: [96, 20]
     loss_types: ['CELoss', 'LovLoss']
     loss_weights: [1.0, 1.0]
-    # label_smoothing: 0.1
