@@ -14,7 +14,7 @@ from pathlib import Path
 
 from datasets.transforms import  data_augmentor, data_processor
 from datasets.transforms.LiDAR_augmentation import LiDAR_aug_manager
-from datasets.features import global_descriptors
+# from datasets.features import global_descriptors
 from datasets.collators.sparse_collator import point_set_to_coord_feats
 
 from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
@@ -304,27 +304,27 @@ class DepthContrastDataset(Dataset):
 
         ################################ Extract Shape descriptors #######################
 
-        if 'EXTRACT_SHAPE_DESCRIPTORS' in cfg:
-            method=cfg['EXTRACT_SHAPE_DESCRIPTORS']
-            shape_descs = [] 
-            cluster_ids_for_shape_descs=[]
-            for idx, i in enumerate(gt_cluster_ids):
-                obj_points_mask = data_dict["points"][:, -1] == i
-                obj_points = data_dict["points"][obj_points_mask,:3] - data_dict["gt_boxes"][idx,:3] # for vfh
-                if len(obj_points) > 5:
-                    shape_desc = global_descriptors.extract_feats(obj_points, method=method)
-                    # visualize_selected_labels(obj_points, data_dict["points"][obj_points_mask, -1], [i])
+        # if 'EXTRACT_SHAPE_DESCRIPTORS' in cfg:
+        #     method=cfg['EXTRACT_SHAPE_DESCRIPTORS']
+        #     shape_descs = [] 
+        #     cluster_ids_for_shape_descs=[]
+        #     for idx, i in enumerate(gt_cluster_ids):
+        #         obj_points_mask = data_dict["points"][:, -1] == i
+        #         obj_points = data_dict["points"][obj_points_mask,:3] - data_dict["gt_boxes"][idx,:3] # for vfh
+        #         if len(obj_points) > 5:
+        #             shape_desc = global_descriptors.extract_feats(obj_points, method=method)
+        #             # visualize_selected_labels(obj_points, data_dict["points"][obj_points_mask, -1], [i])
 
-                    if shape_desc is not None:
-                        shape_descs.append(shape_desc)
-                        cluster_ids_for_shape_descs.append(i)
-                        #print(f'cluster_id: {i}')
-                        #visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], [i])
+        #             if shape_desc is not None:
+        #                 shape_descs.append(shape_desc)
+        #                 cluster_ids_for_shape_descs.append(i)
+        #                 #print(f'cluster_id: {i}')
+        #                 #visualize_selected_labels(data_dict["points"], data_dict["points"][:, -1], [i])
 
-            shape_descs = np.array(shape_descs)
-            cluster_ids_for_shape_descs = np.array(cluster_ids_for_shape_descs).flatten()
-            data_dict['shape_descs'] = shape_descs
-            data_dict['shape_desc_cluster_ids'] = cluster_ids_for_shape_descs
+        #     shape_descs = np.array(shape_descs)
+        #     cluster_ids_for_shape_descs = np.array(cluster_ids_for_shape_descs).flatten()
+        #     data_dict['shape_descs'] = shape_descs
+        #     data_dict['shape_desc_cluster_ids'] = cluster_ids_for_shape_descs
 
         ################################ Visualize knn for shape desc #######################
     
