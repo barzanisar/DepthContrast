@@ -9,7 +9,7 @@ PRETRAIN_CFG_FILE=configs/waymo.yaml
 FINETUNE_CFG_FILE=configs/finetune.yaml
 SCRATCH_CFG_FILE=configs/scratch.yaml
 
-MODE=pfs
+MODE=pfsd #pretrain, finetune, scratch, debug
 DATASETS=wns
 BACKBONE=minkunet
 
@@ -212,6 +212,12 @@ singularity exec
 $DEPTH_CONTRAST_BINDS
 $SING_IMG
 "
+if [[ "$MODE" =~ d ]]; then
+    CMD="$BASE_CMD bash"
+    echo "Debugging..."
+    echo "$CMD"
+    eval $CMD
+fi
 
 if [[ "$MODE" =~ p ]]; then
 
