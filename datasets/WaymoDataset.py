@@ -56,6 +56,7 @@ class WaymoDataset(DepthContrastDataset):
                 seq_info_path = self.seglabels_root_path / seq_name /  ('%s.pkl' % seq_name)
 
             if not seq_info_path.exists():
+                self.logger.add_line(f'{seq_info_path} does not exit!!!!!!!!!!')
                 num_skipped_infos += 1
                 continue
             with open(seq_info_path, 'rb') as f:
@@ -80,7 +81,7 @@ class WaymoDataset(DepthContrastDataset):
 
         if self.use_gt_seg_labels and self.frame_sampling_interval == 1.5:
             # to sample 10% waymo that is labelled, sample 20/30 labelled frames
-            num_choice = int((1/1.5) * len(self.infos))
+            num_choice = 15809 #int((1/1.5) * len(self.infos))
             self.infos = np.random.choice(self.infos, num_choice, replace=False)
 
         elif self.frame_sampling_interval > 1:
