@@ -46,9 +46,9 @@ scripts/submit_ddp_turing.sh --cuda_visible_devices 0,1  --cfg_file configs/waym
 
 scripts/submit_ddp_turing.sh --tcp_port 18870 --mode pf --datasets wns --extra_tag try0 \
     --cuda_visible_devices 2,3  \
-    --cfg_file configs/waymo_minkunet_depthcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
-    --model_name depthcontrast_lidaraug_det_10perc_waymo_minkunet  \
-    > ./output/log/depthcontrast_lidaraug_det_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    --cfg_file configs/waymo_minkunet_gt_segcontrast_waymo10.yaml \
+    --model_name gt_segcontrast_10perc_waymo_minkunet  \
+    > ./output/log/gt_segcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 scripts/submit_ddp_turing.sh --cuda_visible_devices 0,1  --cfg_file configs/waymo_minkunet_gt_segcontrast_waymo7p5.yaml  --model_name minkunet_pretrain_gt_segcontrast_waymo7p5  --frame_sampling_div 5 > ./output/log/sc_gt_fine5_ep200$(date +%Y-%m-%d_%H:%M).out 2>&1
 
