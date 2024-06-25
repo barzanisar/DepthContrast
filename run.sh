@@ -4,7 +4,11 @@
 #KITTI_TRAIN=$(readlink -f ../data/kitti/training)
 #KITTI_TEST=$(readlink -f ../data/kitti/testing)
 #WAYMO_RAW=$(readlink -f ../data/waymo/raw_data)
-WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
+WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_v_1_2_0)
+WAYMO_PROCESSED_clustered=$(readlink -f ./data/waymo/waymo_processed_data_v_1_2_0_clustered)
+WAYMO_PROCESSED_labels=$(readlink -f ./data/waymo/waymo_processed_data_v_1_2_0_labels)
+
+#WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
 SEMANTIC_KITTI=$(readlink -f ./data/semantic_kitti/dataset)
 # WAYMO_PROCESSED_INFO_TRAIN_PKL=$(readlink -f ./data/waymo/waymo_processed_data_10_short_infos_train_short.pkl)
 # WAYMO_GTDB=$(readlink -f ./data/waymo/waymo_processed_data_10_short_gt_database_train_sampled_1)
@@ -22,7 +26,9 @@ PROJ_DIR=$CUR_DIR
 #KITTI_TRAIN=$KITTI_TRAIN:/DepthContrast/data/kitti/training
 #KITTI_TEST=$KITTI_TEST:/DepthContrast/data/kitti/testing
 #WAYMO_RAW=$WAYMO_RAW:/DepthContrast/data/waymo/raw_data
-WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_10
+WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_v_1_2_0
+WAYMO_PROCESSED_clustered=$WAYMO_PROCESSED_clustered:/DepthContrast/data/waymo/waymo_processed_data_v_1_2_0_clustered
+WAYMO_PROCESSED_labels=$WAYMO_PROCESSED_labels:/DepthContrast/data/waymo/waymo_processed_data_v_1_2_0_labels
 SEMANTIC_KITTI=$SEMANTIC_KITTI:/DepthContrast/data/semantic_kitti/dataset
 # WAYMO_PROCESSED_INFO_TRAIN_PKL=$WAYMO_PROCESSED_INFO_TRAIN_PKL:/DepthContrast/data/waymo/waymo_processed_data_10_short_infos_train_short.pkl
 # WAYMO_GTDB=$WAYMO_GTDB:/DepthContrast/data/waymo/waymo_processed_data_10_short_gt_database_train_sampled_1
@@ -58,6 +64,8 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --hostname="inside-DOCKER" \
         --name="DepthContrast" \
         --volume $WAYMO_PROCESSED \
+        --volume $WAYMO_PROCESSED_clustered \
+        --volume $WAYMO_PROCESSED_labels \
         --volume $SEMANTIC_KITTI \
         --volume $PROJ_DIR/data:/DepthContrast/data \
         --volume $PROJ_DIR/output:/DepthContrast/output \
@@ -72,7 +80,7 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --volume $PROJ_DIR/lib:/DepthContrast/lib \
         $PCDET_VOLUMES \
         --rm \
-        ssl:proposal_contrast bash
+        depthcontrast:latest bash
 
 #--volume $WAYMO_PROCESSED \
 # --volume $DENSE_LIDAR \

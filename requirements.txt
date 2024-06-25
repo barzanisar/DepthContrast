@@ -32,6 +32,7 @@ werkzeug==2.2.3
 hdbscan==0.8.33
 urllib3==1.26.12
 requests==2.28.1
+einops
 # pytorch-lightning==1.5.10
 # setuptools==59.5.0
 
