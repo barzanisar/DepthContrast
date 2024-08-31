@@ -18,7 +18,7 @@ WANDB:
 dataset:
   DATASET_NAMES: [NuscenesDataset]
   VERSION: v1.0-trainval
-  DATA_SKIP_RATIO: {'train': 100, 'val': 1} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
+  DATA_SKIP_RATIO: {'train': 100, 'val': 1} # scene skip ratio
   BATCHSIZE_PER_REPLICA: 8 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
   CLASS_NAMES: ['Object']
@@ -38,22 +38,20 @@ dataset:
   COLLATE_FUNCTION: "sparse_downstream_collator"
   DROP_LAST: True
 
+val_interval: 20
 optimizer:
-  name: "sgd"
-  weight_decay: 0.0001
-  momentum: 0.9
-  nesterov: True
-  num_epochs: 15
-  warmup_epochs: 0
+  name: "adamw"
+  num_epochs: 500
   lr:
-    name: "cosine_warm_up"
-    base_lr: 0.24
+    name: "cosine"
+    base_lr: 0.001
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "scratch_minkunet" #segcontrast_10perc_waymo_minkunet
+  name: "from_cmd_line" #segcontrast_10perc_waymo_minkunet
   linear_probe: false #meaning lp vs finetune
   job_type: "finetune_nuscenes_1percent"
+  pretrain_extra_tag: 200ep_try0
   extra_tag: 15ep_try0
 
   MODEL_BASE:
