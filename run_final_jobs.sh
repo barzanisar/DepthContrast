@@ -19,7 +19,7 @@ scripts/submit_ddp_turing.sh --mode d
 #segdet 1% for 15 epochs, and 5% for 15 epochs - try2
 #seglidarplusdet 1% for 15 epochs, and 5% for 15 epochs - try2
 #dc 1% for 15 epochs, and 5% for 15 epochs - try1
-#dclidarplusdet 1% for 15 epochs, and 5% for 15 epochs - try1
+#-->dclidarplusdet 1% for 15 epochs, and 5% for 15 epochs - try1
 #segreg 1% for 15 epochs, and 5% for 15 epochs - try0 and try1
 #proposalcontrast 1% for 15 epochs, and 5% for 15 epochs - try0 and try1
 #seg lidar mixed, seg lidar single, seg lidar single det branch, on 1% for 15 epochs - try1
@@ -32,12 +32,12 @@ scripts/submit_ddp_turing.sh --mode d
 # Ablations
 
 # 1. Polar Mix
-#TODO lovelace
-scripts/submit_ddp_turing.sh --mode pf --datasets wns --extra_tag try1 \
+##IN progress lovelace
+scripts/submit_ddp_turing.sh --tcp_port 18821 --mode f --datasets wns --extra_tag try1 \
     --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_mixed.yaml \
     --model_name segcontrast_lidaraug_mixed_10perc_waymo_minkunet  \
-    > ./output/log/sc_lidaraug_mixed_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/sc_lidaraug_mixed_ep200_try1_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #not needed
 # scripts/submit_ddp_turing.sh --mode f --datasets wns --extra_tag try0 --frame_sampling_div 5 \
@@ -54,12 +54,12 @@ scripts/submit_ddp_turing.sh --mode pf --datasets wns --extra_tag try1 \
 #     > ./output/log/sc_lidaraug_mixed_ep200_1percfine100epochs$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # 2. Single Pattern
-#TODO lovelace
-scripts/submit_ddp_turing.sh --tcp_port 18820 --mode pf --datasets wns --extra_tag try1 \
+##IN progress lovelace
+scripts/submit_ddp_turing.sh --tcp_port 18821 --mode f --datasets wns --extra_tag try1 \
     --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single.yaml \
     --model_name segcontrast_lidaraug_single_10perc_waymo_minkunet  \
-    > ./output/log/sc_lidaraug_single_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/sc_lidaraug_single_ep200_try1_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #not needed
 # scripts/submit_ddp_turing.sh --tcp_port 18820 --mode f --datasets wns --extra_tag try0 --frame_sampling_div 5 \
@@ -79,26 +79,44 @@ scripts/submit_ddp_turing.sh --tcp_port 18820 --mode pf --datasets wns --extra_t
 
 
 # 3. Single branch det
-#TODO lovelace
-scripts/submit_ddp_turing.sh --tcp_port 18830 --mode pf --datasets wns --extra_tag try1 \
+##IN progress lovelace
+scripts/submit_ddp_turing.sh --tcp_port 18821 --mode f --datasets wns --extra_tag try1 \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_det_single_branch.yaml \
+    --model_name segcontrast_lidar_det_single_branch_10perc_waymo_minkunet  \
+    > ./output/log/sc_lidar_det_single_branch_ep200_try1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+#not needed
+echo "sc+ lidar + single det-finetune 5%"
+scripts/submit_ddp_turing.sh --tcp_port 18930 --mode f --datasets wns --extra_tag try0 --frame_sampling_div 5 \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_det_single_branch.yaml \
+    --model_name segcontrast_lidar_det_single_branch_10perc_waymo_minkunet  \
+    > ./output/log/sc_lidar_det_single_branch_ep200_5percfine$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+#not needed
+echo "sc+ lidar + single det-finetune 1% for 100 epochs"
+scripts/submit_ddp_turing.sh --tcp_port 18940 --mode f --datasets wns --extra_tag try0 --finetune_epochs 100 \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_det_single_branch.yaml \
     --model_name segcontrast_lidar_det_single_branch_10perc_waymo_minkunet  \
-    > ./output/log/sc_lidar_det_single_branch_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/sc_lidar_det_single_branch_ep200_1percfine100epochs$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #not needed
-# scripts/submit_ddp_turing.sh --tcp_port 18830 --mode f --datasets wns --extra_tag try0 --frame_sampling_div 5 \
-#     --cuda_visible_devices 2,3  \
-#     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_det_single_branch.yaml \
-#     --model_name segcontrast_lidar_det_single_branch_10perc_waymo_minkunet  \
-#     > ./output/log/sc_lidar_det_single_branch_ep200_5percfine$(date +%Y-%m-%d_%H:%M).out 2>&1
+echo "sc+ lidar + single det-finetune 5%"
+scripts/submit_ddp_turing.sh --tcp_port 18950 --mode f --datasets wns --extra_tag try1 --frame_sampling_div 5 \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_det_single_branch.yaml \
+    --model_name segcontrast_lidar_det_single_branch_10perc_waymo_minkunet  \
+    > ./output/log/sc_lidar_det_single_branch_ep200_5percfine_try1$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# #not needed
-# scripts/submit_ddp_turing.sh --tcp_port 18830 --mode f --datasets wns --extra_tag try0 --finetune_epochs 100 \
-#     --cuda_visible_devices 2,3  \
-#     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_det_single_branch.yaml \
-#     --model_name segcontrast_lidar_det_single_branch_10perc_waymo_minkunet  \
-#     > ./output/log/sc_lidar_det_single_branch_ep200_1percfine100epochs$(date +%Y-%m-%d_%H:%M).out 2>&1
+#not needed
+echo "sc+ lidar + single det-finetune 1% for 100 epochs"
+scripts/submit_ddp_turing.sh --tcp_port 18960 --mode f --datasets wns --extra_tag try1 --finetune_epochs 100 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_det_single_branch.yaml \
+    --model_name segcontrast_lidar_det_single_branch_10perc_waymo_minkunet  \
+    > ./output/log/sc_lidar_det_single_branch_ep200_1percfine100epochs_try1$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # scripts/submit_ddp_turing.sh --cuda_visible_devices 0,1  --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_det_single_branch.yaml  --model_name minkunet_pretrain_segcontrast_waymo10_lidar_det_single_branch  > ./output/log/sc_lidar_det_singlehead_ep200$(date +%Y-%m-%d_%H:%M).out 2>&1
 
@@ -122,7 +140,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
     > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #TODO
-scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets wns --extra_tag try0 --frame_sampling_div 5 \
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets wn --extra_tag try0 --frame_sampling_div 5 \
     --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_proposalcontrast_waymo10.yaml \
     --model_name proposalcontrast_10perc_waymo_minkunet  \
@@ -136,11 +154,11 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets wns --extra_ta
     > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #TODO
-scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets wns --extra_tag try1 --frame_sampling_div 5 \
-    --cuda_visible_devices 0,1  \
+scripts/submit_ddp_turing.sh --tcp_port 18850 --mode f --datasets wn --extra_tag try1 --frame_sampling_div 5 \
+    --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_proposalcontrast_waymo10.yaml \
     --model_name proposalcontrast_10perc_waymo_minkunet  \
-    > ./output/log/proposalcontrast_ep200_5percfine$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/proposalcontrast_ep200_5percfine_try1$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # scripts/submit_ddp_turing.sh --cuda_visible_devices 0,1  --cfg_file configs/waymo_minkunet_proposalcontrast_waymo10.yaml  --model_name minkunet_pretrain_proposalcontrast_waymo10  > ./output/log/pc_ep200$(date +%Y-%m-%d_%H:%M).out 2>&1
 
@@ -178,14 +196,14 @@ scripts/submit_ddp_turing.sh --tcp_port 18850 --mode f --datasets wns --extra_ta
 
 # 7. DC
 
-#TODO
+#in progress
 scripts/submit_ddp_turing.sh --tcp_port 18850 --mode pf --datasets wns --extra_tag try1 \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_depthcontrast_waymo10.yaml \
     --model_name depthcontrast_10perc_waymo_minkunet  \
     > ./output/log/depthcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-#TODO
+#in progress
 scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets wns --extra_tag try1 --frame_sampling_div 5 \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_depthcontrast_waymo10.yaml \
@@ -196,14 +214,14 @@ scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets wns --extra_ta
 
 
 #8. DC+laug+det
-#TODO
+#in progress
 scripts/submit_ddp_turing.sh --tcp_port 18860 --mode pf --datasets wns --extra_tag try1 \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_depthcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
     --model_name depthcontrast_lidaraug_det_10perc_waymo_minkunet  \
     > ./output/log/depthcontrast_lidaraug_det_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-#TODO
+#in progress
 scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets wns --extra_tag try1 --frame_sampling_div 5 \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_depthcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
@@ -224,7 +242,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets wns --extra_ta
 
 #TODO
 #segdet, 5%, 15 epochs -try2
-scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets wns --extra_tag try2 --frame_sampling_div 5 \
+scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets w --extra_tag try2 --frame_sampling_div 5 \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_dethead_0p5w.yaml \
     --model_name segcontrast_det_10perc_waymo_minkunet  \
@@ -233,7 +251,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets wns --extra_ta
 
 #TODO
 #seglidar, 1%, 15 epochs -try2
-scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets wns --extra_tag try2 \
+scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets s --extra_tag try2 \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh.yaml \
     --model_name segcontrast_lidaraug_single_randh_10perc_waymo_minkunet  \
@@ -264,8 +282,8 @@ scripts/submit_ddp_turing.sh --tcp_port 18860 --mode f --datasets wns --extra_ta
     > ./output/log/sc_lidarplusdet_ep200_5percfine$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #In progress
-scripts/submit_ddp_turing.sh --tcp_port 18870 --mode f --datasets wns --extra_tag try0 --finetune_epochs 100 \
-    --cuda_visible_devices 0,1  \
+scripts/submit_ddp_turing.sh --tcp_port 18870 --mode f --datasets n --extra_tag try0 --finetune_epochs 100 \
+    --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10.yaml \
     --model_name segcontrast_10perc_waymo_minkunet  \
     > ./output/log/sc_ep200_1percfine100epochs$(date +%Y-%m-%d_%H:%M).out 2>&1
@@ -284,7 +302,7 @@ scripts/submit_ddp_turing.sh --cuda_visible_devices 2,3  --cfg_file configs/waym
 
 
 #10. pretrain on waymo 50% for 50 epochs
-#TODO after everything
+#DONE after everything
 scripts/submit_ddp_turing.sh --tcp_port 18960 --mode pf --datasets wns --extra_tag try0 \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo50_lidar_aug_single_randh_dethead_0p5w.yaml \
@@ -292,3 +310,65 @@ scripts/submit_ddp_turing.sh --tcp_port 18960 --mode pf --datasets wns --extra_t
     --pretrain_epochs 50 \
     --pretrained_ckpt checkpoint-ep49.pth.tar \
     > ./output/log/sc_lidarplusdet_waymo50perc_ep50_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+
+#pretrain on waymo 50% for 50 epochs
+#DONE after everything
+scripts/submit_ddp_turing.sh --tcp_port 18961 --mode f --datasets wns --extra_tag try0 \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo50_lidar_det_single_branch.yaml \
+    --model_name segcontrast_lidaraug_det_single_branch_50perc_waymo_minkunet  \
+    --pretrain_epochs 50 \
+    --pretrained_ckpt checkpoint-ep49.pth.tar \
+    > ./output/log/sc_lidar_single_det_waymo50perc_ep50_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+
+#10. pretrain on waymo 50% for 100 epochs and finetune on 1% wns for 100 epochs  - try 0
+#Pending after everything
+scripts/submit_ddp_turing.sh --tcp_port 18961 --mode pf --datasets wns --extra_tag try0 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo50_lidar_aug_single_randh_dethead_0p5w.yaml \
+    --model_name segcontrast_lidarplusdet_50perc_waymo_minkunet  \
+    --pretrain_epochs 100 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_epochs 100 \
+    > ./output/log/sc_lidarplusdet_waymo50perc_ep100_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# pretrain on waymo 50% for 100 epochs and finetune on 1% wns for 100 epochs - try 1
+# Pending
+scripts/submit_ddp_turing.sh --tcp_port 18961 --mode f --datasets wns --extra_tag try1 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo50_lidar_aug_single_randh_dethead_0p5w.yaml \
+    --model_name segcontrast_lidarplusdet_50perc_waymo_minkunet  \
+    --pretrain_epochs 100 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_epochs 100 \
+    > ./output/log/sc_lidarplusdet_waymo50perc_ep100$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+
+# pretrain on waymo 50% for 100 epochs and finetune on 5% wns for 15 epochs - try 0
+# Pending
+scripts/submit_ddp_turing.sh --tcp_port 18961 --mode f --datasets wns --extra_tag try0 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo50_lidar_aug_single_randh_dethead_0p5w.yaml \
+    --model_name segcontrast_lidarplusdet_50perc_waymo_minkunet  \
+    --pretrain_epochs 100 \
+    --frame_sampling_div 5 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    > ./output/log/sc_lidarplusdet_waymo50perc_ep100_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# pretrain on waymo 50% for 100 epochs and finetune on 5% wns for 15 epochs - try 1
+# Pending
+scripts/submit_ddp_turing.sh --tcp_port 18961 --mode f --datasets wns --extra_tag try1 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo50_lidar_aug_single_randh_dethead_0p5w.yaml \
+    --model_name segcontrast_lidarplusdet_50perc_waymo_minkunet  \
+    --pretrain_epochs 100 \
+    --frame_sampling_div 5 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    > ./output/log/sc_lidarplusdet_waymo50perc_ep100_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# To see hanging threads
+#ps -ef | grep -i '[p]ython'
+pids=$(ps aux | grep 'nisarbar' | grep 'python' | awk '{print $2}')
+echo "$pids" | xargs kill

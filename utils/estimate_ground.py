@@ -95,7 +95,7 @@ def visualize_ground(ground, nonground, centers=None, normals=None):
 #         visualize_ground(ground, nonground)
     
 
-def estimate_ground(pc, show_plots=False):
+def estimate_ground(pc, sensor_height=1.7, refine=False, show_plots=False):
     # Patchwork++ initialization
     params = pypatchworkpp.Parameters()
     params.verbose = False
@@ -112,7 +112,7 @@ def estimate_ground(pc, show_plots=False):
     params.RNR_ver_angle_thr = -15.0 # Noise points vertical angle threshold. Downward rays of LiDAR are more likely to generate severe noise points.
     params.RNR_intensity_thr = 0.2   # Noise points intensity threshold. The reflected points have relatively small intensity than others.
 
-    params.sensor_height = 0                 
+    params.sensor_height = sensor_height                 
     params.th_seeds = 0.5                        # threshold for lowest point representatives using in initial seeds selection of ground points.
     params.th_dist = 0.125                       # threshold for thickenss of ground.
     params.th_seeds_v = 0.25                     # threshold for lowest point representatives using in initial seeds selection of vertical structural points.
@@ -149,14 +149,16 @@ def estimate_ground(pc, show_plots=False):
     ground_mask = np.zeros(pc.shape[0], dtype=bool)
     ground_mask[ground_idx] = True
 
-    plane = estimate_plane_RANSAC(nonground, max_hs=0.5, ptc_range=((-20, 20), (-10, 10)))
-    if plane is not None:
-        ground_mask_for_nonground_pts = get_plane_mask(
-            nonground, plane,
-            offset=0.15,
-            only_range=((-30, 30), (-20, 20)))
+    if refine:
+        plane = estimate_plane_RANSAC(nonground, max_hs=0.5, ptc_range=((-20, 20), (-10, 10)))
+        if plane is not None:
+            ground_mask_for_nonground_pts = get_plane_mask(
+                nonground, plane,
+                offset=0.15,
+                only_range=((-30, 30), (-20, 20)))
 
-    ground_mask[nonground_idx[ground_mask_for_nonground_pts]] = True    
+        ground_mask[nonground_idx[ground_mask_for_nonground_pts]] = True    
+
     ground = pc[ground_mask,:3]
     nonground =  pc[np.logical_not(ground_mask),:3]
 

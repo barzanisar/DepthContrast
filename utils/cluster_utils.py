@@ -11,6 +11,32 @@ REJECT={'too_few_pts': 1,
         'h_too_small': 6,
         'h_too_big': 7,
         'lw_ratio_off': 8}
+
+def remove_outliers_cluster(xyz, labels):
+    for i in np.unique(labels):
+        if i == -1:
+            continue
+        cluster_indices = labels==i
+        cluster_pc = xyz[cluster_indices]
+        cluster_labels = labels[cluster_indices]
+
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(cluster_pc)
+
+        # set as background if point in cluster has less than 1 neighbor within 0.4 m distance
+        tree = o3d.geometry.KDTreeFlann(pcd)
+        for i in range(cluster_pc.shape[0]):
+            [_, idx, _] = tree.search_radius_vector_3d(cluster_pc[i], 0.4)
+            if len(idx) < 1:
+                cluster_labels[i] = -1
+        
+        if (cluster_labels > -1).sum() < 10:
+            labels[cluster_indices] = -1
+        else:
+            labels[cluster_indices] = cluster_labels
+    
+    return labels
+
 def get_continuous_labels(labels):
     labels = labels.flatten()
     # Keep labels continuous
@@ -73,7 +99,7 @@ def is_valid_cluster(
     # w = ptc[:,1].max() - ptc[:,1].min()
     # l = ptc[:,0].max() - ptc[:,0].min()
     # if height is not much, make this cluster background
-    if h < 0.4:
+    if h < 0.3:
         return False, REJECT['h_too_small']
     # # Remove walls
     # if h > 3:

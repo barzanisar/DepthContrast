@@ -93,7 +93,7 @@ class WaymoDataset():
             #points in current vehicle frame
             xyzi = self.get_lidar(seq_name, sample_idx)
             
-            ground_mask = estimate_ground(xyzi)
+            ground_mask = estimate_ground(xyzi, sensor_height=0, refine=True)
             
             ground_mask.tofile(save_path)
         
@@ -569,7 +569,7 @@ def fit_approx_boxes_seq(seq_name, dataset, show_plots=False, method = 'closenes
             full_box[0,15] = i # info index
             full_box[0,16] = cluster_pc.shape[0] # num_points
             
-            full_box[0,17] = -1  # num_points
+            full_box[0,17] = -1  # cooresponding gt_box_indx
             if gt_pts_mask[cluster_pts_mask].sum() > 0:
                 gt_box_idxs, cnts = np.unique(box_idx_of_pts[cluster_pts_mask], return_counts=True)
                 if gt_box_idxs[0] == -1:
@@ -683,72 +683,6 @@ def transform_box(box, pose):
 
     return np.concatenate([center, box[..., 3:6], heading[..., np.newaxis]], axis=-1)
 
-def remove_outliers_cluster(xyz, labels):
-    for i in np.unique(labels):
-        if i == -1:
-            continue
-        cluster_indices = labels==i
-        cluster_pc = xyz[cluster_indices]
-        cluster_labels = labels[cluster_indices]
-
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(cluster_pc)
-
-        # set as background if point in cluster has less than 1 neighbor within 0.4 m distance
-        tree = o3d.geometry.KDTreeFlann(pcd)
-        for i in range(cluster_pc.shape[0]):
-            [_, idx, _] = tree.search_radius_vector_3d(cluster_pc[i], 0.4)
-            if len(idx) < 1:
-                cluster_labels[i] = -1
-        
-        if (cluster_labels > -1).sum() < 10:
-            labels[cluster_indices] = -1
-        else:
-            labels[cluster_indices] = cluster_labels
-    
-    return labels
-             
-def show_bev_boxes(pc, boxes1, label1, boxes2=None, label2=None, boxes3=None, label3=None, savefig_path=None, show_rot=False, iou3d=None):
-    fig=plt.figure(figsize=(20,20))
-    ax = fig.add_subplot(111)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.scatter(pc[:,0], pc[:,1], s=2)
-    ax.arrow(0,0,2,0, facecolor='red', linewidth=1, width=0.5) #x-axis
-    ax.arrow(0,0,0,2, facecolor='green', linewidth=1, width=0.5) #y-axis
-    handles =[]
-
-    bev_corners1 = boxes1[:, 7:15].reshape((-1,4,2))
-    handles.append(Line2D([0], [0], label=label1, color='k'))
-    for i in range(bev_corners1.shape[0]):
-        draw2DRectangle(ax, bev_corners1[i].T, color='k')
-        if show_rot:
-            ax.text(boxes1[i, 0], boxes1[i, 1],  "{:.2f}".format(np.rad2deg(boxes1[i, 6])), color='black', fontsize = 10, bbox=dict(facecolor='yellow', alpha=0.5))
-
-    if boxes2 is not None:
-        handles.append(Line2D([0], [0], label=label2, color='m'))
-        bev_corners2 = boxes2[:, 7:15].reshape((-1,4,2))
-        for i in range(bev_corners2.shape[0]):   
-            draw2DRectangle(ax, bev_corners2[i].T, color='m')
-            if iou3d is not None:
-                ax.text(boxes2[i, 0]+0.3, boxes2[i, 1]+0.3,  "{:.2f}".format(iou3d[i]), color='black', fontsize = 10, bbox=dict(facecolor='green', alpha=0.5))
-
-    
-    if boxes3 is not None:
-        bev_corners3 = boxes3[:, 7:15].reshape((-1,4,2))
-        handles.append(Line2D([0], [0], label=label3, color='g'))
-        for i in range(bev_corners3.shape[0]):   
-            draw2DRectangle(ax, bev_corners3[i].T, color='g')
-            if show_rot:
-                ax.text(boxes3[i, 0]+0.3, boxes3[i, 1]+0.3,  "{:.2f}".format(np.rad2deg(boxes3[i, 6])), color='black', fontsize = 10, bbox=dict(facecolor='green', alpha=0.5))
-
-
-    ax.legend(handles=handles, fontsize='large', loc='upper right')
-    ax.grid()
-    if savefig_path is not None:
-        plt.savefig(savefig_path)
-    else:
-        plt.show()
 
 
 def run_simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False):
@@ -779,6 +713,10 @@ def main():
     dataset = WaymoDataset(split=args.split, processed_data_tag=args.processed_data_tag)
     num_workers = mp.cpu_count() - 1
     seq_name_list = [seq_name for seq_name in dataset.infos_dict]
+
+    # seq_name = 'segment-10023947602400723454_1120_000_1140_000_with_camera_labels'
+    # run_simple_cluster(seq_name, dataset,  show_plots=False)
+
 
     if args.mode == 'simple_cluster':
         run_func = partial(run_simple_cluster, dataset=dataset, save_rejection_tag=args.save_rejection_tag)

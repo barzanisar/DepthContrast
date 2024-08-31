@@ -5,9 +5,53 @@ import open3d as o3d
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.patches import Rectangle
+from matplotlib.lines import Line2D
+
 #https://logicatcore.github.io/scratchpad/lidar/sensor-fusion/jupyter/2021/04/20/3D-Oriented-Bounding-Box.html
 #https://github.com/logicatcore/scratchpad/blob/master/_notebooks/2021-04-20-2D-Oriented-Bounding-Box.ipynb
 #https://colab.research.google.com/github/logicatcore/scratchpad/blob/master/_notebooks/2021-04-20-3D-Oriented-Bounding-Box.ipynb
+
+def show_bev_boxes(pc, boxes1, label1, boxes2=None, label2=None, boxes3=None, label3=None, savefig_path=None, show_rot=False, iou3d=None):
+    fig=plt.figure(figsize=(20,20))
+    ax = fig.add_subplot(111)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.scatter(pc[:,0], pc[:,1], s=2)
+    ax.arrow(0,0,2,0, facecolor='red', linewidth=1, width=0.5) #x-axis
+    ax.arrow(0,0,0,2, facecolor='green', linewidth=1, width=0.5) #y-axis
+    handles =[]
+
+    bev_corners1 = boxes1[:, 7:15].reshape((-1,4,2))
+    handles.append(Line2D([0], [0], label=label1, color='k'))
+    for i in range(bev_corners1.shape[0]):
+        draw2DRectangle(ax, bev_corners1[i].T, color='k')
+        if show_rot:
+            ax.text(boxes1[i, 0], boxes1[i, 1],  "{:.2f}".format(np.rad2deg(boxes1[i, 6])), color='black', fontsize = 10, bbox=dict(facecolor='yellow', alpha=0.5))
+
+    if boxes2 is not None:
+        handles.append(Line2D([0], [0], label=label2, color='m'))
+        bev_corners2 = boxes2[:, 7:15].reshape((-1,4,2))
+        for i in range(bev_corners2.shape[0]):   
+            draw2DRectangle(ax, bev_corners2[i].T, color='m')
+            if iou3d is not None:
+                ax.text(boxes2[i, 0]+0.3, boxes2[i, 1]+0.3,  "{:.2f}".format(iou3d[i]), color='black', fontsize = 10, bbox=dict(facecolor='green', alpha=0.5))
+
+    
+    if boxes3 is not None:
+        bev_corners3 = boxes3[:, 7:15].reshape((-1,4,2))
+        handles.append(Line2D([0], [0], label=label3, color='g'))
+        for i in range(bev_corners3.shape[0]):   
+            draw2DRectangle(ax, bev_corners3[i].T, color='g')
+            if show_rot:
+                ax.text(boxes3[i, 0]+0.3, boxes3[i, 1]+0.3,  "{:.2f}".format(np.rad2deg(boxes3[i, 6])), color='black', fontsize = 10, bbox=dict(facecolor='green', alpha=0.5))
+
+
+    ax.legend(handles=handles, fontsize='large', loc='upper right')
+    ax.grid()
+    if savefig_path is not None:
+        plt.savefig(savefig_path)
+    else:
+        plt.show()
 
 def draw3Dbox(ax, corners3d, color, label=None):
     """

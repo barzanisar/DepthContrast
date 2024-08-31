@@ -82,6 +82,24 @@
                 "waymo_processed_data_10"
             ]
         },
+        {
+            "name": "Nuscenes: cluster",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/cluster_nuscenes.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            // "args": [
+            //     "--split",
+            //     "train",
+            //     "--processed_data_tag",
+            //     "waymo_processed_data_10"
+            // ]
+        },
+
         // {
         //     "name": "Waymo: pretrain minkunet",
         //     "type": "python",
@@ -136,6 +154,23 @@
         //     ]
         // },
         {
+            "name": "semkitti: finetune-minkunet",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/downstream_segmentation.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/semantickitti_finetune_minkunet_test.yaml",
+                "--pretrained_ckpt",
+                "checkpoint-ep199.pth.tar"
+            ]
+        },
+        {
             "name": "Waymo: finetune-dist-minkunet",
             "type": "python",
             "request": "launch",
@@ -153,9 +188,9 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/nuscenes_finetune_minkunet_test.yaml",
+                "configs/semantickitti_finetune_minkunet_test.yaml",
                 "--pretrained_ckpt",
-                "checkpoint-ep4.pth.tar"
+                "checkpoint-ep9.pth.tar"
             ]
         },
         {
