@@ -56,6 +56,10 @@ parser.add_argument('--epochs', default=-1, type=int,
                     help='num epochs')
 parser.add_argument('--frame_sampling_div', default=-1, type=int,
                     help='frame_sampling_interval')
+parser.add_argument('--data_skip_ratio', default=-1, type=int,
+                    help='train data scene skip ratio for nuscenes')
+parser.add_argument('--val_interval', default=-1, type=int,
+                    help='val interval nuscenes')
 parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
@@ -77,6 +81,11 @@ def main():
     if args.frame_sampling_div > 0:
         cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] /= args.frame_sampling_div
         cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] = int(cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'])
+    if args.data_skip_ratio > 0:
+        cfg['dataset']['DATA_SKIP_RATIO']['train'] = args.data_skip_ratio
+    if args.val_interval > 0:
+        cfg['val_interval'] = args.val_interval
+
     if args.epochs > 0:
         cfg['optimizer']['num_epochs']=args.epochs
     if args.model_name != 'default':
@@ -253,6 +262,8 @@ def eval_one_ckpt(args, cfg, logger,
 
     cfg['num_classes'] = len(class_names)
     cfg['class_names'] = class_names
+    if 'val_interval' not in cfg:
+        cfg['val_interval'] = 1
     
     start_epoch, end_epoch = 0, cfg['optimizer']['num_epochs']
 
@@ -283,7 +294,8 @@ def eval_one_ckpt(args, cfg, logger,
         train_eval_metrics_dict_single_downstream_epoch = run_phase('train', train_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
         
         # Validate one epoch
-        val_eval_metrics_dict_single_downstream_epoch = run_phase('val', val_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
+        if epoch % cfg['val_interval'] == 0:
+            val_eval_metrics_dict_single_downstream_epoch = run_phase('val', val_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
 
         #Save linear probe ckpt
         ckp_manager_downstream.save(epoch+1, model=model, optimizer=optimizer)
@@ -295,7 +307,8 @@ def eval_one_ckpt(args, cfg, logger,
         else:
             #finetune
             results_dict = train_eval_metrics_dict_single_downstream_epoch
-            results_dict.update(val_eval_metrics_dict_single_downstream_epoch)
+            if epoch % cfg['val_interval'] == 0:
+                results_dict.update(val_eval_metrics_dict_single_downstream_epoch)
             wandb_utils.log(cfg, args, results_dict,  step=epoch)
 
     if linear_probe:

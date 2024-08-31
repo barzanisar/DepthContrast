@@ -6,18 +6,6 @@ import numpy as np
 
 from datasets.depth_dataset import DepthContrastDataset
 
-def drop_info_with_name(info, name):
-    ret_info = {}
-    keep_indices = [i for i, x in enumerate(info['name']) if x != name]
-    for key in info.keys():
-        ret_info[key] = info[key][keep_indices]
-    return ret_info
-
-def keep_arrays_by_name(gt_names, used_classes):
-    inds = [i for i, x in enumerate(gt_names) if x in used_classes]
-    inds = np.array(inds, dtype=np.int64)
-    return inds
-
 class WaymoDataset(DepthContrastDataset):
     def __init__(self, cfg, pretraining=True, mode='train', logger=None):
         super().__init__(cfg, pretraining=pretraining, mode=mode, logger=logger)
@@ -27,20 +15,11 @@ class WaymoDataset(DepthContrastDataset):
         self.seglabels_root_path = self.data_root_path/ f'{cfg.PROCESSED_DATA_TAG}_labels'
         self.split = cfg.DATA_SPLIT[self.mode]
 
-        self.mean_box_sizes = cfg.get('MEAN_SIZES', None)
         self.frame_sampling_interval= cfg["FRAME_SAMPLING_INTERVAL"][self.mode]
 
         self.infos = []
         # read tfrecords in sample_seq_list and then find its pkl in waymo_processed_data_10 and include the pkl infos in waymo infos
         self.include_waymo_data() 
-        
-        if self.pretraining and self.mean_box_sizes is not None:
-            self.mean_box_sizes = np.array(self.mean_box_sizes)
-            self.distance_thresh = cfg.get("DIST_THRESH", None)
-            self.class_size_cnts = self.add_pseudo_classes()
-            self.logger.add_line('Pseudo Class Counts:')
-            for i, cls in enumerate(self.class_names):
-                self.logger.add_line(f'{cls}: {self.class_size_cnts[i]}')
 
     def include_waymo_data(self):
         self.logger.add_line('Loading Waymo dataset')
@@ -96,36 +75,6 @@ class WaymoDataset(DepthContrastDataset):
 
         #self.infos = self.infos[:32] # each info is one frame
 
-    
-    def add_pseudo_classes(self):
-        class_size_cnts=np.zeros(len(self.class_names))
-        for info in self.infos:
-            gt_boxes = info['approx_boxes_closeness_to_edge']
-            
-            lwh = gt_boxes[:, 3:6]
-            l = np.max(lwh[:,:2], axis=1)
-            w = np.min(lwh[:,:2], axis=1)
-            lwh[:,0] = l
-            lwh[:,1] = w
-            
-            dist = (((self.mean_box_sizes.reshape(1, -1, 3) - \
-            lwh.reshape(-1, 1, 3)) ** 2).sum(axis=2))  # N=boxes x M=mean sizes 
-            idx_matched_mean_sizes = dist.argmin(axis=1) # N gt boxes
-            gt_names = np.array(self.class_names)[idx_matched_mean_sizes]
-
-            if self.distance_thresh is not None:
-                valid_match_mask = dist.min(axis=1) < self.distance_thresh
-                info['approx_boxes_closeness_to_edge'] = gt_boxes[valid_match_mask]
-                info['approx_boxes_names'] = gt_names[valid_match_mask]
-                info['cluster_labels_boxes'] = info['cluster_labels_boxes'][valid_match_mask]
-            else:            
-                info['approx_boxes_names'] = gt_names
-            unique_idx, counts = np.unique(idx_matched_mean_sizes, return_counts=True)
-            class_size_cnts[unique_idx] += counts
-        
-        return class_size_cnts
-
-
 
     def get_lidar(self, sequence_name, sample_idx):
         lidar_file = self.lidar_data_path / sequence_name / ('%04d.npy' % sample_idx)
@@ -153,15 +102,7 @@ class WaymoDataset(DepthContrastDataset):
 
     def get_seglabels(self, sequence_name, sample_idx, num_points):
         label_file = self.seglabels_root_path / sequence_name / ('%04d.npy' % sample_idx)
-        # labels = np.fromfile(label_file, dtype=np.float16)
-        # if labels.shape[0] == num_points and labels.max() < 23:
-        #     return labels
-        # else:
         labels = np.load(label_file)
-        # if labels.shape[0] != num_points:
-        #     print(label_file, f'lbls: {labels.shape[0]}, numpts: {num_points}')
-        # if labels.max() >= 23:
-        #     print(label_file)
         assert labels.shape[0] == num_points, label_file
         assert labels.max() < 23, label_file
         
@@ -185,34 +126,6 @@ class WaymoDataset(DepthContrastDataset):
         assert points.shape[0] == pt_seg_labels.shape[0], f'Missing labels for {frame_id}!!!!!!!!'
         points = np.hstack([points, pt_seg_labels.reshape(-1, 1)]) #xyzi, seglabel
 
-
-        # annos = info['annos']
-        # #filter unknown boxes
-        # annos = drop_info_with_name(annos, name='unknown')
-        # # filter empty boxes
-        # mask = (annos['num_points_in_gt'] > 0) 
-        # annos['name'] = annos['name'][mask]
-        # annos['gt_boxes_lidar'] = annos['gt_boxes_lidar'][mask]
-        # annos['num_points_in_gt'] = annos['num_points_in_gt'][mask]
-
-        # #filer gt boxes not in self.class_names
-        # selected = keep_arrays_by_name(annos['name'], self.class_names)
-        # annos['name'] = annos['name'][selected]
-        # annos['gt_boxes_lidar'] = annos['gt_boxes_lidar'][selected]
-        # annos['num_points_in_gt'] = annos['num_points_in_gt'][selected]
-
-
-        # gt_classes = np.array([self.class_names.index(n) + 1 for n in annos['name']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
-        
-        # #append class id as 8th entry in gt boxes 
-        # gt_boxes = np.hstack([annos['gt_boxes_lidar'][:,:7], gt_classes.reshape(-1, 1).astype(np.float32)])
-        
-
-        # input_dict = {
-        #     'points': points, #xyzi, seglabel
-        #     'gt_boxes':  gt_boxes, #gtbox, class_indx
-        #     'frame_id': frame_id
-        #     }
 
         input_dict = {
             'points': points, #xyzi, seglabel
@@ -241,8 +154,6 @@ class WaymoDataset(DepthContrastDataset):
             pt_seg_labels = self.get_seglabels(sequence_name, sample_idx, points.shape[0])
             assert points.shape[0] == pt_seg_labels.shape[0], f'Missing gt seg labels for {frame_id}!!!!!!!!'
             gt_classes = self.get_box_gt_seglabels(pt_cluster_labels, pt_seg_labels, info)
-        elif self.mean_box_sizes is not None:
-            gt_classes = np.array([self.class_names.index(n) + 1 for n in info['approx_boxes_names']], dtype=np.int32) # 1: Vehicle, 2: Ped, 3: Cycl, 4: OtherSmall...
         else:
             gt_classes = np.array([1]*gt_cluster_ids.shape[0])
         #append class id as 8th entry in gt boxes and cluster label as 9th
@@ -260,12 +171,6 @@ class WaymoDataset(DepthContrastDataset):
             'gt_boxes':  gt_boxes,
             'frame_id': frame_id
             }
-        # cluster_ids, cnts = np.unique(input_dict['points'][:,-1], return_counts=True)
-        # for cluster_id, cnt in zip(cluster_ids, cnts):
-        #     if cluster_id == -1:
-        #         continue
-        #     frame_id = input_dict['frame_id']
-        #     assert cluster_id in input_dict['gt_boxes'][:,-1], f'{frame_id}, cluster_label: {cluster_id}, cnts:{cnt}'
 
         data_dict = self.prepare_data_pretrain(data_dict=input_dict)
 

@@ -9,7 +9,7 @@ class LiDAR_aug_manager:
         self.cfg = lidar_aug_cfg
         self.lidars = lidar_aug_cfg['lidars']
         self.lidar_augs = {}
-        self.lidar_height = 1.73
+        self.lidar_height = lidar_aug_cfg['lidar_height']  if 'lidar_height' in lidar_aug_cfg else 1.73
         self.random_lidar_height = lidar_aug_cfg.get('random_lidar_height', False)
 
         for lidar in self.lidars:

@@ -171,7 +171,7 @@
             ]
         },
         {
-            "name": "Waymo: finetune-dist-minkunet",
+            "name": "Nuscenes: finetune-dist-minkunet",
             "type": "python",
             "request": "launch",
             "module": "torch.distributed.launch",
@@ -188,9 +188,9 @@
                 "pytorch",
                 "--multiprocessing-distributed",
                 "--cfg",
-                "configs/semantickitti_finetune_minkunet_test.yaml",
+                "configs/nuscenes_fine1lr_minkunet_test.yaml",
                 "--pretrained_ckpt",
-                "checkpoint-ep9.pth.tar"
+                "checkpoint-ep3.pth.tar"
             ]
         },
         {
@@ -214,6 +214,27 @@
                 "configs/semantickitti_finetune_pointrcnn_test.yaml",
                 "--pretrained_ckpt",
                 "checkpoint-ep1.pth.tar"
+            ]
+        },
+        {
+            "name": "Nuscenes: pretrain-dist-minkunet",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--nproc_per_node=1",
+                "--max_restarts=0",
+                "${workspaceFolder}/tools/main_dist.py",
+                "--launcher",
+                "pytorch",
+                "--multiprocessing-distributed",
+                "--cfg",
+                "configs/minkunet_segcontrast_nuscenes_lidar_aug_single_randh_dethead_0p5w_test.yaml"
             ]
         },
         {

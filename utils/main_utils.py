@@ -365,7 +365,11 @@ def build_optimizer(params, cfg, total_iters_each_epoch=None, logger=None):
             weight_decay=cfg['weight_decay'],
             betas=cfg['betas'] if 'betas' in cfg else [0.9, 0.999]
         )
-
+    elif cfg['name'] == 'adamw':
+        optimizer = torch.optim.AdamW(
+            params=params,
+            lr=cfg['lr']['base_lr']
+        )
     else:
         raise ValueError('Unknown optimizer.')
 
