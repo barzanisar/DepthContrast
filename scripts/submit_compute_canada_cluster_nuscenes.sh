@@ -5,7 +5,7 @@
 #SBATCH --ntasks-per-node=1                 # Number of gpus per node
 #SBATCH --time=03:00:00                     # 1 hour
 #SBATCH --job-name=cluster_waymo
-#SBATCH --account=rrg-swasland
+#SBATCH --account=def-swasland-ab
 #SBATCH --cpus-per-task=16                  # CPU cores/threads
 #SBATCH --mem=200G                        # memory per node
 #SBATCH --output=./output/log/%x-%j.out     # STDOUT

@@ -4,9 +4,9 @@
 #SBATCH --gres=gpu:a100:1                     # Request 4 GPUs
 #SBATCH --ntasks=1                          # total number of tasks
 #SBATCH --ntasks-per-node=1                 # Number of gpus per node
-#SBATCH --time=05:00:00                     # 1 hour
+#SBATCH --time=03:00:00                     # 1 hour
 #SBATCH --job-name=cluster_waymo
-#SBATCH --account=rrg-swasland
+#SBATCH --account=def-swasland-ab
 #SBATCH --cpus-per-task=16                  # CPU cores/threads
 #SBATCH --mem=200G                        # memory per node
 #SBATCH --output=./output/log/%x-%j.out     # STDOUT
