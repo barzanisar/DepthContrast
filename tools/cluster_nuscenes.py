@@ -135,12 +135,12 @@ def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
                 try:
                     boxes = np.fromfile(saved_path, dtype=np.float32).reshape((-1,16))
                     if boxes.shape[0]:
-                        print(f"Already processed Keyframe: {ref_lidar_token} \n\n")
+                        print(f"Already processed scene {scene_idx}: {scene['name']}, Keyframe: {ref_lidar_token} \n\n")
                         continue
                 except:
                     pass
 
-            print(f"Processing Keyframe: {ref_lidar_token} \n\n")
+            print(f"Processing scene {scene_idx}: {scene['name']}, Keyframe: {ref_lidar_token} \n\n")
             
 
             # get points and ground masks for one keyframe
@@ -251,7 +251,7 @@ def main():
     #         res = list(tqdm(p.imap(run_func, scene_list), total=len(scene_list)))
     # else:
     run_func = partial(run, nusc=nusc, phase_scenes=phase_scenes, args=args, save_dir=save_dir, show_plots=show_plots)
-    for scene_idx in scene_list: #len(nusc.scene)
+    for scene_idx in tqdm(scene_list): #len(nusc.scene)
         run_func(scene_idx=scene_idx)
 
 
