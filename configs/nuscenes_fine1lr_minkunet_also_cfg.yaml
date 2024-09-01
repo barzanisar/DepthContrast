@@ -51,8 +51,8 @@ model:
   name: "from_cmd_line" #segcontrast_10perc_waymo_minkunet
   linear_probe: false #meaning lp vs finetune
   job_type: "finetune_nuscenes_1percent"
-  pretrain_extra_tag: 200ep_try0
-  extra_tag: 15ep_try0
+  pretrain_extra_tag: try0
+  extra_tag: try0
 
   MODEL_BASE:
     NAME: Segmentor

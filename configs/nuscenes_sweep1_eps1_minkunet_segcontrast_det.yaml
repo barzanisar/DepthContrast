@@ -61,7 +61,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "nuscenes_sweep1_minkunet_segcontrast_det"
+  name: "nuscenes_sweep1_eps1_minkunet_segcontrast_det"
   job_type: pretrain
   extra_tag: try0
 

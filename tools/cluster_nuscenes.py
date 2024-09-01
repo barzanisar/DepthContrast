@@ -8,10 +8,10 @@ import os
 import numpy as np
 from functools import reduce
 from utils.estimate_ground import estimate_ground
-from utils.cluster_utils import cluster, filter_labels, remove_outliers_cluster, get_continuous_labels, REJECT
+from utils.cluster_utils import cluster, filter_labels, get_continuous_labels, REJECT
 from utils.pcd_preprocess import visualize_pcd_clusters, visualize_selected_labels
 from utils.approx_bbox_utils import fit_box, show_bev_boxes
-from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
+# from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 import argparse
 from tqdm import tqdm
 import multiprocessing as mp
@@ -41,7 +41,7 @@ parser = argparse.ArgumentParser(description='Cluster Nuscenes')
 parser.add_argument('--start_scene_idx', type=int, default=0, help='[0-600]')
 parser.add_argument('--end_scene_idx', type=int, default=100, help='[0-600]')
 parser.add_argument('--sweeps', type=int, default=1, help='sweeps')
-parser.add_argument('--version', type=str, default='v1.0-mini', help='version')
+parser.add_argument('--version', type=str, default='v1.0-trainval', help='version')
 parser.add_argument('--eps', type=float, default=0.7, help='dbscan eps')
 parser.add_argument('--num_workers', type=int, default=2, help='num workers')
 
