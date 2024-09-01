@@ -234,7 +234,7 @@ def main():
     save_dir = parent_dir / 'data/nuscenes' / args.version / f'clustered_sweep_{args.sweeps}_eps{eps_name}'
     os.makedirs(save_dir, exist_ok=True)
     if args.num_workers == -1:
-        args.num_workers = mp.cpu_count() - 1
+        args.num_workers = mp.cpu_count() - 3
 
     nusc = NuScenes(version=args.version, dataroot=f'{root}/{args.version}', verbose=True)
 
