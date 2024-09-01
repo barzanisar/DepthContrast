@@ -5,23 +5,19 @@ die() { echo "$*" 1>&2 ; exit 1; }
 
 # Default Command line args
 # main.py script parameters
-PRETRAIN_CFG_FILE=configs/waymo.yaml
-FINETUNE_CFG_FILE=configs/finetune.yaml
-SCRATCH_CFG_FILE=configs/scratch.yaml
+FINETUNE_CFG_FILE=finetune
 
-MODE=pfsd #pretrain, finetune, scratch, debug
-DATASETS=wns
-BACKBONE=minkunet
+MODE=pfd #pretrain, finetune, scratch, debug
 
 PRETRAINED_CKPT=checkpoint-ep199.pth.tar
-PRETRAIN_BATCHSIZE_PER_GPU=24
+PRETRAIN_BATCHSIZE_PER_GPU=32
 FINETUNE_BATCHSIZE_PER_GPU=8
 PRETRAIN_EPOCHS=200
 # FINETUNE_EPOCHS=100
 # DATA_SKIP_RATIO=1
 
 MODEL_NAME="default"
-PRETRAIN_EXTRA_TAG="try0"
+PRETRAIN_EXTRA_TAG="200ep_try0"
 EXTRA_TAG="try0"
 
 SING_IMG=/raid/home/nisarbar/singularity/ssl_proposal.sif
@@ -33,7 +29,8 @@ NUM_GPUS=1
 CUDA_VISIBLE_DEVICES=0
 MASTER_ADDR=$CLUSTER_NAME
 TCP_PORT=18888
-WORKERS_PER_GPU=10 # Turing has 48 cpus so use 10 cpus/gpu
+WORKERS_PER_GPU=8 # Turing has 48 cpus so use 10 cpus/gpu
+FINETUNE_CFG_OPTIONS=""
 
 
 # Change default data_dir and infos_dir for different datasets
@@ -46,15 +43,6 @@ while :; do
         exit
         ;;
     # train.py parameters
-    -a|--cfg_file)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            PRETRAIN_CFG_FILE=$2
-
-            shift
-        else
-            die 'ERROR: "--cfg_file" requires a non-empty option argument.'
-        fi
-        ;;
     -b|--mode)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             MODE=$2
@@ -63,12 +51,12 @@ while :; do
             die 'ERROR: "--mode" requires a non-empty option argument.'
         fi
         ;;
-    -c|--datasets)       # Takes an option argument; ensure it has been specified.
+    -c|--finetune_cfg_file)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
-            DATASETS=$2
+            FINETUNE_CFG_FILE=$2
             shift
         else
-            die 'ERROR: "--datasets" requires a non-empty option argument.'
+            die 'ERROR: "--finetune_cfg_file" requires a non-empty option argument.'
         fi
         ;;
     -d|--pretrained_ckpt)       # Takes an option argument; ensure it has been specified.
@@ -103,14 +91,6 @@ while :; do
             die 'ERROR: "--extra_tag" requires a non-empty option argument.'
         fi
         ;;
-    -h|--finetune_epochs)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            FINETUNE_EPOCHS=$2
-            shift
-        else
-            die 'ERROR: "--finetune_epochs" requires a non-empty option argument.'
-        fi
-        ;;
     -i|--pretrain_epochs)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             PRETRAIN_EPOCHS=$2
@@ -119,12 +99,12 @@ while :; do
             die 'ERROR: "--pretrain_epochs" requires a non-empty option argument.'
         fi
         ;;
-    -j|--frame_sampling_div)       # Takes an option argument; ensure it has been specified.
+    -j|--finetune_cfg_options)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
-            FRAME_SAMPLING_DIV=$2
+            FINETUNE_CFG_OPTIONS=$2
             shift
         else
-            die 'ERROR: "--frame_sampling_div" requires a non-empty option argument.'
+            die 'ERROR: "--finetune_cfg_options" requires a non-empty option argument.'
         fi
         ;;
     -l|--cuda_visible_devices)       # Takes an option argument; ensure it has been specified.
@@ -213,11 +193,11 @@ if [[ "$MODE" =~ p ]]; then
         --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
         /DepthContrast/tools/main_dist.py
         --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/$PRETRAIN_CFG_FILE --world-size $NUM_GPUS 
+        --multiprocessing-distributed --cfg /DepthContrast/configs/"$MODEL_NAME".yaml --world-size $NUM_GPUS 
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
     else
 
-        PRETRAIN_CMD+="python /DepthContrast/tools/main_dist.py --cfg /DepthContrast/$PRETRAIN_CFG_FILE"
+        PRETRAIN_CMD+="python /DepthContrast/tools/main_dist.py --cfg /DepthContrast/configs/"$MODEL_NAME".yaml"
     fi
 
     PRETRAIN_CMD+=" --epochs $PRETRAIN_EPOCHS 
@@ -247,7 +227,7 @@ if [[ "$MODE" =~ f ]]; then
         --multiprocessing-distributed --world-size $NUM_GPUS 
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
     else
-        FINETUNE_CMD+="python /DepthContrast/tools/downstream_segmentation.py --cfg /DepthContrast/$FINETUNE_CFG_FILE"
+        FINETUNE_CMD+="python /DepthContrast/tools/downstream_segmentation.py --cfg /DepthContrast/configs/"$FINETUNE_CFG_FILE".yaml"
     fi
 
     FINETUNE_CMD+=" --workers $WORKERS_PER_GPU 
@@ -258,9 +238,15 @@ if [[ "$MODE" =~ f ]]; then
         "
     FINETUNE_CMD+=$FINETUNE_CFG_OPTIONS
 
+    echo "Running Finetuning"
+    echo "$FINETUNE_CMD"
+    eval $FINETUNE_CMD
+    echo "Done Finetuning"
+
         # --epochs $FINETUNE_EPOCHS
         # --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
-        # --frame_sampling_div $FRAME_SAMPLING_DIV
+        # --data_skip_ratio $FRAME_SAMPLING_DIV
         #--job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent
+        # --val_interval 
 
 fi

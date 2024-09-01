@@ -245,14 +245,14 @@ def main():
         phase_scenes = list(set(create_splits_scenes()["train"]) - set(CUSTOM_SPLIT))
         scene_list = [scene_idx for scene_idx in range(args.start_scene_idx, args.end_scene_idx)]
 
-    if args.num_workers > 0:
-        run_func = partial(run, nusc=nusc, phase_scenes=phase_scenes, args=args, save_dir=save_dir, show_plots=show_plots)
-        with mp.Pool(args.num_workers) as p:
-            res = list(tqdm(p.imap(run_func, scene_list), total=len(scene_list)))
-    else:
-        run_func = partial(run, nusc=nusc, phase_scenes=phase_scenes, args=args, save_dir=save_dir, show_plots=show_plots)
-        for scene_idx in scene_list: #len(nusc.scene)
-            run_func(scene_idx=scene_idx)
+    # if args.num_workers > 0:
+    #     run_func = partial(run, nusc=nusc, phase_scenes=phase_scenes, args=args, save_dir=save_dir, show_plots=show_plots)
+    #     with mp.Pool(args.num_workers) as p:
+    #         res = list(tqdm(p.imap(run_func, scene_list), total=len(scene_list)))
+    # else:
+    run_func = partial(run, nusc=nusc, phase_scenes=phase_scenes, args=args, save_dir=save_dir, show_plots=show_plots)
+    for scene_idx in scene_list: #len(nusc.scene)
+        run_func(scene_idx=scene_idx)
 
 
 
