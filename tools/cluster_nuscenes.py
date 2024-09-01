@@ -16,6 +16,7 @@ import argparse
 from tqdm import tqdm
 import multiprocessing as mp
 from functools import partial
+import logging
 
 CUSTOM_SPLIT = [
     "scene-0008", "scene-0009", "scene-0019", "scene-0029", "scene-0032", "scene-0042",
@@ -117,7 +118,7 @@ def get_sweep_points_ground_masks(nusc, max_sweeps, ref_lidar_sd, show_plots):
 def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
     scene = nusc.scene[scene_idx]
     if scene["name"] in phase_scenes:
-        print(f"Processing Scene {scene_idx}: {scene['name']} \n\n")
+        logging.info(f"Processing Scene {scene_idx}: {scene['name']} \n\n")
         # loop over all keyframes in one scene
         current_sample_token = scene["first_sample_token"]
         while current_sample_token != "":
@@ -135,12 +136,12 @@ def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
                 try:
                     boxes = np.fromfile(saved_path, dtype=np.float32).reshape((-1,16))
                     if boxes.shape[0]:
-                        print(f"Already processed scene {scene_idx}: {scene['name']}, Keyframe: {ref_lidar_token} \n\n")
+                        logging.info(f"Already processed scene {scene_idx}: {scene['name']}, Keyframe: {ref_lidar_token} \n\n")
                         continue
                 except:
                     pass
 
-            print(f"Processing scene {scene_idx}: {scene['name']}, Keyframe: {ref_lidar_token} \n\n")
+            logging.info(f"Processing scene {scene_idx}: {scene['name']}, Keyframe: {ref_lidar_token} \n\n")
             
 
             # get points and ground masks for one keyframe
@@ -150,7 +151,7 @@ def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
             #Cluster
             labels = cluster(xyzi[:,:3], np.logical_not(ground_mask), eps=args.eps)
             assert labels.shape[0] == num_pts
-            print(f'1st Step Clustering Done. Labels found: {np.unique(labels).shape[0]}')
+            # print(f'1st Step Clustering Done. Labels found: {np.unique(labels).shape[0]}')
             if show_plots:
                 visualize_pcd_clusters(xyzi[:,:3], labels.reshape((-1,1)))
 
@@ -178,7 +179,7 @@ def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
             # #Get continous labels
             labels = get_continuous_labels(new_labels)
             assert labels.shape[0] == num_pts
-            print(f' Final Labels found: {np.unique(labels).shape[0]}')
+            # print(f' Final Labels found: {np.unique(labels).shape[0]}')
 
             # if show_plots:
             #     print(f'Final clusters')
@@ -188,7 +189,7 @@ def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
             labels = labels.astype(np.float16)
             assert labels.shape[0] == num_pts
             labels.tofile(save_path.__str__())
-            print(f'Saved sample: {ref_lidar_token}')
+            # print(f'Saved sample: {ref_lidar_token}')
 
             #Fit boxes
             approx_boxes_this_pc = np.empty((0, 16)) #cxyz, lwh, heading, bev_corners.flatten(), cluster_label
@@ -212,7 +213,7 @@ def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
             # Save bboxes for this keyframe
             save_path = save_dir / f'approx_boxes_{ref_lidar_token}.npy'
             approx_boxes_this_pc.astype(np.float32).tofile(save_path.__str__())
-            print(f'Saved approx boxes: {ref_lidar_token}')
+            # print(f'Saved approx boxes: {ref_lidar_token}')
 
             if show_plots:
                 # show_bev_boxes(xyzi[labels>-1], approx_boxes_this_pc, 'unrefined_approx_boxes')
@@ -244,6 +245,8 @@ def main():
     else:
         phase_scenes = list(set(create_splits_scenes()["train"]) - set(CUSTOM_SPLIT))
         scene_list = [scene_idx for scene_idx in range(args.start_scene_idx, args.end_scene_idx)]
+
+    logging.info(f'Length of nuscenes scene: {len(nusc.scene)}')
 
     # if args.num_workers > 0:
     #     run_func = partial(run, nusc=nusc, phase_scenes=phase_scenes, args=args, save_dir=save_dir, show_plots=show_plots)
