@@ -10,6 +10,7 @@ WAYMO_PROCESSED_labels=$(readlink -f ./data/waymo/waymo_processed_data_v_1_2_0_l
 
 #WAYMO_PROCESSED=$(readlink -f ./data/waymo/waymo_processed_data_10)
 SEMANTIC_KITTI=$(readlink -f ./data/semantic_kitti/dataset)
+NUSCENES=$(readlink -f ./data/nuscenes/v1.0-mini)
 # WAYMO_PROCESSED_INFO_TRAIN_PKL=$(readlink -f ./data/waymo/waymo_processed_data_10_short_infos_train_short.pkl)
 # WAYMO_GTDB=$(readlink -f ./data/waymo/waymo_processed_data_10_short_gt_database_train_sampled_1)
 # WAYMO_GTDB_PKL=$(readlink -f ./data/waymo/waymo_processed_data_10_short_waymo_dbinfos_train_sampled_1.pkl)
@@ -30,6 +31,7 @@ WAYMO_PROCESSED=$WAYMO_PROCESSED:/DepthContrast/data/waymo/waymo_processed_data_
 WAYMO_PROCESSED_clustered=$WAYMO_PROCESSED_clustered:/DepthContrast/data/waymo/waymo_processed_data_v_1_2_0_clustered
 WAYMO_PROCESSED_labels=$WAYMO_PROCESSED_labels:/DepthContrast/data/waymo/waymo_processed_data_v_1_2_0_labels
 SEMANTIC_KITTI=$SEMANTIC_KITTI:/DepthContrast/data/semantic_kitti/dataset
+NUSCENES=$NUSCENES:/DepthContrast/data/nuscenes/v1.0-mini
 # WAYMO_PROCESSED_INFO_TRAIN_PKL=$WAYMO_PROCESSED_INFO_TRAIN_PKL:/DepthContrast/data/waymo/waymo_processed_data_10_short_infos_train_short.pkl
 # WAYMO_GTDB=$WAYMO_GTDB:/DepthContrast/data/waymo/waymo_processed_data_10_short_gt_database_train_sampled_1
 # WAYMO_GTDB_PKL=$WAYMO_GTDB_PKL:/DepthContrast/data/waymo/waymo_processed_data_10_short_waymo_dbinfos_train_sampled_1.pkl
@@ -63,10 +65,7 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --env="QT_X11_NO_MITSHM=1" \
         --hostname="inside-DOCKER" \
         --name="DepthContrast" \
-        --volume $WAYMO_PROCESSED \
-        --volume $WAYMO_PROCESSED_clustered \
-        --volume $WAYMO_PROCESSED_labels \
-        --volume $SEMANTIC_KITTI \
+        --volume $NUSCENES \
         --volume $PROJ_DIR/data:/DepthContrast/data \
         --volume $PROJ_DIR/output:/DepthContrast/output \
         --volume $PROJ_DIR/tools:/DepthContrast/tools \
@@ -80,7 +79,15 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --volume $PROJ_DIR/lib:/DepthContrast/lib \
         $PCDET_VOLUMES \
         --rm \
-        depthcontrast:latest bash
+        ssl:cluster_nuscenes_fixed bash
+
+
+        # --rm \
+# --volume $WAYMO_PROCESSED \
+# --volume $WAYMO_PROCESSED_clustered \
+# --volume $WAYMO_PROCESSED_labels \
+# --volume $SEMANTIC_KITTI \
+
 
 #--volume $WAYMO_PROCESSED \
 # --volume $DENSE_LIDAR \

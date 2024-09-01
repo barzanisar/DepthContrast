@@ -1,14 +1,25 @@
 #!/bin/bash
+#SBATCH --wait-all-nodes=1
+#SBATCH --nodes=1
+#SBATCH --ntasks=1                          # total number of tasks
+#SBATCH --ntasks-per-node=1                 # Number of gpus per node
+#SBATCH --time=03:00:00                     # 1 hour
+#SBATCH --job-name=cluster_waymo
+#SBATCH --account=rrg-swasland
+#SBATCH --cpus-per-task=16                  # CPU cores/threads
+#SBATCH --mem=64000M                        # memory per node
+#SBATCH --output=./output/log/%x-%j.out     # STDOUT
+#SBATCH --array=1-1%1                       # 3 is the number of jobs in the chain
 
 # die function
 die() { echo "$*" 1>&2 ; exit 1; }
 
 # Default Command line args
-SING_IMG=/raid/home/nisarbar/singularity/ssl_cluster_nuscenes.sif
-NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
+# Default Command line args
+SING_IMG=/home/nisarbar/scratch/singularity/ssl_cluster_nuscenes.sif
+NUSCENES_DATA_DIR=/home/nisarbar/scratch/Datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
 
-CUDA_VISIBLE_DEVICES=0
-NUM_WORKERS=4
+NUM_WORKERS=-1
 START_IDX=0
 END_IDX=100
 SWEEPS=1
@@ -69,6 +80,16 @@ while :; do
     shift
 done
 
+# echo ""
+# echo "Job Array ID / Job ID: $SLURM_ARRAY_JOB_ID / $SLURM_JOB_ID"
+# echo "This is job $SLURM_ARRAY_TASK_ID out of $SLURM_ARRAY_TASK_COUNT jobs."
+# echo ""
+
+
+# Load Singularity
+module load StdEnv/2020 
+module load singularity/3.7
+
 
 PROJ_DIR=$PWD
 DEPTH_CONTRAST_BINDS=""
@@ -88,8 +109,7 @@ DEPTH_CONTRAST_BINDS+="
     --bind $PROJ_DIR/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_utils.py:/DepthContrast/third_party/OpenPCDet/pcdet/ops/pointnet2/pointnet2_stack/pointnet2_utils.py
 "
 
-BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
-singularity exec
+BASE_CMD="singularity exec
 --nv
 --pwd /DepthContrast
 --bind $PROJ_DIR/checkpoints:/DepthContrast/checkpoints
@@ -113,3 +133,7 @@ CMD+="python /DepthContrast/tools/cluster_nuscenes.py --start_scene_idx $START_I
 echo "$CMD"
 eval $CMD
 echo "Done clustering"
+
+
+
+

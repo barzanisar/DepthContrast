@@ -117,7 +117,7 @@ def get_sweep_points_ground_masks(nusc, max_sweeps, ref_lidar_sd, show_plots):
 def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
     scene = nusc.scene[scene_idx]
     if scene["name"] in phase_scenes:
-        print(f"Processing Scene {scene_idx}: {scene['name']}")
+        print(f"Processing Scene {scene_idx}: {scene['name']} \n\n")
         # loop over all keyframes in one scene
         current_sample_token = scene["first_sample_token"]
         while current_sample_token != "":
@@ -125,7 +125,22 @@ def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
             current_sample_data = current_sample["data"]
             ref_lidar_sd = nusc.get("sample_data", current_sample_data["LIDAR_TOP"])
             ref_lidar_token = ref_lidar_sd['token']
-            print(f"Processing Keyframe: {ref_lidar_token}")
+            
+            # Get next keyframe for next iter of while
+            current_sample_token = current_sample["next"]
+
+            #check if already processed 
+            saved_path = save_dir / f'approx_boxes_{ref_lidar_token}.npy'
+            if saved_path.exists():
+                try:
+                    boxes = np.fromfile(saved_path, dtype=np.float32).reshape((-1,16))
+                    if boxes.shape[0]:
+                        print(f"Already processed Keyframe: {ref_lidar_token} \n\n")
+                        continue
+                except:
+                    pass
+
+            print(f"Processing Keyframe: {ref_lidar_token} \n\n")
             
 
             # get points and ground masks for one keyframe
@@ -205,8 +220,7 @@ def run(scene_idx, nusc, phase_scenes, args, save_dir, show_plots=False):
                                     ref_boxes=approx_boxes_this_pc[:,:7], ref_labels=None, ref_scores=None, 
                                     color_feature=None, draw_origin=True)
 
-            # Get next keyframe 
-            current_sample_token = current_sample["next"]
+
 
 
 def main():
@@ -219,6 +233,8 @@ def main():
     eps_name = str(args.eps).replace('.', 'p')
     save_dir = parent_dir / 'data/nuscenes' / args.version / f'clustered_sweep_{args.sweeps}_eps{eps_name}'
     os.makedirs(save_dir, exist_ok=True)
+    if args.num_workers == -1:
+        args.num_workers = mp.cpu_count() - 1
 
     nusc = NuScenes(version=args.version, dataroot=f'{root}/{args.version}', verbose=True)
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-docker build -t ssl:latest -f Dockerfile .
+docker build -t ssl:cluster_nuscenes -f Dockerfile_cluster .
 
 # sudo SINGULARITY_NOHTTPS=1 singularity build ssl_latest.sif docker-daemon://ssl:latest
 

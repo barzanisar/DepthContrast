@@ -372,3 +372,43 @@ scripts/submit_ddp_turing.sh --tcp_port 18961 --mode f --datasets wns --extra_ta
 #ps -ef | grep -i '[p]ython'
 pids=$(ps aux | grep 'nisarbar' | grep 'python' | awk '{print $2}')
 echo "$pids" | xargs kill
+
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 2 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_test_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_0-100_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_100-200_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_200-300_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_300-400_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_400-500_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_500-600_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_0-100_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_100-200_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_200-300_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_300-400_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_400-500_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_500-600_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_0-100_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_100-200_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_200-300_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_300-400_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_400-500_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_500-600_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_0-100_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_100-200_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_200-300_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_300-400_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_400-500_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_500-600_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+EPS=0.7
+EPS_NAME=0p7
+SWEEP=1
+sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_0_100 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps $SWEEP --eps $EPS
+sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_100_200 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps $SWEEP --eps $EPS
+sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_200_300 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps $SWEEP --eps $EPS
+sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_300_400 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps $SWEEP --eps $EPS
+sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_400_500 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps $SWEEP --eps $EPS
+sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_500_600 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps $SWEEP --eps $EPS
