@@ -21,7 +21,7 @@ dataset:
   SWEEP_DIR: eps1p0
   SWEEPS: 1
   DATA_SKIP_RATIO: {'train': 1} # scene skip ratio
-  BATCHSIZE_PER_REPLICA: 24 #Change to 14, if input moco feats is false, use 8
+  BATCHSIZE_PER_REPLICA: 32 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
   CLASS_NAMES: ['Object']
 
