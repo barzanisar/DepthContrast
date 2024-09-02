@@ -370,9 +370,13 @@ class DepthContrastDataset(Dataset):
         data_dict['gt_boxes_moco_cluster_ids'] = data_dict['gt_boxes_moco'][:,-1]
         data_dict['gt_boxes_moco'] = data_dict['gt_boxes_moco'][:, :8]
         
-        # Assert that points contain fg points
-        assert (data_dict["points"][:,-1] > -1).sum() > 0
-        assert (data_dict["points_moco"][:,-1] > -1).sum() > 0
+        #Assert that points contain fg points
+        valid_cond = ((data_dict["points"][:,-1] > -1).sum() > 0) and ((data_dict["points_moco"][:,-1] > -1).sum() > 0)
+        if not valid_cond:
+            frame_id = data_dict['frame_id']
+            self.logger.add_line(f'Skipping sample {frame_id} bcz of no cluster labels')
+            new_index = np.random.randint(self.__len__())
+            return self.__getitem__(new_index)
 
         # #get unscaled_lwhz_cluster_id of gt_boxes remaining after augmentation and then keep only those unscaled lwhz
         box_idx=np.where(np.isin(data_dict['unscaled_lwhz_cluster_id'][:,-1], data_dict['gt_boxes_cluster_ids']))[0]
