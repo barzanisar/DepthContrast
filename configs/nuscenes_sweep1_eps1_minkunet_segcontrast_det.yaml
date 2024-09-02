@@ -18,7 +18,7 @@ WANDB:
 dataset:
   DATASET_NAMES: [NuscenesDataset]
   VERSION: v1.0-trainval
-  SWEEP_DIR: eps1
+  SWEEP_DIR: eps1p0
   SWEEPS: 1
   DATA_SKIP_RATIO: {'train': 1} # scene skip ratio
   BATCHSIZE_PER_REPLICA: 24 #Change to 14, if input moco feats is false, use 8
