@@ -45,7 +45,7 @@ dataset:
   LIDAR_AUG:
     mode: 'single'
     random_lidar_height: True
-    lidars: ['v32', 'v64', 'o64'] # 'v16', 'o64', 'o128', 
+    lidars: ['v64', 'o64'] # 'v16', 'o64', 'o128', 
     prob: [0.5, 0.5]
 
   SAMPLE_NUM_POINTS: 20000
