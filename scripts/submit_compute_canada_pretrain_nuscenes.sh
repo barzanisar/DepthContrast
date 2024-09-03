@@ -7,7 +7,7 @@
 #SBATCH --time=08:00:00
 #SBATCH --job-name=DepthContrast-train
 #SBATCH --account=rrg-swasland
-#SBATCH --cpus-per-task=16                  # 48 max CPU cores/threads
+#SBATCH --cpus-per-task=32                  # 48 max CPU cores/threads
 #SBATCH --mem=200G                        # memory per node
 #SBATCH --output=./output/log/%x-%j.out     # STDOUT
 #SBATCH --array=1-3%1                       # 3 is the number of jobs in the chain
@@ -24,21 +24,21 @@ FINETUNE_CFG_FILE=finetune
 
 MODE=pfd #pretrain, finetune, scratch, debug
 
-PRETRAINED_CKPT=checkpoint-ep199.pth.tar
+PRETRAINED_CKPT=checkpoint-ep99.pth.tar
 PRETRAIN_BATCHSIZE_PER_GPU=32
 FINETUNE_BATCHSIZE_PER_GPU=8
-PRETRAIN_EPOCHS=200
+PRETRAIN_EPOCHS=100
 # FINETUNE_EPOCHS=100
 # DATA_SKIP_RATIO=1
 
 MODEL_NAME="default"
-PRETRAIN_EXTRA_TAG="200ep_try0"
+PRETRAIN_EXTRA_TAG="100ep_try0"
 EXTRA_TAG="try0"
 
 SING_IMG=/home/$USER/scratch/singularity/ssl_proposal.sif
 # DATA_DIR=/raid/datasets/Waymo
 # KITTI_DATA_DIR=/raid/datasets/semantic_kitti
-NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
+NUSCENES_DATA_DIR=/home/nisarbar/scratch/Datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
 
 
 MASTER_ADDR=$(hostname)
