@@ -36,7 +36,7 @@ def init(cfg, args, run_file, pretraining=True):
         job_type = cfg['model']['job_type']
         group_name = 'pretrain_{}_finetine_{}'.format(cfg['model']['pretrain_extra_tag'], cfg['model']['extra_tag'])
 
-    if run_file.exists():
+    if run_file.exists() and not args.wandb_dont_resume:
         resume_id = run_file.read_text()
         wandb.init(name=run_name, config=cfg,
                             project=cfg['WANDB']['PROJECT'],

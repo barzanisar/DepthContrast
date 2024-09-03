@@ -72,6 +72,8 @@ parser.add_argument('--job_type', type=str, default='default', help='model job_t
 parser.add_argument('--pretrain_extra_tag', type=str, default='default', help='model pretrain_extra_tag')
 parser.add_argument('--extra_tag', type=str, default='default', help='model extra_tag')
 parser.add_argument('--workers', default=-1, type=int, help='workers per gpu')
+parser.add_argument('--wandb_dont_resume', action='store_true', default=False, help='for compute canada offline wandb, dont resume')
+
 
 def main():
     args = parser.parse_args()

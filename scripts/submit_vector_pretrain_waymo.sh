@@ -1,7 +1,22 @@
 #!/bin/bash
+#SBATCH --wait-all-nodes=1
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:a40:1                        # Request 1 GPUs
+#SBATCH --ntasks=1                          # set it equal to --nodes
+#SBATCH --ntasks-per-node=1                 # Number of gpus per node
+#SBATCH --time=12:00:00
+#SBATCH --job-name=DepthContrast-train
+#SBATCH --cpus-per-task=32                  # CPU cores/threads
+#SBATCH --mem=160G                          # 160G also works memory per node
+#SBATCH --output=./output/log/%x-%j.out     # STDOUT
+#SBATCH --array=1-10%1                       # 3 is the number of jobs in the chain
+
+hostname
+nvidia-smi
 
 # die function
 die() { echo "$*" 1>&2 ; exit 1; }
+
 
 # Default Command line args
 # main.py script parameters
@@ -14,7 +29,7 @@ DATASETS=wns
 BACKBONE=minkunet
 
 PRETRAINED_CKPT=checkpoint-ep199.pth.tar
-PRETRAIN_BATCHSIZE_PER_GPU=16
+PRETRAIN_BATCHSIZE_PER_GPU=32
 FINETUNE_BATCHSIZE_PER_GPU=8
 PRETRAIN_EPOCHS=200
 FINETUNE_EPOCHS=15
@@ -24,17 +39,14 @@ MODEL_NAME="default"
 PRETRAIN_EXTRA_TAG="try0"
 EXTRA_TAG="try0"
 
-SING_IMG=/raid/home/nisarbar/singularity/ssl_proposal.sif
-DATA_DIR=/raid/datasets/Waymo
-KITTI_DATA_DIR=/raid/datasets/semantic_kitti
-NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
+SING_IMG=/scratch/ssd004/scratch/$USER/singularity/ssl_proposal.sif
+DATA_DIR=/datasets/waymo-processed
+# KITTI_DATA_DIR=/raid/datasets/semantic_kitti
+# NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
 
-NUM_GPUS=2
-CUDA_VISIBLE_DEVICES=0,1
+
 MASTER_ADDR=$CLUSTER_NAME
 TCP_PORT=18888
-WORKERS_PER_GPU=6 # Turing has 48 cpus so use 10 cpus/gpu
-
 
 # Change default data_dir and infos_dir for different datasets
 
@@ -143,23 +155,6 @@ while :; do
             die 'ERROR: "--frame_sampling_div" requires a non-empty option argument.'
         fi
         ;;
-    -k|--num_gpus)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            NUM_GPUS=$2
-            shift
-        else
-            die 'ERROR: "--num_gpus" requires a non-empty option argument.'
-        fi
-        ;;
-    -l|--cuda_visible_devices)       # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            CUDA_VISIBLE_DEVICES=$2
-            NUM_GPUS=$(echo "$CUDA_VISIBLE_DEVICES" | awk -F',' '{print NF}')
-            shift
-        else
-            die 'ERROR: "--cuda_visible_devices" requires a non-empty option argument.'
-        fi
-        ;;
     -m|--tcp_port)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             TCP_PORT=$2
@@ -188,6 +183,20 @@ while :; do
     shift
 done
 
+NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"
+NUM_GPUS=$(($NUM_GPUS + 1))
+WORLD_SIZE=$((NUM_GPUS * SLURM_NNODES))
+WORKERS_PER_GPU=$(($SLURM_CPUS_PER_TASK / $NUM_GPUS))
+
+echo "NUM GPUS in Node $SLURM_NODEID: $NUM_GPUS"
+echo "Node $SLURM_NODEID says: main node at $MASTER_ADDR:$MASTER_PORT"
+echo "Node $SLURM_NODEID says: WORLD_SIZE=$WORLD_SIZE"
+echo "Node $SLURM_NODEID says: WORKERS_PER_GPU=$SLURM_CPUS_PER_TASK / $NUM_GPUS=$WORKERS_PER_GPU"
+echo "Node $SLURM_NODEID says: Loading Singularity Env..."
+
+# Load Singularity
+module load singularity-ce/3.8.2
+
 
 PROJ_DIR=$PWD
 DEPTH_CONTRAST_BINDS=""
@@ -210,6 +219,7 @@ DEPTH_CONTRAST_BINDS+="
 BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
 SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
 SINGULARITYENV_NCCL_BLOCKING_WAIT=1
+SINGULARITYENV_WANDB_MODE=online
 singularity exec
 --nv
 --pwd /DepthContrast
@@ -223,8 +233,6 @@ singularity exec
 --bind $PROJ_DIR/scripts:/DepthContrast/scripts
 --bind $PROJ_DIR/utils:/DepthContrast/utils
 --bind $DATA_DIR:/DepthContrast/data/waymo
---bind $KITTI_DATA_DIR:/DepthContrast/data/semantic_kitti
---bind $NUSCENES_DATA_DIR
 --bind $PROJ_DIR/lib:/DepthContrast/lib
 $DEPTH_CONTRAST_BINDS
 $SING_IMG
