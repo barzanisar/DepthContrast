@@ -147,6 +147,14 @@ while :; do
             die 'ERROR: "--pretrain_epochs" requires a non-empty option argument.'
         fi
         ;;
+    -k|--pretrain_bs_per_gpu)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            PRETRAIN_BATCHSIZE_PER_GPU=$2
+            shift
+        else
+            die 'ERROR: "--pretrain_bs_per_gpu" requires a non-empty option argument.'
+        fi
+        ;;
     -j|--frame_sampling_div)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             FRAME_SAMPLING_DIV=$2
