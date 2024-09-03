@@ -99,6 +99,22 @@ while :; do
             die 'ERROR: "--pretrain_epochs" requires a non-empty option argument.'
         fi
         ;;
+    -a|--pretrain_bs_per_gpu)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            PRETRAIN_BATCHSIZE_PER_GPU=$2
+            shift
+        else
+            die 'ERROR: "--pretrain_bs_per_gpu" requires a non-empty option argument.'
+        fi
+        ;;
+    -k|--workers_per_gpu)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            WORKERS_PER_GPU=$2
+            shift
+        else
+            die 'ERROR: "--workers_per_gpu" requires a non-empty option argument.'
+        fi
+        ;;
     -j|--finetune_cfg_options)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             FINETUNE_CFG_OPTIONS=$2
