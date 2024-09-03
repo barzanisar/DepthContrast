@@ -41,7 +41,7 @@ SING_IMG=/home/$USER/scratch/singularity/ssl_proposal.sif
 NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
 
 
-MASTER_ADDR=$CLUSTER_NAME
+MASTER_ADDR=$(hostname)
 TCP_PORT=18888
 FINETUNE_CFG_OPTIONS=""
 
@@ -147,6 +147,12 @@ while :; do
 
     shift
 done
+
+echo ""
+echo "Job Array ID / Job ID: $SLURM_ARRAY_JOB_ID / $SLURM_JOB_ID"
+echo "This is job $SLURM_ARRAY_TASK_ID out of $SLURM_ARRAY_TASK_COUNT jobs."
+echo ""
+
 
 # Get last element in string and increment by 1
 NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"

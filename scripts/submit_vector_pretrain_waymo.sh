@@ -45,7 +45,7 @@ DATA_DIR=/datasets/waymo-processed
 # NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
 
 
-MASTER_ADDR=$CLUSTER_NAME
+MASTER_ADDR=$(hostname)
 TCP_PORT=18888
 
 # Change default data_dir and infos_dir for different datasets
@@ -191,6 +191,12 @@ while :; do
     shift
 done
 
+echo ""
+echo "Job Array ID / Job ID: $SLURM_ARRAY_JOB_ID / $SLURM_JOB_ID"
+echo "This is job $SLURM_ARRAY_TASK_ID out of $SLURM_ARRAY_TASK_COUNT jobs."
+echo ""
+
+
 NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"
 NUM_GPUS=$(($NUM_GPUS + 1))
 WORLD_SIZE=$((NUM_GPUS * SLURM_NNODES))
@@ -226,8 +232,8 @@ DEPTH_CONTRAST_BINDS+="
 
 BASE_CMD="SINGULARITYENV_CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES
 SINGULARITYENV_WANDB_API_KEY=$WANDB_API_KEY
-SINGULARITYENV_NCCL_BLOCKING_WAIT=1
 SINGULARITYENV_WANDB_MODE=online
+SINGULARITYENV_NCCL_BLOCKING_WAIT=1
 singularity exec
 --nv
 --pwd /DepthContrast
