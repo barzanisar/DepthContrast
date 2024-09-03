@@ -268,7 +268,7 @@ if [[ "$MODE" =~ p ]]; then
         --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
         /DepthContrast/tools/main_dist.py
         --launcher pytorch
-        --multiprocessing-distributed --cfg /DepthContrast/configs/"$MODEL_NAME".yaml --world-size $NUM_GPUS 
+        --multiprocessing-distributed --cfg /DepthContrast/configs/$PRETRAIN_CFG_FILE --world-size $NUM_GPUS 
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
     else
 
