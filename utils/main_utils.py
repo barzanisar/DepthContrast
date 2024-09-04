@@ -237,8 +237,8 @@ def prep_environment(args, cfg, pretraining=True):
     if pretraining:
         model_dir = '{}/{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], 'pretrain' , cfg['model']['extra_tag'])
     elif 'scratch' in cfg['model']['name']:
-        pretrain_model_dir =  '{}/{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], cfg['model']['job_type'])
-        model_dir = '{}/{}'.format(pretrain_model_dir, cfg['model']['extra_tag'])
+        pretrain_model_dir =  '{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'])
+        model_dir = '{}/{}/{}'.format(pretrain_model_dir,  cfg['model']['job_type'], cfg['model']['extra_tag'])
     else:
         pretrain_model_dir = '{}/{}/{}/{}'.format(cfg['model']['model_dir'], cfg['model']['name'], 'pretrain', cfg['model']['pretrain_extra_tag'])
         model_dir = '{}/{}/{}'.format(pretrain_model_dir, cfg['model']['job_type'], cfg['model']['extra_tag'])

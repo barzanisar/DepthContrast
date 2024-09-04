@@ -243,10 +243,11 @@ if [[ "$MODE" =~ f ]]; then
         --multiprocessing-distributed --world-size $NUM_GPUS 
         --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
     else
-        FINETUNE_CMD+="python /DepthContrast/tools/downstream_segmentation.py --cfg /DepthContrast/configs/"$FINETUNE_CFG_FILE".yaml"
+        FINETUNE_CMD+="python /DepthContrast/tools/downstream_segmentation.py"
     fi
 
-    FINETUNE_CMD+=" --workers $WORKERS_PER_GPU 
+    FINETUNE_CMD+=" --cfg /DepthContrast/configs/"$FINETUNE_CFG_FILE".yaml 
+        --workers $WORKERS_PER_GPU 
         --pretrained_ckpt $PRETRAINED_CKPT 
         --model_name $MODEL_NAME
         --pretrain_extra_tag $PRETRAIN_EXTRA_TAG
@@ -265,5 +266,42 @@ if [[ "$MODE" =~ f ]]; then
         # --data_skip_ratio $FRAME_SAMPLING_DIV
         #--job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent
         # --val_interval 
+
+fi
+
+
+if [[ "$MODE" =~ s ]]; then
+
+    SCRATCH_CMD=$BASE_CMD
+
+    if [ "$NUM_GPUS" -gt 1 ]; then
+
+        SCRATCH_CMD+="python -m torch.distributed.launch
+        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        /DepthContrast/tools/downstream_segmentation.py
+        --launcher pytorch
+        --multiprocessing-distributed --world-size $NUM_GPUS 
+        --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
+    else
+        SCRATCH_CMD+="python /DepthContrast/tools/downstream_segmentation.py"
+    fi
+
+    SCRATCH_CMD+=" --cfg /DepthContrast/configs/nuscenes_scratch_minkunet.yaml 
+        --workers $WORKERS_PER_GPU 
+        --pretrained_ckpt checkpoint-ep0.pth.tar 
+        --extra_tag $EXTRA_TAG 
+        --epochs $FINETUNE_EPOCHS
+        "
+    SCRATCH_CMD+=$FINETUNE_CFG_OPTIONS
+
+    echo "Running scratch"
+    echo "$SCRATCH_CMD"
+    eval $SCRATCH_CMD
+    echo "Done scratch"
+
+    # --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
+    # --data_skip_ratio $FRAME_SAMPLING_DIV
+    #--job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent
+    # --val_interval 
 
 fi
