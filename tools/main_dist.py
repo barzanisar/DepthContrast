@@ -63,6 +63,7 @@ parser.add_argument('--workers', default=-1, type=int,
 parser.add_argument('--model_name', default='default', type=str,
                     help='model_name')
 parser.add_argument('--extra_tag', type=str, default='default', help='model extra_tag')
+parser.add_argument('--wandb_dont_resume', action='store_true', default=False, help='for compute canada offline wandb, dont resume')
 parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
