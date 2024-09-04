@@ -373,42 +373,211 @@ scripts/submit_ddp_turing.sh --tcp_port 18961 --mode f --datasets wns --extra_ta
 pids=$(ps aux | grep 'nisarbar' | grep 'python' | awk '{print $2}')
 echo "$pids" | xargs kill
 
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 2 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_test_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_0-100_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_100-200_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_200-300_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_300-400_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_400-500_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps 1 --eps 0.7 > ./output/log/cluster_nusc_500-600_s1_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_0-100_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_100-200_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_200-300_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_300-400_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_400-500_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps 3 --eps 0.7 > ./output/log/cluster_nusc_500-600_s3_eps0p7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+#TODO later
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
+    --cuda_visible_devices 0  \
+    --model_name nuscenes_sweep1_minkunet_segcontrast_lidarplusdet  \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet_also_cfg \
+    --extra_tag also_cfg_try0 \
+    > ./output/log/nuscenes_sweep1_minkunet_segcontrast_lidarplusdet_ep200_alsofine_1percent$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_0-100_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_100-200_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_200-300_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_300-400_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_400-500_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps 1 --eps 0.4 > ./output/log/cluster_nusc_500-600_s1_eps0p4_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
+    --cuda_visible_devices 0  \
+    --model_name nuscenes_sweep1_minkunet_segcontrast_lidarplusdet  \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet_also_cfg \
+    --extra_tag also_cfg_try0 \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    > ./output/log/nuscenes_sweep1_minkunet_segcontrast_lidarplusdet_ep100_alsofine_1percent$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_0-100_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_100-200_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_200-300_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_300-400_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_400-500_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_ddp_turing_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps 1 --eps 1.0 > ./output/log/cluster_nusc_500-600_s1_eps1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 0  \
+    --model_name nuscenes_sweep1_minkunet_segcontrast_lidarplusdet  \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet\
+    --extra_tag sgd_100ep_try0 \
+    > ./output/log/nuscenes_sweep1_minkunet_segcontrast_lidarplusdet_ep200_alsofine_1percent$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-EPS=0.7
-EPS_NAME=0p7
-SWEEP=1
-sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_0_100 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 0 --end_idx 100 --sweeps $SWEEP --eps $EPS
-sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_100_200 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 100 --end_idx 200 --sweeps $SWEEP --eps $EPS
-sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_200_300 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 200 --end_idx 300 --sweeps $SWEEP --eps $EPS
-sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_300_400 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 300 --end_idx 400 --sweeps $SWEEP --eps $EPS
-sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_400_500 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 400 --end_idx 500 --sweeps $SWEEP --eps $EPS
-sbatch --time=3:00:00 --job-name=sweep"$SWEEP"_eps"$EPS_NAME"_500_600 scripts/submit_compute_canada_cluster_nuscenes.sh --start_idx 500 --end_idx 600 --sweeps $SWEEP --eps $EPS
+# #TODO:
+# scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode p  \
+#     --cuda_visible_devices 2,3  \
+#     --model_name nuscenes_sweep3_minkunet_segcontrast_lidarplusdet  \
+#     --pretrain_epochs 100 \
+#     --pretrain_extra_tag 100ep_try0 \
+#     --pretrain_bs_per_gpu 16 \
+#     --pretrained_ckpt checkpoint-ep99.pth.tar \
+#     --workers_per_gpu 4 \
+#     > ./output/log/nuscenes_sweep3_minkunet_segcontrast_lidarplusdet_ep100_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# dont have available gpus
+scripts/submit_ddp_turing.sh --tcp_port 18860 --mode pf --datasets wns \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop32lidar.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop32lidar  \
+    > ./output/log/sc_lidarplusdet_ep200_drop32lidar_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+#single gpu - never runs
+sbatch --time=12:00:00 --array=1-10%1 --job-name=DepthContrast-train scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop32lidar.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop32lidar
+
+# 2gpus - works
+sbatch --time=12:00:00 --gres=gpu:rtx6000:2 --array=1-10%1 --job-name=lidarplusdet_drop32lidar_rtx2gpus scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop32lidar.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop32lidar \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 100
+
+sbatch --time=12:00:00 --gres=gpu:rtx6000:2 --array=1-10%1 --job-name=lidarplusdet_drop32lidar_rtx2gpus scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop64lidar.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop64lidar \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 100
+
+sbatch --time=12:00:00 --gres=gpu:rtx6000:2 --array=1-10%1 --job-name=lidarplusdet_drop32lidar_rtx2gpus scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_dethead_0p5w.yaml \
+    --model_name segcontrast_det_10perc_waymo_minkunet \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 100
+
+
+
+#TODO:
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
+    --cuda_visible_devices 0  \
+    --model_name nuscenes_sweep3_minkunet_segcontrast_lidarplusdet  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet_also_cfg \
+    --extra_tag also_cfg_try0 \
+    > ./output/log/nuscenes_sweep3_minkunet_segcontrast_lidarplusdet_ep100_fine1perc_500ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 0  \
+    --model_name nuscenes_sweep3_minkunet_segcontrast_lidarplusdet  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet \
+    --extra_tag try0 \
+    > ./output/log/nuscenes_sweep3_minkunet_segcontrast_lidarplusdet_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+#sweep 1 det
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
+    --cuda_visible_devices 1  \
+    --model_name nuscenes_sweep1_minkunet_segcontrast_det  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet_also_cfg \
+    --extra_tag also_cfg_try0 \
+    > ./output/log/nuscenes_sweep1_minkunet_segcontrast_det_ep100_fine1perc_500ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+#sweep 1 det
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 1  \
+    --model_name nuscenes_sweep1_minkunet_segcontrast_det  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet\
+    --extra_tag try0 \
+    > ./output/log/nuscenes_sweep1_minkunet_segcontrast_det_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
+    --cuda_visible_devices 2  \
+    --model_name nuscenes_sweep1_eps1_minkunet_segcontrast_det  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet_also_cfg \
+    --extra_tag also_cfg_try0 \
+    > ./output/log/nuscenes_sweep1_eps1_minkunet_segcontrast_det_ep100_fine1perc_500ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 2  \
+    --model_name nuscenes_sweep1_eps1_minkunet_segcontrast_det  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet \
+    --extra_tag try0 \
+    > ./output/log/nuscenes_sweep1_eps1_minkunet_segcontrast_det_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
+    --cuda_visible_devices 3 \
+    --model_name nuscenes_sweep1_eps0p4_minkunet_segcontrast_det  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet_also_cfg \
+    --extra_tag also_cfg_try0 \
+    > ./output/log/nuscenes_sweep1_eps0p4_minkunet_segcontrast_det_ep100_fine1perc_500ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 3 \
+    --model_name nuscenes_sweep1_eps0p4_minkunet_segcontrast_det  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet \
+    --extra_tag try0 \
+    > ./output/log/nuscenes_sweep1_eps0p4_minkunet_segcontrast_det_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+
+
+
+
+
+
+sbatch --time=1:30:00 --array=1-1%1 --mem=100GB --cpus-per-task=16 --job-name=p_nusc_s3_ld scripts/submit_compute_canada_pretrain_nuscenes.sh --mode p --model_name nuscenes_sweep3_minkunet_segcontrast_lidarplusdet 
+
+sbatch --time=1:30:00 --array=1-1%1 --job-name=f_nusc_s3_ld_also scripts/submit_compute_canada_pretrain_nuscenes.sh --mode f --model_name nuscenes_sweep3_minkunet_segcontrast_lidarplusdet \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet_also_cfg \
+    --extra_tag also_cfg_try0 
+
+sbatch --time=1:30:00 --array=1-1%1 --job-name=f_nusc_s3_ld_own scripts/submit_compute_canada_pretrain_nuscenes.sh --mode f --model_name nuscenes_sweep3_minkunet_segcontrast_lidarplusdet \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet \
+    --extra_tag try0 
+
+
+
+
+
+
+
+
+sbatch --time=1:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep1_eps1_784_800 scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx 784 --end_idx 800 --sweeps 1 --eps 1
+sbatch --time=1:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep1_eps0p7_770_800 scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx 770 --end_idx 800 --sweeps 1 --eps 0.7
+sbatch --time=1:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep1_eps0p4_765_800 scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx 765 --end_idx 800 --sweeps 1 --eps 0.4
+sbatch --time=2:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep3_eps0p7_525_600 scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx 525 --end_idx 600 --sweeps 3 --eps 0.7
+sbatch --time=2:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep3_eps0p7_125_200 scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx 125 --end_idx 200 --sweeps 3 --eps 0.7
+sbatch --time=2:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep3_eps0p7_670_800 scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx 670 --end_idx 800 --sweeps 3 --eps 0.7
+sbatch --time=2:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep3_eps0p7_285_400 scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx 285 --end_idx 400 --sweeps 3 --eps 0.7
+
+
+
+
+#!/bin/bash
+
+# Define parameters
+start_idx=0
+end_idx=100
+sweeps=3
+eps=0.7
+eps_name=0p7
+
+# Loop through the ranges
+for ((i = 0; i <= 800; i += 200)); do
+    # Define the start and end index for the current iteration
+    start_index=$i
+    end_index=$((i + 200))
+    
+    # Execute the command and redirect output to the log file
+    sbatch --time=2:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep${sweeps}_eps${eps_name}_${start_index}_${end_index} scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx ${start_index} --end_idx ${end_index} --sweeps ${sweeps} --eps ${eps}
+
+
+done

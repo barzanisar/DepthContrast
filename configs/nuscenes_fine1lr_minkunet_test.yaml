@@ -1,0 +1,70 @@
+# python -m torch.distributed.launch --nproc_per_node=1 tools/downstream_segmentation.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_lpseg_test.yaml
+# python tools/downstream_segmentation.py --cfg configs/waymo_pointrcnn_lpseg_test.yaml
+resume: true
+num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
+load_pretrained_checkpoint: 'all'
+
+log2tb: false
+log2wb: false
+
+print_freq: 1 #print progress after processing every <freq> iters or batches
+
+WANDB:
+  ENABLED: False 
+  PROJECT: SSL3dObject_new
+  ENTITY: trailab
+  dir: '/DepthContrast/output'
+
+dataset:
+  DATASET_NAMES: [NuscenesDataset]
+  VERSION: v1.0-mini
+  DATA_SKIP_RATIO: {'train': 5, 'val': 1} # scene skip ratio
+  BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
+  POINT_CLOUD_RANGE:  [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0] #[-75.2, -75.2, -2, 75.2, 75.2, 4] 
+  CLASS_NAMES: ['Object']
+
+  POINT_TRANSFORMS: # comment all except ToTensorLidar for linear probe
+    - NAME: random_world_flip
+      ALONG_AXIS_LIST: ['x', 'y']
+    - NAME: random_world_rotation
+      WORLD_ROT_ANGLE: [-0.78539816, 0.78539816] #-45deg, + 45deg
+    - NAME: random_world_scaling
+      WORLD_SCALE_RANGE: [0.95, 1.05]
+
+  SAMPLE_NUM_POINTS: 80000
+  INPUT: sparse_tensor
+  RESOLUTION: 0.1
+
+  COLLATE_FUNCTION: "sparse_downstream_collator"
+  DROP_LAST: True
+
+val_interval: 2
+optimizer:
+  name: "sgd"
+  weight_decay: 0.0001
+  momentum: 0.9
+  nesterov: True
+  num_epochs: 10
+  warmup_epochs: 0
+  lr:
+    name: "cosine_warm_up"
+    base_lr: 0.012
+
+model:
+  model_dir: "checkpoints/minkunet"
+  name: segcontrast_lidarplusdet_nuscenes_minkunet
+  linear_probe: false #meaning lp vs finetune
+  job_type: "finetune_nuscenes_1percent"
+  pretrain_extra_tag: try0
+  extra_tag: try0
+
+  MODEL_BASE:
+    NAME: Segmentor
+
+    BACKBONE_3D:
+      NAME: MinkUNet
+
+  SEGMENTATION_HEAD:
+    CLS_FC: [96, 17]
+    loss_types: ['CELoss', 'LovLoss']
+    loss_weights: [1.0, 1.0]

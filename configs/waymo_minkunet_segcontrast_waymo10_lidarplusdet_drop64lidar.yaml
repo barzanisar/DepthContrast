@@ -45,8 +45,8 @@ dataset:
   LIDAR_AUG:
     mode: 'single'
     random_lidar_height: True
-    lidars: ['v64', 'o64'] # 'v16', 'o64', 'o128', 
-    prob: [0.5, 0.5]
+    lidars: ['v32'] # 'v16', 'o64', 'o128', 
+    prob: [1.0]
 
   SAMPLE_NUM_POINTS: 20000
   INPUT: sparse_tensor
@@ -67,7 +67,7 @@ optimizer:
 
 model:
   model_dir: "checkpoints/minkunet"
-  name: "segcontrast_lidarplusdet_10perc_waymo_minkunet_drop32lidar"
+  name: "segcontrast_lidarplusdet_10perc_waymo_minkunet_drop64lidar"
   job_type: pretrain
   extra_tag: try0
 
