@@ -13,7 +13,7 @@ PRETRAINED_CKPT=checkpoint-ep199.pth.tar
 PRETRAIN_BATCHSIZE_PER_GPU=32
 FINETUNE_BATCHSIZE_PER_GPU=8
 PRETRAIN_EPOCHS=200
-# FINETUNE_EPOCHS=100
+FINETUNE_EPOCHS=250
 # DATA_SKIP_RATIO=1
 
 MODEL_NAME="default"
@@ -250,7 +250,8 @@ if [[ "$MODE" =~ f ]]; then
         --pretrained_ckpt $PRETRAINED_CKPT 
         --model_name $MODEL_NAME
         --pretrain_extra_tag $PRETRAIN_EXTRA_TAG
-        --extra_tag $EXTRA_TAG
+        --extra_tag $EXTRA_TAG 
+        --epochs $FINETUNE_EPOCHS
         "
     FINETUNE_CMD+=$FINETUNE_CFG_OPTIONS
 
