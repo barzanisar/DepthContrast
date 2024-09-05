@@ -253,6 +253,7 @@ if [[ "$MODE" =~ f ]]; then
         --pretrain_extra_tag $PRETRAIN_EXTRA_TAG
         --extra_tag $EXTRA_TAG 
         --epochs $FINETUNE_EPOCHS
+        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
         "
     FINETUNE_CMD+=$FINETUNE_CFG_OPTIONS
 
@@ -291,6 +292,7 @@ if [[ "$MODE" =~ s ]]; then
         --pretrained_ckpt checkpoint-ep0.pth.tar 
         --extra_tag $EXTRA_TAG 
         --epochs $FINETUNE_EPOCHS
+        --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
         "
     SCRATCH_CMD+=$FINETUNE_CFG_OPTIONS
 
