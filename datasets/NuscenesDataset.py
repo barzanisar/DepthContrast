@@ -50,7 +50,7 @@ class NuscenesDataset(DepthContrastDataset):
         self.sweeps = cfg["SWEEPS"] if pretraining else 1
         self.sweep_dir = cfg["SWEEP_DIR"] if pretraining else None
 
-        skip_ratio= cfg["DATA_SKIP_RATIO"][self.mode]
+        skip_ratio= cfg["DATA_SKIP_RATIO"][mode]
 
         if pretraining and mode == 'train':
             phase_scenes = list( set(create_splits_scenes()["train"]) - set(CUSTOM_SPLIT))
@@ -72,7 +72,26 @@ class NuscenesDataset(DepthContrastDataset):
                 if skip_counter % skip_ratio == 0: #skip whole scenes so it is scene_sampling_interval
                     self.create_list_of_tokens(scene)
         
-        self.logger.add_line(f'Total Nuscenes samples loaded: {len(self.list_tokens)}')
+        if len(self.list_tokens)==0:
+            # add only one scene
+            # scenes with all labels (parametrizing split) "scene-0392", "scene-0517", "scene-0656", "scene-0730", "scene-0738"
+            for scene_idx in range(len(self.nusc.scene)):
+                scene = self.nusc.scene[scene_idx]
+                if scene["name"] in phase_scenes and scene["name"] in ["scene-0392"]:
+
+                    current_sample_token = scene["first_sample_token"]
+
+                    # Loop to get all successive keyframes
+                    list_data = []
+                    while current_sample_token != "":
+                        current_sample = self.nusc.get("sample", current_sample_token)
+                        list_data.append(current_sample["data"]["LIDAR_TOP"])
+                        current_sample_token = current_sample["next"]
+
+                    # Add new scans in the list
+                    self.list_tokens.extend(list_data)
+        
+        self.logger.add_line(f'Total Nuscenes samples loaded: {len(self.list_tokens)} for split {mode}')
 
     
     def create_list_of_tokens(self, scene):
@@ -82,9 +101,8 @@ class NuscenesDataset(DepthContrastDataset):
         # Loop to get all successive keyframes
         while current_sample_token != "":
             current_sample = self.nusc.get("sample", current_sample_token)
-            next_sample_token = current_sample["next"]
             self.list_tokens.append(current_sample["data"]["LIDAR_TOP"])
-            current_sample_token = next_sample_token  
+            current_sample_token = current_sample["next"]  
     
     def __len__(self):
         return len(self.list_tokens)
