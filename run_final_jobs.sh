@@ -473,6 +473,7 @@ scripts/submit_ddp_turing_finetune_nuscenes.sh --mode f  \
     --workers_per_gpu 8 \
     --finetune_bs_per_gpu 16 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --extra_tag try_0 \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_all_perc_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 
