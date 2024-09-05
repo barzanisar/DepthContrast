@@ -36,7 +36,7 @@ dataset:
   RESOLUTION: 0.1
 
   COLLATE_FUNCTION: "sparse_downstream_collator"
-  DROP_LAST: True
+  DROP_LAST: False
 
 val_interval: 1
 optimizer:

@@ -296,7 +296,7 @@ def eval_one_ckpt(args, cfg, logger,
         train_eval_metrics_dict_single_downstream_epoch = run_phase('train', train_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
         
         # Validate one epoch
-        if epoch % cfg['val_interval'] == 0:
+        if epoch % cfg['val_interval'] == 0 or epoch == (end_epoch-1):
             val_eval_metrics_dict_single_downstream_epoch = run_phase('val', val_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
 
         #Save linear probe ckpt
