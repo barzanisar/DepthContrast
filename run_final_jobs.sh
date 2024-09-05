@@ -465,6 +465,16 @@ scripts/submit_ddp_turing.sh --mode pf --datasets wns \
     --pretrained_ckpt checkpoint-ep49.pth.tar \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop64lidar_50ep_fine1percent_for_100ep_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+### finetune our model on all percentages of nuscenes
+scripts/submit_ddp_turing_finetune_nuscenes.sh --mode f  \
+    --cuda_visible_devices 0  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
+    --workers_per_gpu 8 \
+    --finetune_bs_per_gpu 16 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_all_perc_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
 
 #TODO:
 # #sweep3 lidar+det - 500 ep
