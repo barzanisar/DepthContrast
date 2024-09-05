@@ -572,7 +572,7 @@ scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
     --workers_per_gpu 4 \
     --finetune_bs_per_gpu 16 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
-    --finetune_epochs 100 \
+    --finetune_epochs 30 \
     --extra_tag try_0 \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_wns_5_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
@@ -583,7 +583,7 @@ scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
     --workers_per_gpu 4 \
     --finetune_bs_per_gpu 16 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
-    --finetune_epochs 100 \
+    --finetune_epochs 30 \
     --extra_tag try_0 \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_finetune_wns_5_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
@@ -591,7 +591,7 @@ scripts/submit_ddp_turing_finetune_5perc.sh --mode s  \
     --cuda_visible_devices 0  \
     --workers_per_gpu 4 \
     --finetune_bs_per_gpu 16 \
-    --finetune_epochs 100 \
+    --finetune_epochs 30 \
     --extra_tag try_0 \
     > ./output/log/waymo_minkunet_scratch_wns_5_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
