@@ -565,12 +565,44 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
 
 ################# HERE
 
+scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
+    --cuda_visible_devices 0  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
+    --workers_per_gpu 4 \
+    --finetune_bs_per_gpu 16 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --finetune_epochs 100 \
+    --extra_tag try_0 \
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_wns_5_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
+    --cuda_visible_devices 0  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10.yaml \
+    --model_name segcontrast_10perc_waymo_minkunet  \
+    --workers_per_gpu 4 \
+    --finetune_bs_per_gpu 16 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --finetune_epochs 100 \
+    --extra_tag try_0 \
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_finetune_wns_5_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_finetune_5perc.sh --mode s  \
+    --cuda_visible_devices 0  \
+    --workers_per_gpu 4 \
+    --finetune_bs_per_gpu 16 \
+    --finetune_epochs 100 \
+    --extra_tag try_0 \
+    > ./output/log/waymo_minkunet_scratch_wns_5_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
 ### finetune our waymo model on all percentages of nuscenes
+
+
 scripts/submit_ddp_turing_finetune_nuscenes_0p1.sh --mode f  \
     --cuda_visible_devices 0  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
-    --workers_per_gpu 6 \
+    --workers_per_gpu 4 \
     --finetune_bs_per_gpu 16 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
     --extra_tag try_0 \
@@ -580,7 +612,7 @@ scripts/submit_ddp_turing_finetune_nuscenes_10.sh --mode f  \
     --cuda_visible_devices 0  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
-    --workers_per_gpu 6 \
+    --workers_per_gpu 4 \
     --finetune_bs_per_gpu 16 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
     --extra_tag try_0 \
