@@ -84,7 +84,8 @@ def main():
         cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] /= args.frame_sampling_div
         cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] = int(cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'])
     if args.data_skip_ratio > 0:
-        cfg['dataset']['DATA_SKIP_RATIO']['train'] = args.data_skip_ratio
+        if 'DATA_SKIP_RATIO' in cfg['dataset']:
+            cfg['dataset']['DATA_SKIP_RATIO']['train'] = args.data_skip_ratio
     if args.val_interval > 0:
         cfg['val_interval'] = args.val_interval
 
