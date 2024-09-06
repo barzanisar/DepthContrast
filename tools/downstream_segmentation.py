@@ -72,6 +72,7 @@ parser.add_argument('--job_type', type=str, default='default', help='model job_t
 parser.add_argument('--pretrain_extra_tag', type=str, default='default', help='model pretrain_extra_tag')
 parser.add_argument('--extra_tag', type=str, default='default', help='model extra_tag')
 parser.add_argument('--workers', default=-1, type=int, help='workers per gpu')
+parser.add_argument('--val_after_epochs', default=0, type=int, help='workers per gpu')
 parser.add_argument('--wandb_dont_resume', action='store_true', default=False, help='for compute canada offline wandb, dont resume')
 
 
@@ -88,6 +89,8 @@ def main():
             cfg['dataset']['DATA_SKIP_RATIO']['train'] = args.data_skip_ratio
     if args.val_interval > 0:
         cfg['val_interval'] = args.val_interval
+    
+    cfg['val_after_epochs'] = args.val_after_epochs
 
     if args.epochs > 0:
         cfg['optimizer']['num_epochs']=args.epochs
@@ -296,9 +299,10 @@ def eval_one_ckpt(args, cfg, logger,
         logger.add_line('LR: {}'.format(scheduler.get_lr()))
         train_eval_metrics_dict_single_downstream_epoch = run_phase('train', train_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
         
-        # Validate one epoch
-        if epoch % cfg['val_interval'] == 0 or epoch == (end_epoch-1):
-            val_eval_metrics_dict_single_downstream_epoch = run_phase('val', val_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
+        # Validate one epoch 
+        if epoch >= cfg ['val_after_epochs']:
+            if epoch % cfg['val_interval'] == 0 or epoch == (end_epoch-1):
+                val_eval_metrics_dict_single_downstream_epoch = run_phase('val', val_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
 
         #Save linear probe ckpt
         ckp_manager_downstream.save(epoch+1, model=model, optimizer=optimizer)
