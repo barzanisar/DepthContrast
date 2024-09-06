@@ -34,6 +34,7 @@ CUDA_VISIBLE_DEVICES=0,1
 MASTER_ADDR=$CLUSTER_NAME
 TCP_PORT=18888
 WORKERS_PER_GPU=6 # Turing has 48 cpus so use 10 cpus/gpu
+VAL_AFTER_EPOCHS=0
 
 
 # Change default data_dir and infos_dir for different datasets
@@ -192,7 +193,14 @@ while :; do
             die 'ERROR: "--finetune_bs_per_gpu" requires a non-empty option argument.'
         fi
         ;;
-        
+    -q|--val_after_epochs)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            VAL_AFTER_EPOCHS=$2
+            shift
+        else
+            die 'ERROR: "--val_after_epochs" requires a non-empty option argument.'
+        fi
+        ;;
     # Additional parameters
     -?*)
         printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
@@ -306,7 +314,8 @@ if [[ "$MODE" =~ f ]]; then
     --model_name $MODEL_NAME
     --pretrain_extra_tag "$PRETRAIN_EPOCHS"ep_"$PRETRAIN_EXTRA_TAG"
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
-    --frame_sampling_div $FRAME_SAMPLING_DIV
+    --frame_sampling_div $FRAME_SAMPLING_DIV 
+    --val_after_epochs $VAL_AFTER_EPOCHS
     "
 
     
@@ -366,6 +375,7 @@ if [[ "$MODE" =~ s ]]; then
     --workers $WORKERS_PER_GPU 
     --frame_sampling_div $FRAME_SAMPLING_DIV 
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
+    --val_after_epochs $VAL_AFTER_EPOCHS
     "
     if [[ "$DATASETS" =~ w ]]; then
         DATASET=waymo
