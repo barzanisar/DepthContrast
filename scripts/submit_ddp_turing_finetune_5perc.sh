@@ -331,7 +331,7 @@ if [[ "$MODE" =~ f ]]; then
         FINETUNE_CFG_FILE=configs/"$DATASET"_fine1lr_$BACKBONE.yaml
         FINAL_FINETUNE_CMD=$FINETUNE_CMD
         FINAL_FINETUNE_CMD+=" --cfg /DepthContrast/$FINETUNE_CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent --val_after_epochs 50
         "
         echo "Running Finetuning"
         echo "$FINAL_FINETUNE_CMD"
@@ -344,7 +344,7 @@ if [[ "$MODE" =~ f ]]; then
         FINETUNE_CFG_FILE=configs/"$DATASET"_fine1lr_$BACKBONE.yaml
         FINAL_FINETUNE_CMD=$FINETUNE_CMD
         FINAL_FINETUNE_CMD+=" --cfg /DepthContrast/$FINETUNE_CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent --val_after_epochs 50
         "
         echo "Running Finetuning"
         echo "$FINAL_FINETUNE_CMD"
@@ -383,7 +383,7 @@ if [[ "$MODE" =~ s ]]; then
         CFG_FILE=configs/"$DATASET"_scratch_$BACKBONE.yaml
         FINAL_CMD=$SCRATCH_CMD
         FINAL_CMD+=" --cfg /DepthContrast/$CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent
         "
         echo "Running Scratch"
         echo "$FINAL_CMD"
@@ -396,7 +396,7 @@ if [[ "$MODE" =~ s ]]; then
         CFG_FILE=configs/"$DATASET"_scratch_$BACKBONE.yaml
         FINAL_CMD=$SCRATCH_CMD
         FINAL_CMD+=" --cfg /DepthContrast/$CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent --val_after_epochs 50
         "
         echo "Running Scratch"
         echo "$FINAL_CMD"
@@ -409,7 +409,7 @@ if [[ "$MODE" =~ s ]]; then
         CFG_FILE=configs/"$DATASET"_scratch_$BACKBONE.yaml
         FINAL_CMD=$SCRATCH_CMD
         FINAL_CMD+=" --cfg /DepthContrast/$CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent --val_after_epochs 50
         "
         echo "Running Scratch"
         echo "$FINAL_CMD"
