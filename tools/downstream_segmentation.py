@@ -82,8 +82,9 @@ def main():
     if args.batchsize_per_gpu > 0:
         cfg['dataset']['BATCHSIZE_PER_REPLICA']=args.batchsize_per_gpu
     if args.frame_sampling_div > 0:
-        cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] /= args.frame_sampling_div
-        cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] = int(cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'])
+        if 'FRAME_SAMPLING_INTERVAL' in cfg['dataset']:
+            cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] /= args.frame_sampling_div
+            cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] = int(cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'])
     if args.data_skip_ratio > 0:
         if 'DATA_SKIP_RATIO' in cfg['dataset']:
             cfg['dataset']['DATA_SKIP_RATIO']['train'] = args.data_skip_ratio
