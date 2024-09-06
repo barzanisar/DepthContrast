@@ -314,8 +314,9 @@ def eval_one_ckpt(args, cfg, logger,
         else:
             #finetune
             results_dict = train_eval_metrics_dict_single_downstream_epoch
-            if epoch % cfg['val_interval'] == 0:
-                results_dict.update(val_eval_metrics_dict_single_downstream_epoch)
+            if epoch >= cfg ['val_after_epochs']:
+                if epoch % cfg['val_interval'] == 0 or epoch == (end_epoch-1):
+                    results_dict.update(val_eval_metrics_dict_single_downstream_epoch)
             wandb_utils.log(cfg, args, results_dict,  step=epoch)
 
     if linear_probe:
