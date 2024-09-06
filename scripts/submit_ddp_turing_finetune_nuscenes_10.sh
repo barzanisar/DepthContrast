@@ -318,8 +318,8 @@ if [[ "$MODE" =~ f ]]; then
     # "
 
     FINAL_FINETUNE_CMD_10perc=$FINETUNE_CMD
-    FINAL_FINETUNE_CMD_10perc+=" --epochs 70 --val_interval 1 --data_skip_ratio 10 
-    --job_type finetune_nuscenes_10percent --extra_tag 70ep_"$EXTRA_TAG"
+    FINAL_FINETUNE_CMD_10perc+=" --epochs 150 --val_interval 1 --data_skip_ratio 10 
+    --job_type finetune_nuscenes_10percent --extra_tag 150ep_"$EXTRA_TAG" --val_after_epochs 50
     "
 
     # FINAL_FINETUNE_CMD_50perc=$FINETUNE_CMD
