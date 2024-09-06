@@ -14,6 +14,7 @@ PRETRAIN_BATCHSIZE_PER_GPU=32
 FINETUNE_BATCHSIZE_PER_GPU=16
 PRETRAIN_EPOCHS=200
 FINETUNE_EPOCHS=100
+VAL_AFTER_EPOCHS=50
 # DATA_SKIP_RATIO=1
 
 MODEL_NAME="default"
@@ -254,6 +255,7 @@ if [[ "$MODE" =~ f ]]; then
         --extra_tag $EXTRA_TAG 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
+        --val_after_epochs $VAL_AFTER_EPOCHS
         "
     FINETUNE_CMD+=$FINETUNE_CFG_OPTIONS
 
@@ -293,6 +295,7 @@ if [[ "$MODE" =~ s ]]; then
         --extra_tag $EXTRA_TAG 
         --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
+        --val_after_epochs $VAL_AFTER_EPOCHS
         "
     SCRATCH_CMD+=$FINETUNE_CFG_OPTIONS
 

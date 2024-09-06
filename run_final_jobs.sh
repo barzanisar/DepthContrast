@@ -564,7 +564,7 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
 
 
 ################# HERE
-
+#RUNNING
 scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
     --cuda_visible_devices 0  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
@@ -577,7 +577,7 @@ scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_wns_5_perc_30ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
-    --cuda_visible_devices 0  \
+    --cuda_visible_devices 3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10.yaml \
     --model_name segcontrast_10perc_waymo_minkunet  \
     --workers_per_gpu 4 \
@@ -597,7 +597,7 @@ scripts/submit_ddp_turing_finetune_5perc.sh --mode s  \
 
 ### finetune our waymo model on all percentages of nuscenes
 
-
+# DONE but cannot beat bevcontrast at 700 ep, try 300 ep
 scripts/submit_ddp_turing_finetune_nuscenes_0p1.sh --mode f  \
     --cuda_visible_devices 0  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
@@ -608,6 +608,7 @@ scripts/submit_ddp_turing_finetune_nuscenes_0p1.sh --mode f  \
     --extra_tag try_0 \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_0p1_perc_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+#RUNNING
 scripts/submit_ddp_turing_finetune_nuscenes_10.sh --mode f  \
     --cuda_visible_devices 0  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
@@ -629,18 +630,19 @@ scripts/submit_ddp_turing_finetune_nuscenes_50.sh --mode f  \
     --extra_tag try_0 \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_50_perc_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing_finetune_nuscenes_100.sh --mode f  \
-    --cuda_visible_devices 1  \
-    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
-    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
-    --workers_per_gpu 6 \
-    --finetune_bs_per_gpu 16 \
-    --pretrained_ckpt checkpoint-ep199.pth.tar \
-    --extra_tag try_0 \
-    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_100_perc_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+# scripts/submit_ddp_turing_finetune_nuscenes_100.sh --mode f  \
+#     --cuda_visible_devices 1  \
+#     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
+#     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
+#     --workers_per_gpu 6 \
+#     --finetune_bs_per_gpu 16 \
+#     --pretrained_ckpt checkpoint-ep199.pth.tar \
+#     --extra_tag try_0 \
+#     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_100_perc_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 
 
+#RUNNING
 #sweep 1, eps0.4 segcontrast -100 ep with 16 bs
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
     --cuda_visible_devices 2 \
@@ -653,17 +655,18 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
     --workers_per_gpu 8 \
     > ./output/log/nuscenes_sweep1_eps0p4_minkunet_segcontrast_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-#scratch nuscenes 1 percent for 100 ep with 16 bs
-scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode s  \
-    --cuda_visible_devices 3 \
-    --extra_tag 100ep_bs16_try0 \
-    --workers_per_gpu 4 \
-    > ./output/log/nuscenes_scratch_1perc_16bs_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+# #scratch nuscenes 1 percent for 100 ep with 16 bs - already done
+# scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode s  \
+#     --cuda_visible_devices 1 \
+#     --extra_tag 100ep_bs16_try0 \
+#     --workers_per_gpu 4 \
+#     > ./output/log/nuscenes_scratch_1perc_16bs_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 
+#RUNNING
 #sweep 1, eps1 det -100 ep with 16 bs
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
-    --cuda_visible_devices 3  \
+    --cuda_visible_devices 1  \
     --model_name nuscenes_sweep1_eps1_minkunet_segcontrast_det  \
     --pretrain_epochs 100 \
     --pretrain_extra_tag 100ep_try0 \
@@ -674,11 +677,10 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
     > ./output/log/nuscenes_sweep1_eps1_minkunet_segcontrast_det_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 
-
-# DROP last set to false -LATER
 #sweep 1, eps0.4 det -100 ep with 16 bs
+#RUNNING
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
-    --cuda_visible_devices 2 \
+    --cuda_visible_devices 1 \
     --model_name nuscenes_sweep1_eps0p4_minkunet_segcontrast_det  \
     --pretrain_epochs 100 \
     --pretrain_extra_tag 100ep_try0 \
@@ -690,7 +692,7 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
 
 #sweep 1, eps0.7 det -100 ep with 16 bs
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
-    --cuda_visible_devices 2  \
+    --cuda_visible_devices 1  \
     --model_name nuscenes_sweep1_minkunet_segcontrast_det  \
     --pretrain_epochs 100 \
     --pretrain_extra_tag 100ep_try0 \
