@@ -565,16 +565,16 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
 
 ################# HERE
 #15 - nus sweep1 seg ------- gpu 2
-#25 - ours 5perc semkitti -----gpu 1
+#25 - ours 5perc semkitti -----gpu 0
 #26 - seg 5perc semkitti ----- gpu 1
 #29 - scratch 5 perc semkitti ---- gpu 3
 #ours p32-0.3 ----gpu 0 
 # 
 
-scripts/submit_ddp_turing.sh --mode pf --datasets wns \
+scripts/submit_ddp_turing_pf_lidaraug.sh --mode pf --datasets wns \
     --cuda_visible_devices 0  \
-    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p3.yaml \
-    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
     --pretrain_bs_per_gpu 16 \
     --pretrain_epochs 30 \
     --workers_per_gpu 8 \
@@ -582,7 +582,7 @@ scripts/submit_ddp_turing.sh --mode pf --datasets wns \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
     --finetune_epochs 100 \
     --extra_tag try_0 \
-    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p3_finetune_wns_1_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_finetune_wns_1_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #RUNNING -todo -semantickitti in progress
 scripts/submit_ddp_turing_finetune_5perc.sh --mode f --datasets ns \
