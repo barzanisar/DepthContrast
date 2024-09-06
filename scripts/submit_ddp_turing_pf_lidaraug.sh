@@ -15,11 +15,10 @@ BACKBONE=minkunet
 
 PRETRAINED_CKPT=checkpoint-ep199.pth.tar
 PRETRAIN_BATCHSIZE_PER_GPU=16
-FINETUNE_BATCHSIZE_PER_GPU=16 # assuming single gpu will be used
+FINETUNE_BATCHSIZE_PER_GPU=8
 PRETRAIN_EPOCHS=200
-FINETUNE_EPOCHS=100
-FRAME_SAMPLING_DIV=5
-DATA_SKIP_RATIO=20
+FINETUNE_EPOCHS=15
+FRAME_SAMPLING_DIV=1
 
 MODEL_NAME="default"
 PRETRAIN_EXTRA_TAG="try0"
@@ -308,7 +307,7 @@ if [[ "$MODE" =~ f ]]; then
     --pretrain_extra_tag "$PRETRAIN_EPOCHS"ep_"$PRETRAIN_EXTRA_TAG"
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
     --frame_sampling_div $FRAME_SAMPLING_DIV 
-    --data_skip_ratio $DATA_SKIP_RATIO
+    --val_after_epochs 50
     "
 
     
@@ -331,7 +330,7 @@ if [[ "$MODE" =~ f ]]; then
         FINETUNE_CFG_FILE=configs/"$DATASET"_fine1lr_$BACKBONE.yaml
         FINAL_FINETUNE_CMD=$FINETUNE_CMD
         FINAL_FINETUNE_CMD+=" --cfg /DepthContrast/$FINETUNE_CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent --val_after_epochs 50
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
         echo "Running Finetuning"
         echo "$FINAL_FINETUNE_CMD"
@@ -344,7 +343,7 @@ if [[ "$MODE" =~ f ]]; then
         FINETUNE_CFG_FILE=configs/"$DATASET"_fine1lr_$BACKBONE.yaml
         FINAL_FINETUNE_CMD=$FINETUNE_CMD
         FINAL_FINETUNE_CMD+=" --cfg /DepthContrast/$FINETUNE_CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent --val_after_epochs 50
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
         echo "Running Finetuning"
         echo "$FINAL_FINETUNE_CMD"
@@ -356,25 +355,17 @@ fi
 
 if [[ "$MODE" =~ s ]]; then
     SCRATCH_CMD=$BASE_CMD
-
-    if [ "$NUM_GPUS" -gt 1 ]; then
-
-        SCRATCH_CMD+="python -m torch.distributed.launch
-        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-        /DepthContrast/tools/downstream_segmentation.py
-        --launcher pytorch
-        --multiprocessing-distributed --world-size $NUM_GPUS 
-        --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
-    else
-        SCRATCH_CMD+="python /DepthContrast/tools/downstream_segmentation.py"
-    fi
-
-    SCRATCH_CMD+=" --epochs $FINETUNE_EPOCHS
+    SCRATCH_CMD+="python -m torch.distributed.launch
+    --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+    /DepthContrast/tools/downstream_segmentation.py
+    --launcher pytorch
+    --multiprocessing-distributed --world-size $NUM_GPUS 
+    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
+    --epochs $FINETUNE_EPOCHS
     --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
     --pretrained_ckpt checkpoint-ep0.pth.tar 
     --workers $WORKERS_PER_GPU 
     --frame_sampling_div $FRAME_SAMPLING_DIV 
-    --data_skip_ratio $DATA_SKIP_RATIO 
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
     "
     if [[ "$DATASETS" =~ w ]]; then
@@ -383,7 +374,7 @@ if [[ "$MODE" =~ s ]]; then
         CFG_FILE=configs/"$DATASET"_scratch_$BACKBONE.yaml
         FINAL_CMD=$SCRATCH_CMD
         FINAL_CMD+=" --cfg /DepthContrast/$CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
         echo "Running Scratch"
         echo "$FINAL_CMD"
@@ -396,7 +387,7 @@ if [[ "$MODE" =~ s ]]; then
         CFG_FILE=configs/"$DATASET"_scratch_$BACKBONE.yaml
         FINAL_CMD=$SCRATCH_CMD
         FINAL_CMD+=" --cfg /DepthContrast/$CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent --val_after_epochs 50
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
         echo "Running Scratch"
         echo "$FINAL_CMD"
@@ -409,7 +400,7 @@ if [[ "$MODE" =~ s ]]; then
         CFG_FILE=configs/"$DATASET"_scratch_$BACKBONE.yaml
         FINAL_CMD=$SCRATCH_CMD
         FINAL_CMD+=" --cfg /DepthContrast/$CFG_FILE 
-        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent --val_after_epochs 50
+        --job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent 
         "
         echo "Running Scratch"
         echo "$FINAL_CMD"
