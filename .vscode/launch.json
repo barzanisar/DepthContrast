@@ -171,6 +171,23 @@
             ]
         },
         {
+            "name": "nuscenes: scratch",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/downstream_segmentation.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--cfg",
+                "configs/nuscenes_scratch_minkunet.yaml",
+                "--pretrained_ckpt",
+                "checkpoint-ep0.pth.tar"
+            ]
+        },
+        {
             "name": "Nuscenes: finetune-dist-minkunet",
             "type": "python",
             "request": "launch",

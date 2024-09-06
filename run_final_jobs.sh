@@ -377,12 +377,12 @@ echo "$pids" | xargs kill
 
 
 
-# scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
-#     --cuda_visible_devices 0  \
-#     --model_name nuscenes_sweep1_minkunet_segcontrast_lidarplusdet  \
-#     --finetune_cfg_file nuscenes_fine1lr_minkunet\
-#     --extra_tag sgd_100ep_try0 \
-#     > ./output/log/nuscenes_sweep1_minkunet_segcontrast_lidarplusdet_ep200_alsofine_1percent$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 0  \
+    --model_name nuscenes_sweep1_minkunet_segcontrast_lidarplusdet  \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet\
+    --extra_tag sgd_100ep_try0 \
+    > ./output/log/nuscenes_sweep1_minkunet_segcontrast_lidarplusdet_ep200_alsofine_1percent$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # #TODO:
 # scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode p  \
@@ -396,30 +396,57 @@ echo "$pids" | xargs kill
 #     > ./output/log/nuscenes_sweep3_minkunet_segcontrast_lidarplusdet_ep100_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # dont have available gpus
-# scripts/submit_ddp_turing.sh --tcp_port 18860 --mode pf --datasets wns \
-#     --cuda_visible_devices 2,3  \
-#     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop32lidar.yaml \
-#     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop32lidar  \
-#     > ./output/log/sc_lidarplusdet_ep200_drop32lidar_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_ddp_turing.sh --tcp_port 18860 --mode pf --datasets wns \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop32lidar.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop32lidar  \
+    > ./output/log/sc_lidarplusdet_ep200_drop32lidar_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# # 2gpus - works
-# sbatch --time=12:00:00 --gres=gpu:rtx6000:2 --array=1-10%1 --job-name=lidarplusdet_drop32lidar_rtx2gpus_100ep scripts/submit_vector_pretrain_waymo.sh --mode p \
-#     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop32lidar.yaml \
-#     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop32lidar \
-#     --pretrain_bs_per_gpu 16 \
-#     --pretrain_epochs 100
+# 2gpus - works
+sbatch --time=12:00:00 --gres=gpu:rtx6000:2 --array=1-10%1 --job-name=lidarplusdet_drop32lidar_rtx2gpus_100ep scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop32lidar.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop32lidar \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 100
 
-# sbatch --time=12:00:00 --gres=gpu:a40:2 --array=1-10%1 --job-name=lidarplusdet_drop64lidar_rtx2gpus_100ep scripts/submit_vector_pretrain_waymo.sh --mode p \
-#     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop64lidar.yaml \
-#     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop64lidar \
-#     --pretrain_bs_per_gpu 16 \
-#     --pretrain_epochs 100
+sbatch --time=12:00:00 --gres=gpu:a40:2 --array=1-10%1 --job-name=lidarplusdet_drop64lidar_rtx2gpus_100ep scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_drop64lidar.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_drop64lidar \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 100
 
-# sbatch --time=12:00:00 --gres=gpu:rtx6000:2 --array=1-10%1 --job-name=lidarplusdet_dropalllidar_rtx2gpus_100ep scripts/submit_vector_pretrain_waymo.sh --mode p \
-#     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_dethead_0p5w.yaml \
-#     --model_name segcontrast_det_10perc_waymo_minkunet \
-#     --pretrain_bs_per_gpu 16 \
-#     --pretrain_epochs 100
+sbatch --time=12:00:00 --gres=gpu:rtx6000:2 --array=1-10%1 --job-name=lidarplusdet_dropalllidar_rtx2gpus_100ep scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_dethead_0p5w.yaml \
+    --model_name segcontrast_det_10perc_waymo_minkunet \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 100
+
+
+# tune p32
+sbatch --time=12:00:00 --gres=gpu:rtx6000:1 --array=1-2%1 --job-name=lidarplusdet_p32_0p3 scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p3.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p3 \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 30
+
+sbatch --time=12:00:00 --gres=gpu:rtx6000:1 --array=1-3%1 --job-name=lidarplusdet_p32_0p4 scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4 \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 30
+
+sbatch --time=12:00:00 --gres=gpu:rtx6000:1 --array=1-3%1 --job-name=lidarplusdet_p32_0p5 scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p5.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p5 \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 30
+
+sbatch --time=12:00:00 --gres=gpu:rtx6000:1 --array=1-3%1 --job-name=lidarplusdet_p32_0p6 scripts/submit_vector_pretrain_waymo.sh --mode p \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p6.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p6 \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 30
+
 
 # scripts/submit_ddp_turing.sh --mode pf --datasets wns \
 #     --cuda_visible_devices 1  \
@@ -566,13 +593,13 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
 ################# HERE
 #15 - nus sweep1 seg ------- gpu 2
 #25 - ours 5perc semkitti -----gpu 0
-#26 - seg 5perc semkitti ----- gpu 1
-#29 - scratch 5 perc semkitti ---- gpu 3
+#26 - seg 5perc semkitti ----- gpu 1 - done
+#29 - scratch 5 perc semkitti ---- gpu 3 - done
 #ours p32-0.3 ----gpu 0 
 # 
 
 scripts/submit_ddp_turing_pf_lidaraug.sh --mode pf --datasets wns \
-    --cuda_visible_devices 0  \
+    --cuda_visible_devices 1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
     --pretrain_bs_per_gpu 16 \
@@ -580,9 +607,22 @@ scripts/submit_ddp_turing_pf_lidaraug.sh --mode pf --datasets wns \
     --workers_per_gpu 8 \
     --finetune_bs_per_gpu 16 \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
-    --finetune_epochs 100 \
+    --finetune_epochs 15 \
     --extra_tag try_0 \
-    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_finetune_wns_1_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_finetune_wns_1_perc_15ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pf_lidaraug.sh --mode pf --datasets wns \
+    --cuda_visible_devices 3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p5.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p5  \
+    --pretrain_bs_per_gpu 16 \
+    --pretrain_epochs 30 \
+    --workers_per_gpu 8 \
+    --finetune_bs_per_gpu 16 \
+    --pretrained_ckpt checkpoint-ep29.pth.tar \
+    --finetune_epochs 15 \
+    --extra_tag try_0 \
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p5_finetune_wns_1_perc_15ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #RUNNING -todo -semantickitti in progress
 scripts/submit_ddp_turing_finetune_5perc.sh --mode f --datasets ns \
@@ -766,8 +806,8 @@ sbatch --time=2:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-
 start_idx=0
 end_idx=100
 sweeps=3
-eps=0.7
-eps_name=0p7
+eps=0.4
+eps_name=0p4
 
 # Loop through the ranges
 for ((i = 0; i <= 800; i += 200)); do
@@ -776,7 +816,7 @@ for ((i = 0; i <= 800; i += 200)); do
     end_index=$((i + 200))
     
     # Execute the command and redirect output to the log file
-    sbatch --time=2:30:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep${sweeps}_eps${eps_name}_${start_index}_${end_index} scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx ${start_index} --end_idx ${end_index} --sweeps ${sweeps} --eps ${eps}
+    sbatch --time=5:00:00 --cpus-per-task=16 --mem=80G --account=rrg-swasland --job-name=sweep${sweeps}_eps${eps_name}_${start_index}_${end_index} scripts/submit_compute_canada_cluster_nuscenes_with_gpu.sh --start_idx ${start_index} --end_idx ${end_index} --sweeps ${sweeps} --eps ${eps}
 
 
 done

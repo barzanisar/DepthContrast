@@ -17,7 +17,7 @@ scipy==1.10.1
 scikit-learn==1.3.0 #1.2.2
 tqdm
 # PyMieScatt 
-# pyquaternion
+pyquaternion
 pccm==0.3.4
 ccimport==0.3.7
 h5py==3.6.0

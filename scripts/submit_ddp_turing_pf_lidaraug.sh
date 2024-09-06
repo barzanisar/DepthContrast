@@ -307,7 +307,6 @@ if [[ "$MODE" =~ f ]]; then
     --pretrain_extra_tag "$PRETRAIN_EPOCHS"ep_"$PRETRAIN_EXTRA_TAG"
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
     --frame_sampling_div $FRAME_SAMPLING_DIV 
-    --val_after_epochs 50
     "
 
     
