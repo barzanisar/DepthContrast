@@ -576,6 +576,7 @@ scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
     --extra_tag try_0 \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_wns_5_perc_30ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+#RUNNING
 scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
     --cuda_visible_devices 3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10.yaml \
@@ -587,6 +588,7 @@ scripts/submit_ddp_turing_finetune_5perc.sh --mode f  \
     --extra_tag try_0 \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_finetune_wns_5_perc_30ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+#TODO!!!!
 scripts/submit_ddp_turing_finetune_5perc.sh --mode s  \
     --cuda_visible_devices 0  \
     --workers_per_gpu 4 \
@@ -690,6 +692,7 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
     --workers_per_gpu 4 \
     > ./output/log/nuscenes_sweep1_eps0p4_minkunet_segcontrast_det_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+#TODO!!!!
 #sweep 1, eps0.7 det -100 ep with 16 bs
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
     --cuda_visible_devices 1  \
