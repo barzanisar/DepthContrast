@@ -596,6 +596,11 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
 #ours p32-0.6 ----gpu 3 
 #scratch nusc1perc 100 ep bs 16 ----gpu 0
 
+#gpu 0 -- ours on 10% semkitti for 200 epochs
+#gpu 1-- nus sweep1 seg
+#gpu 2 -- ours p32-0.4 
+#gpu 3 -- ours p32-0.5 
+
 #TODO
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
     --cuda_visible_devices 0  \
@@ -607,11 +612,11 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
     --extra_tag try0 \
     > ./output/log/nuscenes_sweep3_minkunet_segcontrast_lidarplusdet_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-
-scripts/submit_ddp_turing_pf_lidaraug.sh --mode pf --datasets wns \
-    --cuda_visible_devices 1  \
-    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p3.yaml \
-    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p3  \
+#RUNNING
+scripts/submit_ddp_turing_pf_lidaraug.sh --mode f --datasets wns \
+    --cuda_visible_devices 2  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
     --pretrain_bs_per_gpu 16 \
     --pretrain_epochs 30 \
     --workers_per_gpu 8 \
@@ -619,12 +624,13 @@ scripts/submit_ddp_turing_pf_lidaraug.sh --mode pf --datasets wns \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
     --finetune_epochs 15 \
     --extra_tag try_0 \
-    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p3_finetune_wns_1_perc_15ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_finetune_wns_1_perc_15ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing_pf_lidaraug.sh --mode pf --datasets wns \
+#RUNNING
+scripts/submit_ddp_turing_pf_lidaraug.sh --mode f --datasets wns \
     --cuda_visible_devices 3  \
-    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p6.yaml \
-    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p6  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p5.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p5  \
     --pretrain_bs_per_gpu 16 \
     --pretrain_epochs 30 \
     --workers_per_gpu 8 \
@@ -632,7 +638,7 @@ scripts/submit_ddp_turing_pf_lidaraug.sh --mode pf --datasets wns \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
     --finetune_epochs 15 \
     --extra_tag try_0 \
-    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p6_finetune_wns_1_perc_15ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p5_finetune_wns_1_perc_15ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #DONE
 scripts/submit_ddp_turing_finetune_5perc.sh --mode f --datasets ns \
@@ -691,6 +697,7 @@ scripts/submit_ddp_turing_finetune_nuscenes_10.sh --mode f  \
     --extra_tag try_0 \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_10_perc_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+#Done ours on semkitti 10% for 100 epochs
 scripts/submit_ddp_turing.sh --mode f --datasets s  \
     --cuda_visible_devices 0  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
@@ -704,6 +711,8 @@ scripts/submit_ddp_turing.sh --mode f --datasets s  \
     --val_after_epochs 50 \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_semkitti_10_perc_100ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+#RUNNING ours on semkitti 10% for 200 epochs
+echo "10 perc semkitti 200 epochs"
 scripts/submit_ddp_turing.sh --mode f --datasets s  \
     --cuda_visible_devices 0  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
@@ -713,9 +722,34 @@ scripts/submit_ddp_turing.sh --mode f --datasets s  \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
     --extra_tag try_0 \
     --frame_sampling_div 10 \
-    --finetune_epochs 300 \
-    --val_after_epochs 100 \
-    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_semkitti_10_perc_300ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    --finetune_epochs 200 \
+    --val_after_epochs 80 \
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_semkitti_10_perc_200ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+#RUNNING ours on semkitti 1% for 200 epochs
+echo "1 perc semkitti 200 epochs"
+scripts/submit_ddp_turing.sh --mode f --datasets s  \
+    --cuda_visible_devices 0  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
+    --workers_per_gpu 4 \
+    --finetune_bs_per_gpu 16 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --extra_tag try_0 \
+    --finetune_epochs 200 \
+    --val_after_epochs 80 \
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_semkitti_1_perc_200ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+echo "10 perc nusc 300 epochs and 100 epochs"
+scripts/submit_ddp_turing_finetune_nuscenes_10.sh --mode f  \
+    --cuda_visible_devices 0  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
+    --workers_per_gpu 4 \
+    --finetune_bs_per_gpu 16 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --extra_tag try_0 \
+    > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_10_perc_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #PAUSED
 scripts/submit_ddp_turing_finetune_nuscenes_50.sh --mode f  \
@@ -740,10 +774,10 @@ scripts/submit_ddp_turing_finetune_nuscenes_50.sh --mode f  \
 
 
 
-#DONE
+#RUNNING
 #sweep 1, eps0.4 segcontrast -100 ep with 16 bs
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
-    --cuda_visible_devices 2 \
+    --cuda_visible_devices 1 \
     --model_name nuscenes_sweep1_eps0p4_minkunet_segcontrast  \
     --pretrain_epochs 100 \
     --pretrain_extra_tag 100ep_try0 \
@@ -753,7 +787,7 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
     --workers_per_gpu 8 \
     > ./output/log/nuscenes_sweep1_eps0p4_minkunet_segcontrast_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-#RUNNING
+#RUNNING-DONE
 # #scratch nuscenes 1 percent for 100 ep with 16 bs - already done -check later
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode s  \
     --cuda_visible_devices 1 \
