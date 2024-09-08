@@ -318,14 +318,14 @@ if [[ "$MODE" =~ f ]]; then
     # "
 
     FINAL_FINETUNE_CMD_10perc=$FINETUNE_CMD
-    FINAL_FINETUNE_CMD_10perc+=" --epochs 300 --val_interval 1 --data_skip_ratio 10 
-    --job_type finetune_nuscenes_10percent --extra_tag 300ep_"$EXTRA_TAG" --val_after_epochs 120
+    FINAL_FINETUNE_CMD_10perc+=" --epochs 50 --val_interval 1 --data_skip_ratio 10 
+    --job_type finetune_nuscenes_10percent --extra_tag 50ep_"$EXTRA_TAG" 
     "
 
     echo "Running Finetuning 10 perc"
     echo "$FINAL_FINETUNE_CMD_10perc"
     eval $FINAL_FINETUNE_CMD_10perc
-    echo "Done Finetuning 10 perc 300 ep"
+    echo "Done Finetuning 10 perc 50 ep"
 
     FINAL_FINETUNE_CMD_10perc=$FINETUNE_CMD
     FINAL_FINETUNE_CMD_10perc+=" --epochs 100 --val_interval 1 --data_skip_ratio 10 
