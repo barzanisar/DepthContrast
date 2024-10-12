@@ -601,10 +601,8 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
 #gpu 2 -- waymo 5% for 30 epochs scratch, seg, ours
 #gpu 3 -- nusc 10% for 300 epochs and 100 epochs
 
-#tmux 12: semkitti 1%, 30,40,50,70 epochs -> gpu2
-#tmux 11: nusc 10%, 10,20,30,40 epochs -> gpu 0
-#tmux 5: waymo 5% 30 epochs, seg -> gpu1
-#tmux 13: semkitti 10% 10,20,30,40 epochs -> gpu3
+#tmux 12: semkitti 1%, 30,40,50,(70) epochs -> gpu2
+#tmux 13: semkitti 10% 10,20,30,(40) epochs -> gpu3
 
 
 echo "10 perc nusc 10, 20, 30, 40"
@@ -619,11 +617,11 @@ scripts/submit_ddp_turing_finetune_nuscenes_10.sh --mode f  \
     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_10_perc_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 
-FINETUNE_EPOCHS=(30 40 50 70)
+FINETUNE_EPOCHS=(80 120) #(30 40 50 70)
 for epoch in "${FINETUNE_EPOCHS[@]}"; do
     echo "1 perc semkitti $epoch epochs"
     scripts/submit_ddp_turing.sh --mode f --datasets s  \
-        --cuda_visible_devices 2  \
+        --cuda_visible_devices 0  \
         --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
         --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
         --workers_per_gpu 8 \
@@ -634,7 +632,22 @@ for epoch in "${FINETUNE_EPOCHS[@]}"; do
         > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_semkitti_1_perc_"$epoch"ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 done
 
-FINETUNE_EPOCHS=(10 20 30 40)
+FINETUNE_EPOCHS=(90 110) #(30 40 50 70)
+for epoch in "${FINETUNE_EPOCHS[@]}"; do
+    echo "1 perc semkitti $epoch epochs"
+    scripts/submit_ddp_turing.sh --mode f --datasets s  \
+        --cuda_visible_devices 1  \
+        --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
+        --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
+        --workers_per_gpu 8 \
+        --finetune_bs_per_gpu 16 \
+        --pretrained_ckpt checkpoint-ep199.pth.tar \
+        --extra_tag try_0 \
+        --finetune_epochs $epoch \
+        > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_semkitti_1_perc_"$epoch"ep_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
+done
+
+FINETUNE_EPOCHS=(60)
 for epoch in "${FINETUNE_EPOCHS[@]}"; do
     echo "10 perc semkitti $epoch epochs"
     scripts/submit_ddp_turing.sh --mode f --datasets s  \
@@ -991,6 +1004,53 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
     --workers_per_gpu 4 \
     > ./output/log/nuscenes_sweep1_minkunet_segcontrast_det_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+
+
+###############################
+
+#DC + lidarplusdet with p32 0.4 full pretrain and finetune on 1% for [15epochs]
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0 \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_depthcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name depthcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
+    > ./output/log/depthcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_pretrain_200epochs_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+#SC + lidarplusdet with p32 0.4 full pretrain and finetune on 1% for [15epochs, 100 epoch]s, 5% for [15 epochs, 30 epochs for waymo, 100 epochs for nusc and semkitti] 
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_pretrain_200epochs_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets wns --extra_tag try0 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
+    --frame_sampling_div 5 \
+    > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets wns --extra_tag try0 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
+    --finetune_epochs 100 \
+    > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets w --extra_tag try0 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
+    --finetune_epochs 30 \
+    --frame_sampling_div 5 \
+    > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets ns --extra_tag try0 \
+    --cuda_visible_devices 2,3  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
+    --finetune_epochs 100 \
+    --frame_sampling_div 5 \
+    > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 
 ################# HERE
