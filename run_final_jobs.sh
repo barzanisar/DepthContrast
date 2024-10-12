@@ -1016,7 +1016,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
     > ./output/log/depthcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_pretrain_200epochs_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #SC + lidarplusdet with p32 0.4 full pretrain and finetune on 1% for [15epochs, 100 epoch]s, 5% for [15 epochs, 30 epochs for waymo, 100 epochs for nusc and semkitti] 
-scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0 \
+scripts/submit_ddp_turing.sh --tcp_port 18841 --mode pf --datasets wns --extra_tag try0 \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
