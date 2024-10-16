@@ -4,7 +4,7 @@
 die() { echo "$*" 1>&2 ; exit 1; }
 
 # Default Command line args
-SING_IMG=/raid/home/nisarbar/singularity/ssl_cluster_nuscenes.sif
+SING_IMG=/raid/home/nisarbar/singularity/ssl_cluster.sif
 NUSCENES_DATA_DIR=/raid/datasets/nuscenes:/DepthContrast/data/nuscenes/v1.0-trainval
 
 CUDA_VISIBLE_DEVICES=0
