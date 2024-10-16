@@ -26,7 +26,7 @@ EPS=0.2
 DATA_DIR=/home/$USER/scratch/Datasets/Waymo
 INFOS_DIR=/home/$USER/scratch/Datasets/Waymo
 
-SING_IMG=/home/$USER/scratch/singularity/ssl_cluster_nuscenes.sif
+SING_IMG=/home/$USER/scratch/singularity/ssl_cluster.sif
 
 
 # Usage info
