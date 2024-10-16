@@ -3,7 +3,7 @@
 # die function
 die() { echo "$*" 1>&2 ; exit 1; }
 
-SING_IMG=/raid/home/nisarbar/singularity/ssl_cluster_nuscenes.sif
+SING_IMG=/raid/home/nisarbar/singularity/ssl_cluster.sif
 DATA_DIR=/raid/datasets/Waymo
 CUDA_VISIBLE_DEVICES=0
 
