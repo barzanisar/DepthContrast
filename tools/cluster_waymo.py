@@ -19,6 +19,8 @@ from matplotlib.lines import Line2D
 parser = argparse.ArgumentParser(description='Cluster Waymo')
 parser.add_argument('--mode', type=str, default='simple_cluster', help='simple_cluster or cluster_tracking (does not work atm)')
 parser.add_argument('--split', type=str, default='train_short', help='specify the split of infos to cluster')
+parser.add_argument('--frame_sampling_interval', type=int, default=1, help='frame sampling interval')
+parser.add_argument('--eps', type=float, default=0.2, help='clustering epsilon')
 parser.add_argument('--processed_data_tag', type=str, default='waymo_processed_data_10_short', help='specify the processed data tag')
 parser.add_argument('--save_rejection_tag', action='store_true', default=False, help='if you want to save rejection tags for debugging')
 
@@ -33,23 +35,24 @@ from lib.LiDAR_snow_sim.tools.visual_utils import open3d_vis_utils as V
 np.random.seed(100)
 
 class WaymoDataset():
-    def __init__(self, split, processed_data_tag):
+    def __init__(self, split, processed_data_tag, eps='0p2', frame_sampling_interval=1):
         parent_dir = (Path(__file__) / '../..').resolve() #DepthContrast
         self.root_path = parent_dir / 'data/waymo'
         self.data_path = self.root_path / processed_data_tag
         self.infos_pkl_path = self.root_path / 'cluster_info_splits' /f'{processed_data_tag}_infos_{split}.pkl'
 
-        self.save_label_path = parent_dir / 'data/waymo' / (processed_data_tag + '_clustered')
+        self.save_label_path = parent_dir / 'data/waymo' / f'{processed_data_tag}_clustered_fps_{frame_sampling_interval}_eps_{eps}'
 
         self.infos_dict = {} # seq_name: [frame infos]
-        self.include_waymo_data() # read tfrecords in sample_seq_list and then find its pkl in waymo_processed_data_10 and include the pkl infos in waymo infos
+        self.include_waymo_data(frame_sampling_interval) # read tfrecords in sample_seq_list and then find its pkl in waymo_processed_data_10 and include the pkl infos in waymo infos
 
-    def include_waymo_data(self):
+    def include_waymo_data(self, frame_sampling_interval):
         infos=[]
         with open(self.infos_pkl_path, 'rb') as f:
             infos = pickle.load(f) # loads all infos
 
-        for info in infos:
+        for k in range(0, len(infos), frame_sampling_interval):
+            info = infos[k]
             sequence_name = info['point_cloud']['lidar_sequence']
             if sequence_name not in self.infos_dict:
                 self.infos_dict[sequence_name] = []
@@ -105,7 +108,7 @@ def transform_pc_to_world(xyz, pose_world_from_vehicle):
 
     return xyz
 
-def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False):
+def simple_cluster(seq_name, dataset, eps=0.2, show_plots=False, save_rejection_tag=False):
     save_seq_path = dataset.save_label_path / seq_name
     os.makedirs(save_seq_path.__str__(), exist_ok=True)
     os.makedirs((save_seq_path / 'rejection_tag').__str__(), exist_ok=True)
@@ -128,18 +131,20 @@ def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False
         ground_mask = dataset.get_ground_mask(seq_name, sample_idx)
         
         # Get new labels
-        labels = cluster(xyzi[:,:3], np.logical_not(ground_mask), eps=0.2)
+        labels = cluster(xyzi[:,:3], np.logical_not(ground_mask), eps=eps)
         assert labels.shape[0] == num_pts, f'After Clustering: Some labels missing for seq: {seq_name}, sample {sample_idx}!'
         print(f'1st Step Clustering Done. Labels found: {np.unique(labels).shape[0]}')
         if show_plots:
             visualize_pcd_clusters(xyzi[:,:3], labels.reshape((-1,1)))
 
 
+        # new_labels, label_wise_rejection_tag  = filter_labels(xyzi[:,:3], labels,
+        #                             max_volume=None, min_volume=0.1, 
+        #                             max_height_for_lowest_point=1, 
+        #                             min_height_for_highest_point=0.5,
+        #                             ground_mask = ground_mask)
         new_labels, label_wise_rejection_tag  = filter_labels(xyzi[:,:3], labels,
-                                    max_volume=None, min_volume=0.1, 
-                                    max_height_for_lowest_point=1, 
-                                    min_height_for_highest_point=0.5,
-                                    ground_mask = ground_mask)
+                                    max_volume=400, min_volume=0.03)
         
         assert new_labels.shape[0] == num_pts, f'After filtering: Some labels missing for seq: {seq_name}, sample {sample_idx}!'
 
@@ -162,8 +167,8 @@ def simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False
                         print(f'Showing {rejected_labels.shape[0]} rejected labels due to: {key}')
                         visualize_selected_labels(xyzi[:,:3], labels.flatten(), rejected_labels)
         
-        labels = remove_outliers_cluster(xyzi[:,:3], new_labels.flatten())
-        assert labels.shape[0] == num_pts, f'After remove outliers: Some labels missing for seq: {seq_name}, sample {sample_idx}!'
+        # labels = remove_outliers_cluster(xyzi[:,:3], new_labels.flatten())
+        # assert labels.shape[0] == num_pts, f'After remove outliers: Some labels missing for seq: {seq_name}, sample {sample_idx}!'
 
         labels = get_continuous_labels(labels)
         assert labels.shape[0] == num_pts, f'After Continuous Labels: Some labels missing for seq: {seq_name}, sample {sample_idx}!'
@@ -685,9 +690,9 @@ def transform_box(box, pose):
 
 
 
-def run_simple_cluster(seq_name, dataset, show_plots=False, save_rejection_tag=False):
+def run_simple_cluster(seq_name, dataset, eps=0.2, show_plots=False, save_rejection_tag=False):
     dataset.estimate_ground_seq(seq_name)
-    simple_cluster(seq_name, dataset, show_plots=show_plots, save_rejection_tag=save_rejection_tag)
+    simple_cluster(seq_name, dataset, eps=eps, show_plots=show_plots, save_rejection_tag=save_rejection_tag)
     fit_approx_boxes_seq(seq_name, dataset, method='closeness_to_edge', show_plots=show_plots, simple_cluster=True) #fit using closeness or min max?
 
 def run1(seq_name, dataset):
@@ -710,8 +715,8 @@ def run3(seq_name, dataset):
 
 def main():
     args = parser.parse_args()
-    dataset = WaymoDataset(split=args.split, processed_data_tag=args.processed_data_tag)
-    num_workers = mp.cpu_count() - 1
+    dataset = WaymoDataset(split=args.split, processed_data_tag=args.processed_data_tag, frame_sampling_interval=args.frame_sampling_interval, eps=str(args.eps).replace('.', 'p'))
+    num_workers = 5 #mp.cpu_count() - 1
     seq_name_list = [seq_name for seq_name in dataset.infos_dict]
 
     # seq_name = 'segment-10023947602400723454_1120_000_1140_000_with_camera_labels'
@@ -719,13 +724,12 @@ def main():
 
 
     if args.mode == 'simple_cluster':
-        run_func = partial(run_simple_cluster, dataset=dataset, save_rejection_tag=args.save_rejection_tag)
+        run_func = partial(run_simple_cluster, dataset=dataset, eps=args.eps, save_rejection_tag=args.save_rejection_tag)
         with mp.Pool(num_workers) as p:
             results = list(tqdm(p.imap(run_func, seq_name_list), total=len(seq_name_list)))
         
-        #for seq_name in dataset.infos_dict:
-        # seq_name = 'segment-10023947602400723454_1120_000_1140_000_with_camera_labels'
-        # run_simple_cluster(seq_name, dataset,  show_plots=False)
+        # for seq_name in dataset.infos_dict:
+        #     run_simple_cluster(seq_name, dataset,  eps=args.eps, show_plots=False)
 
     else:
         run_func = partial(run1, dataset=dataset)

@@ -1,19 +1,11 @@
 #!/bin/bash
-#SBATCH --wait-all-nodes=1
-#SBATCH --nodes=1
-#SBATCH --gres=gpu:1                     # Request 4 GPUs
-#SBATCH --ntasks=1                          # total number of tasks
-#SBATCH --ntasks-per-node=1                 # Number of gpus per node
-#SBATCH --time=01:00:00                     # 1 hour
-#SBATCH --job-name=cluster_waymo
-#SBATCH --account=rrg-swasland
-#SBATCH --cpus-per-task=6                  # CPU cores/threads
-#SBATCH --mem=64000M                        # memory per node
-#SBATCH --output=./output/log/%x-%j.out     # STDOUT
-#SBATCH --array=1-3%1                       # 3 is the number of jobs in the chain
 
 # die function
 die() { echo "$*" 1>&2 ; exit 1; }
+
+SING_IMG=/raid/home/nisarbar/singularity/ssl_cluster_nuscenes.sif
+DATA_DIR=/raid/datasets/Waymo
+CUDA_VISIBLE_DEVICES=0
 
 # Default Command line args
 # main.py script parameters
@@ -22,11 +14,6 @@ PROCESSED_DATA_TAG='waymo_processed_data_v_1_2_0'
 FRAME_SAMPLING_INTERVAL=1
 EPS=0.2
 
-# Additional parameters
-DATA_DIR=/home/$USER/scratch/Datasets/Waymo
-INFOS_DIR=/home/$USER/scratch/Datasets/Waymo
-
-SING_IMG=/home/$USER/scratch/singularity/ssl_cluster_nuscenes.sif
 
 
 # Usage info
@@ -92,26 +79,6 @@ while :; do
 done
 
 
-echo ""
-echo "Job Array ID / Job ID: $SLURM_ARRAY_JOB_ID / $SLURM_JOB_ID"
-echo "This is job $SLURM_ARRAY_TASK_ID out of $SLURM_ARRAY_TASK_COUNT jobs."
-echo ""
-
-
-# # Get last element in string and increment by 1
-# NUM_GPUS="${CUDA_VISIBLE_DEVICES: -1}"
-# NUM_GPUS=$(($NUM_GPUS + 1))
-# WORLD_SIZE=$((NUM_GPUS * SLURM_NNODES))
-
-
-# echo "NUM GPUS in Node $SLURM_NODEID: $NUM_GPUS"
-# echo "Node $SLURM_NODEID says: split $SPLIT"
-# echo "Node $SLURM_NODEID says: Loading Singularity Env..."
-
-
-# Load Singularity
-module load StdEnv/2020 
-module load singularity/3.7
 
 PROJ_DIR=$PWD
 DEPTH_CONTRAST_BINDS=""
