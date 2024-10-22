@@ -11,7 +11,12 @@ class WaymoDataset(DepthContrastDataset):
         super().__init__(cfg, pretraining=pretraining, mode=mode, logger=logger)
         self.data_root_path =  self.root_path / cfg["DATA_PATH"] #root_path: DepthContrast, DATA_PATH: 'data/waymo'
         self.lidar_data_path = self.data_root_path / cfg.PROCESSED_DATA_TAG 
-        self.cluster_root_path = self.data_root_path / f'{cfg.PROCESSED_DATA_TAG}_clustered'
+        
+        if cfg.get('CLUSTERED_DATA_TAG', None) is not None:
+            self.cluster_root_path = self.data_root_path / f'{cfg.PROCESSED_DATA_TAG}_clustered_{cfg.CLUSTERED_DATA_TAG}'
+        else:
+            self.cluster_root_path = self.data_root_path / f'{cfg.PROCESSED_DATA_TAG}_clustered'
+
         self.seglabels_root_path = self.data_root_path/ f'{cfg.PROCESSED_DATA_TAG}_labels'
         self.split = cfg.DATA_SPLIT[self.mode]
 
