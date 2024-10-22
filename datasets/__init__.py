@@ -56,6 +56,7 @@ def get_loader(dataset, dataset_config, num_dataloader_workers, pin_memory, mode
     shuffle = False
     if mode == 'train' and data_sampler is None:
         shuffle = True
+        logging.info('Shuffling because of train and data sampler is none')
 
     drop_last = True if mode == 'train' else dataset_config["DROP_LAST"] #False
 
