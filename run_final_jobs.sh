@@ -940,6 +940,62 @@ scripts/submit_ddp_turing_finetune_nuscenes_50.sh --mode f  \
 #     --extra_tag try_0 \
 #     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_100_perc_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING! -on turing
+#sweep 1, eps0.3 segcontrast -100 ep with 16 bs - train shuffle is false and drop last on finetuning is false - use old commit 
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
+    --cuda_visible_devices 1 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet \
+    --extra_tag 100ep_bs16_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE!-lovelace
+# pretrain on 2 gpus with 32 bs each gpu for 200 epochs (old commit works since using two gpus)and then finetune on 1 gpu with bs 16 (train shuffle on and drop last false for val pull new commit)
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --tcp_port 18840 --mode p  \
+    --cuda_visible_devices 0,1 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast  \
+    --pretrain_epochs 200 \
+    --pretrain_extra_tag 200ep_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_pretrain_ep200$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE!-lovelace
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --tcp_port 18841 --mode p  \
+    --cuda_visible_devices 2,3 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
+    --pretrain_epochs 200 \
+    --pretrain_extra_tag 200ep_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_pretrain_ep200$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# HEREEEEEEEEEEEEEEEEEEEEE - left to do! -lovelace
+# Pull new commit finetune on 1 gpu with bs 16 (train shuffle on for 1 gpu and drop last false for val pull new commit)
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 0 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast  \
+    --pretrain_epochs 200 \
+    --pretrain_extra_tag 200ep_try0 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet \
+    --extra_tag 100ep_bs16_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# HEREEEEEEEEEEEEEEEEEEEEE - left to do!-lovelace
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 0 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
+    --pretrain_epochs 200 \
+    --pretrain_extra_tag 200ep_try0 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet \
+    --extra_tag 100ep_bs16_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 
 #RUNNING
@@ -1004,53 +1060,96 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
     --workers_per_gpu 4 \
     > ./output/log/nuscenes_sweep1_minkunet_segcontrast_det_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+#sweep 1, eps0.3 det -100 ep with 16 bs
+#IN progress - lovelace
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
+    --cuda_visible_devices 1 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet \
+    --extra_tag 100ep_bs16_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+#sweep 1, eps0.2 det -100 ep with 16 bs
+#IN progress
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
+    --cuda_visible_devices 0 \
+    --model_name nuscenes_sweep1_eps0p2_minkunet_segcontrast_det  \
+    --pretrain_epochs 100 \
+    --pretrain_extra_tag 100ep_try0 \
+    --pretrained_ckpt checkpoint-ep99.pth.tar \
+    --finetune_cfg_file nuscenes_fine1lr_minkunet \
+    --extra_tag 100ep_bs16_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p2_minkunet_segcontrast_det_ep100_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+
 
 
 ###############################
 
+#Pretrain DC and SC with best p32lidar i.e. 0.4 - finetune has droplast-> repeat without drop last
+
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE! 
 #DC + lidarplusdet with p32 0.4 full pretrain and finetune on 1% for [15epochs]
-scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0 \
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets ns --extra_tag try0_drop \
     --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_depthcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
     --model_name depthcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
-    > ./output/log/depthcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_pretrain_200epochs_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/depthcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE! 
+scripts/submit_ddp_turing.sh --tcp_port 18841 --mode f --datasets ns --extra_tag try0_drop \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_depthcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+    --model_name depthcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
+    --frame_sampling_div 5 \
+    > ./output/log/depthcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_fine5_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE!
 #SC + lidarplusdet with p32 0.4 full pretrain and finetune on 1% for [15epochs, 100 epoch]s, 5% for [15 epochs, 30 epochs for waymo, 100 epochs for nusc and semkitti] 
-scripts/submit_ddp_turing.sh --tcp_port 18841 --mode pf --datasets wns --extra_tag try0 \
+scripts/submit_ddp_turing.sh --tcp_port 18842 --mode f --datasets ns --extra_tag try0_drop \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
-    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_pretrain_200epochs_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets wns --extra_tag try0 \
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE!
+#in progress
+scripts/submit_ddp_turing.sh --tcp_port 18843 --mode f --datasets ns --extra_tag try0_drop \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
     --frame_sampling_div 5 \
-    > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_fine5_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets wns --extra_tag try0 \
-    --cuda_visible_devices 2,3  \
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE!
+#in progress
+scripts/submit_ddp_turing.sh --tcp_port 18841 --mode f --datasets ns --extra_tag try0_drop \
+    --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
     --finetune_epochs 100 \
-    > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_fine1_100epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets w --extra_tag try0 \
-    --cuda_visible_devices 2,3  \
+scripts/submit_ddp_turing.sh --tcp_port 18842 --mode f --datasets w --extra_tag try0 \
+    --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
     --finetune_epochs 30 \
     --frame_sampling_div 5 \
-    > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_fine5_30epochs_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets ns --extra_tag try0 \
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE!
+scripts/submit_ddp_turing.sh --tcp_port 18843 --mode f --datasets ns --extra_tag try0_drop \
     --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
     --finetune_epochs 100 \
     --frame_sampling_div 5 \
-    > ./output/log/proposalcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_fine5_100epochs_ns_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 
 ################# HERE

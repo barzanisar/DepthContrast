@@ -334,7 +334,8 @@ def build_dataloader(config, num_workers, pretraining=True, mode='train', logger
         dataset=datasets,
         dataset_config=config,
         num_dataloader_workers=num_workers,
-        pin_memory=True ### Questionable
+        pin_memory=True,
+        mode=mode
     )
     return loader
 

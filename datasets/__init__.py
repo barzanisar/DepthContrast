@@ -41,25 +41,32 @@ def print_sampler_config(data_sampler):
     logging.info("Distributed Sampler config:\n{}".format(sampler_cfg))
 
 
-def get_loader(dataset, dataset_config, num_dataloader_workers, pin_memory):
+def get_loader(dataset, dataset_config, num_dataloader_workers, pin_memory, mode):
     data_sampler = None
     if torch.distributed.is_available() and torch.distributed.is_initialized():
         data_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
         logging.info("Created the Distributed Sampler....")
         print_sampler_config(data_sampler)
-    else:
-        logging.warning(
-            "Distributed trainer not initialized. Not using the sampler and data will NOT be shuffled"  # NOQA
-        )
+    # else:
+    #     logging.warning(
+    #         "Distributed trainer not initialized. Not using the sampler and data will NOT be shuffled"  # NOQA
+    #     )
     collate_function = get_collator(dataset_config["COLLATE_FUNCTION"])
+
+    shuffle = False
+    if mode == 'train' and data_sampler is None:
+        shuffle = True
+
+    drop_last = True if mode == 'train' else dataset_config["DROP_LAST"] #False
+
     dataloader = DataLoader(
         dataset=dataset,
         num_workers=num_dataloader_workers,
         pin_memory=pin_memory,
-        shuffle=False,
+        shuffle=shuffle,
         batch_size=dataset_config["BATCHSIZE_PER_REPLICA"],
         collate_fn=collate_function,
         sampler=data_sampler,
-        drop_last=dataset_config["DROP_LAST"],
+        drop_last=drop_last,
     )
     return dataloader
