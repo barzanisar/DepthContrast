@@ -5,7 +5,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 
 # Default Command line args
 # main.py script parameters
-FINETUNE_CFG_FILE=finetune
+FINETUNE_CFG_FILE=nuscenes_fine1lr_minkunet
 
 MODE=pfd #pretrain, finetune, scratch, debug
 
@@ -14,7 +14,7 @@ PRETRAIN_BATCHSIZE_PER_GPU=32
 FINETUNE_BATCHSIZE_PER_GPU=16
 PRETRAIN_EPOCHS=200
 FINETUNE_EPOCHS=100
-VAL_AFTER_EPOCHS=50
+VAL_AFTER_EPOCHS=0
 # DATA_SKIP_RATIO=1
 
 MODEL_NAME="default"
@@ -116,12 +116,12 @@ while :; do
             die 'ERROR: "--workers_per_gpu" requires a non-empty option argument.'
         fi
         ;;
-    -j|--finetune_cfg_options)       # Takes an option argument; ensure it has been specified.
+    -j|--finetune_bs_per_gpu)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
-            FINETUNE_CFG_OPTIONS=$2
+            FINETUNE_BATCHSIZE_PER_GPU=$2
             shift
         else
-            die 'ERROR: "--finetune_cfg_options" requires a non-empty option argument.'
+            die 'ERROR: "--finetune_bs_per_gpu" requires a non-empty option argument.'
         fi
         ;;
     -l|--cuda_visible_devices)       # Takes an option argument; ensure it has been specified.
@@ -252,23 +252,27 @@ if [[ "$MODE" =~ f ]]; then
         --pretrained_ckpt $PRETRAINED_CKPT 
         --model_name $MODEL_NAME
         --pretrain_extra_tag $PRETRAIN_EXTRA_TAG
-        --extra_tag $EXTRA_TAG 
-        --epochs $FINETUNE_EPOCHS
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
-        --val_after_epochs $VAL_AFTER_EPOCHS
+        
         "
-    FINETUNE_CMD+=$FINETUNE_CFG_OPTIONS
+    FINETUNE_CMD_1perc=$FINETUNE_CMD
+    FINETUNE_CMD_1perc+="  --epochs 100 --data_skip_ratio 100 
+        --job_type finetune_nuscenes_1percent --extra_tag 100ep_"$EXTRA_TAG" --val_after_epochs 30"
 
     echo "Running Finetuning"
-    echo "$FINETUNE_CMD"
-    eval $FINETUNE_CMD
+    echo "$FINETUNE_CMD_1perc"
+    eval $FINETUNE_CMD_1perc
     echo "Done Finetuning"
 
-        # --epochs $FINETUNE_EPOCHS
-        # --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
-        # --data_skip_ratio $FRAME_SAMPLING_DIV
-        #--job_type finetune_"$DATASET"_"$FRAME_SAMPLING_DIV"percent
-        # --val_interval 
+    FINETUNE_CMD_10perc=$FINETUNE_CMD
+    FINETUNE_CMD_10perc+="  --epochs 50 --data_skip_ratio 10
+        --job_type finetune_nuscenes_10percent --extra_tag 50ep_"$EXTRA_TAG" --val_after_epochs 0"
+
+    echo "Running Finetuning"
+    echo "$FINETUNE_CMD_10perc"
+    eval $FINETUNE_CMD_10perc
+    echo "Done Finetuning"
+
 
 fi
 

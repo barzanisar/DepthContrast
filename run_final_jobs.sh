@@ -980,10 +980,9 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
     --pretrain_epochs 200 \
     --pretrain_extra_tag 200ep_try0 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
-    --finetune_cfg_file nuscenes_fine1lr_minkunet \
-    --extra_tag 100ep_bs16_try0 \
+    --extra_tag bs16_try0 \
     --workers_per_gpu 8 \
-    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine1and10perc_bs16_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-lovelace
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
@@ -992,10 +991,34 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
     --pretrain_epochs 200 \
     --pretrain_extra_tag 200ep_try0 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
-    --finetune_cfg_file nuscenes_fine1lr_minkunet \
-    --extra_tag 100ep_bs16_try0 \
+    --extra_tag bs16_try0 \
     --workers_per_gpu 8 \
-    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1perc_100ep$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1and10perc_bs16_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-lovelace
+# Pull new commit finetune on 1 gpu with bs 16 (train shuffle on for 1 gpu and drop last false for val pull new commit)
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 2 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast  \
+    --pretrain_epochs 200 \
+    --pretrain_extra_tag 200ep_try0 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --extra_tag bs8_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine1and10perc_bs8_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-lovelace
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 3 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
+    --pretrain_epochs 200 \
+    --pretrain_extra_tag 200ep_try0 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    
+    --extra_tag bs8_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1and10perc_bs8_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
 
 
 #RUNNING
@@ -1090,6 +1113,7 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
 
 ###############################
 #Hyper param sensitivity on cluster_eps: pretrain on 2 gpus, 30 epochs on 10% waymo, total_bs 32 - fintune on 1% wns for 15 epochs 2 gpus, total_bs 16 (with drop last and later without) 
+# HEREEEEEEEEEEEEEEEEEEEEE - TODO! 
 scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
     --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p1.yaml \
@@ -1098,14 +1122,16 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
     --pretrained_ckpt checkpoint-ep29.pth.tar \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p1_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING!-turing
 scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
-    --cuda_visible_devices 0,1  \
+    --cuda_visible_devices 1,2  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p2.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2  \
     --pretrain_epochs 30 \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+# HEREEEEEEEEEEEEEEEEEEEEE - TODO! 
 scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
     --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p3.yaml \
