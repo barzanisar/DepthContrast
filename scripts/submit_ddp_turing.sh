@@ -19,6 +19,7 @@ FINETUNE_BATCHSIZE_PER_GPU=8
 PRETRAIN_EPOCHS=200
 FINETUNE_EPOCHS=15
 FRAME_SAMPLING_DIV=1
+DATA_SKIP_RATIO=100 #1% for nuscenes
 
 MODEL_NAME="default"
 PRETRAIN_EXTRA_TAG="try0"
@@ -201,6 +202,14 @@ while :; do
             die 'ERROR: "--val_after_epochs" requires a non-empty option argument.'
         fi
         ;;
+    -r|--data_skip_ratio)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            DATA_SKIP_RATIO=$2
+            shift
+        else
+            die 'ERROR: "--data_skip_ratio" requires a non-empty option argument.'
+        fi
+        ;;
     # Additional parameters
     -?*)
         printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
@@ -315,6 +324,7 @@ if [[ "$MODE" =~ f ]]; then
     --pretrain_extra_tag "$PRETRAIN_EPOCHS"ep_"$PRETRAIN_EXTRA_TAG"
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
     --frame_sampling_div $FRAME_SAMPLING_DIV 
+    --data_skip_ratio $DATA_SKIP_RATIO
     --val_after_epochs $VAL_AFTER_EPOCHS
     "
 
@@ -374,6 +384,7 @@ if [[ "$MODE" =~ s ]]; then
     --pretrained_ckpt checkpoint-ep0.pth.tar 
     --workers $WORKERS_PER_GPU 
     --frame_sampling_div $FRAME_SAMPLING_DIV 
+    --data_skip_ratio $DATA_SKIP_RATIO
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
     --val_after_epochs $VAL_AFTER_EPOCHS
     "
