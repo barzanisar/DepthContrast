@@ -373,18 +373,24 @@ fi
 
 if [[ "$MODE" =~ s ]]; then
     SCRATCH_CMD=$BASE_CMD
-    SCRATCH_CMD+="python -m torch.distributed.launch
-    --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
-    /DepthContrast/tools/downstream_segmentation.py
-    --launcher pytorch
-    --multiprocessing-distributed --world-size $NUM_GPUS 
-    --dist-url tcp://$MASTER_ADDR:$TCP_PORT 
-    --epochs $FINETUNE_EPOCHS
+     if [ "$NUM_GPUS" -gt 1 ]; then
+
+        SCRATCH_CMD+="python -m torch.distributed.launch
+        --nproc_per_node=$NUM_GPUS --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$TCP_PORT --max_restarts=0
+        /DepthContrast/tools/downstream_segmentation.py
+        --launcher pytorch
+        --multiprocessing-distributed --world-size $NUM_GPUS 
+        --dist-url tcp://$MASTER_ADDR:$TCP_PORT"
+    else
+        SCRATCH_CMD+="python /DepthContrast/tools/downstream_segmentation.py"
+    fi
+
+    SCRATCH_CMD+=" --epochs $FINETUNE_EPOCHS
     --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
     --pretrained_ckpt checkpoint-ep0.pth.tar 
     --workers $WORKERS_PER_GPU 
     --frame_sampling_div $FRAME_SAMPLING_DIV 
-    --data_skip_ratio $DATA_SKIP_RATIO
+    --data_skip_ratio $DATA_SKIP_RATIO 
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
     --val_after_epochs $VAL_AFTER_EPOCHS
     "
