@@ -74,7 +74,7 @@ parser.add_argument('--extra_tag', type=str, default='default', help='model extr
 parser.add_argument('--workers', default=-1, type=int, help='workers per gpu')
 parser.add_argument('--val_after_epochs', default=0, type=int, help='workers per gpu')
 parser.add_argument('--wandb_dont_resume', action='store_true', default=False, help='for compute canada offline wandb, dont resume')
-
+parser.add_argument('--drop_last_val', action='store_true', default=False)
 
 def main():
     args = parser.parse_args()
@@ -90,6 +90,8 @@ def main():
             cfg['dataset']['DATA_SKIP_RATIO']['train'] = args.data_skip_ratio
     if args.val_interval > 0:
         cfg['val_interval'] = args.val_interval
+    if args.drop_last_val:
+        cfg['dataset']['DROP_LAST'] = True
     
     cfg['val_after_epochs'] = args.val_after_epochs
 

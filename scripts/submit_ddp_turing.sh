@@ -20,6 +20,7 @@ PRETRAIN_EPOCHS=200
 FINETUNE_EPOCHS=15
 FRAME_SAMPLING_DIV=1
 DATA_SKIP_RATIO=100 #1% for nuscenes
+DROP_LAST_VAL=false
 
 MODEL_NAME="default"
 PRETRAIN_EXTRA_TAG="try0"
@@ -210,6 +211,10 @@ while :; do
             die 'ERROR: "--data_skip_ratio" requires a non-empty option argument.'
         fi
         ;;
+    -s|--drop_last_val)       # Takes an option argument; ensure it has been specified.
+        DROP_LAST_VAL=true
+        shift
+        ;;
     # Additional parameters
     -?*)
         printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
@@ -328,6 +333,10 @@ if [[ "$MODE" =~ f ]]; then
     --val_after_epochs $VAL_AFTER_EPOCHS
     "
 
+    if [[ "$DROP_LAST_VAL" == "true" ]]; then
+        FINETUNE_CMD+=" --drop_last_val"
+    fi
+
     
     if [[ "$DATASETS" =~ w ]]; then
         DATASET=waymo
@@ -394,6 +403,12 @@ if [[ "$MODE" =~ s ]]; then
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
     --val_after_epochs $VAL_AFTER_EPOCHS
     "
+
+    if [[ "$DROP_LAST_VAL" == "true" ]]; then
+        SCRATCH_CMD+=" --drop_last_val"
+    fi
+
+
     if [[ "$DATASETS" =~ w ]]; then
         DATASET=waymo
 

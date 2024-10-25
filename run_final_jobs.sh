@@ -1033,7 +1033,7 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
 
 # HEREEEEEEEEEEEEEEEEEEEEE - TODO -turing - ALSO optimizer, single gpu, train shuffle on and drop last in val false!
 scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
-    --cuda_visible_devices 2 \
+    --cuda_visible_devices 3 \
     --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
     --pretrain_epochs 200 \
     --pretrain_extra_tag 200ep_try0 \
@@ -1042,6 +1042,7 @@ scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
     --workers_per_gpu 8 \
     > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1and10perc_bs8_also_optim_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+# HEREEEEEEEEEEEEEEEEEEEEE - TODO -do the same for segcontrast but choose the best epoch and optimizer and repeat for other percentages in BEVContrast paper
 
 
 #RUNNING
@@ -1135,6 +1136,37 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
 
 
 ###############################
+#Hyper param sensitivity on lidar aug prob with eps 0.2:
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing! 
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p3_eps0p2.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p3_eps0p2  \
+    --pretrain_epochs 30 \
+    --pretrained_ckpt checkpoint-ep29.pth.tar \
+    --drop_last_val \
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p3_eps0p2_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p5_eps0p2.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p5_eps0p2  \
+    --pretrain_epochs 30 \
+    --pretrained_ckpt checkpoint-ep29.pth.tar \
+    --drop_last_val \
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p5_eps0p2_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p6_eps0p2.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p6_eps0p2  \
+    --pretrain_epochs 30 \
+    --pretrained_ckpt checkpoint-ep29.pth.tar \
+    --drop_last_val \
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p6_eps0p2_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+
+
 #Hyper param sensitivity on cluster_eps: pretrain on 2 gpus, 30 epochs on 10% waymo, total_bs 32 - fintune on 1% wns for 15 epochs 2 gpus, total_bs 16 (with drop last and later without) 
 # HEREEEEEEEEEEEEEEEEEEEEE - DONE-lovelace! finetuning on lovelace wit drop last
 scripts/submit_ddp_turing.sh --tcp_port 18840 --mode f --datasets wns --extra_tag try0_drop \
