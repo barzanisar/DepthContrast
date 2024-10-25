@@ -940,7 +940,7 @@ scripts/submit_ddp_turing_finetune_nuscenes_50.sh --mode f  \
 #     --extra_tag try_0 \
 #     > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_finetune_nuscenes_100_perc_try_0_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# HEREEEEEEEEEEEEEEEEEEEEE - TODO! -on turing
+# HEREEEEEEEEEEEEEEEEEEEEE - DONT dO! -on turing
 #sweep 1, eps0.3 segcontrast - pretrain with 100 ep, bs 32 on 1 gpu, finetune 100 ep with 16 bs - train shuffle is false and drop last on finetuning is false - use old commit 
 scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
     --cuda_visible_devices 0 \
@@ -1019,6 +1019,28 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
     --extra_tag bs8_try0 \
     --workers_per_gpu 8 \
     > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1and10perc_bs8_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# HEREEEEEEEEEEEEEEEEEEEEE - TODO -turing - single gpu, train shuffle on and drop last in val false!
+scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+    --cuda_visible_devices 2 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
+    --pretrain_epochs 200 \
+    --pretrain_extra_tag 200ep_try0 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --extra_tag bs8_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1perc_bs8_250ep_fine10perc_bs8_100ep_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+# HEREEEEEEEEEEEEEEEEEEEEE - TODO -turing - ALSO optimizer, single gpu, train shuffle on and drop last in val false!
+scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
+    --cuda_visible_devices 2 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
+    --pretrain_epochs 200 \
+    --pretrain_extra_tag 200ep_try0 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --extra_tag bs8_try0 \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1and10perc_bs8_also_optim_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 
 
@@ -1206,7 +1228,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18844 --mode f --datasets ns --extra_tag
 
 #####################################################
 ## Rebuttal experiments redo on 2 GPUS!
-# HEREEEEEEEEEEEEEEEEEEEEE - 
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing
 # redo scratch and segcontrast finetuning experiments on 5% wns for 30, 100, 100 epochs using 2 gpus this time (before we used a single gpu with train shuffling false so buggy) and drop last
 echo "SC and scratch finetuning on 5% waymo, 30 epochs, 2 gpus (drop last)"
 scripts/submit_ddp_turing.sh --tcp_port 18842 --mode fs --datasets w --extra_tag try0_2gpus_drop \
@@ -1217,7 +1239,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18842 --mode fs --datasets w --extra_tag
     --frame_sampling_div 5 \
     > ./output/log/segcontrast_10perc_waymo_minkunet_fine5_30epochs_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# HEREEEEEEEEEEEEEEEEEEEEE - 
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing
 echo "SC and scratch finetuning on 5% ns, 100 epochs, 2 gpus (drop last)"
 scripts/submit_ddp_turing.sh --tcp_port 18842 --mode fs --datasets ns --extra_tag try0_2gpus_drop \
     --cuda_visible_devices 0,1  \
@@ -1229,6 +1251,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18842 --mode fs --datasets ns --extra_ta
     --val_after_epochs 50 \
     > ./output/log/segcontrast_10perc_waymo_minkunet_fine5_100epochs_ns_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing
 echo "SC+lidar_det  finetuning on 5% waymo, 30 epochs, 2 gpus (drop last)"
 scripts/submit_ddp_turing.sh --tcp_port 18842 --mode f --datasets w --extra_tag try0_2gpus_drop \
     --cuda_visible_devices 0,1  \
@@ -1238,6 +1261,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18842 --mode f --datasets w --extra_tag 
     --frame_sampling_div 5 \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_fine5_30epochs_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing
 echo "SC+lidar_det  finetuning on 5% ns, 100 epochs, 2 gpus (drop last)"
 scripts/submit_ddp_turing.sh --tcp_port 18842 --mode f --datasets ns --extra_tag try0_2gpus_drop \
     --cuda_visible_devices 0,1  \
@@ -1248,9 +1272,9 @@ scripts/submit_ddp_turing.sh --tcp_port 18842 --mode f --datasets ns --extra_tag
     --data_skip_ratio 20 \
     --val_after_epochs 50 \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_fine5_100epochs_ns_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
-
-
 ################# HERE
+
+
 
 
 

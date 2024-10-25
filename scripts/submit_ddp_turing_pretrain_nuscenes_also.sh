@@ -5,7 +5,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 
 # Default Command line args
 # main.py script parameters
-FINETUNE_CFG_FILE=nuscenes_fine1lr_minkunet
+FINETUNE_CFG_FILE=nuscenes_fine1lr_minkunet_also_cfg
 
 MODE=pfd #pretrain, finetune, scratch, debug
 
@@ -265,22 +265,40 @@ if [[ "$MODE" =~ f ]]; then
     # echo "Done Finetuning"
 
     FINETUNE_CMD_1perc=$FINETUNE_CMD
-    FINETUNE_CMD_1perc+="  --epochs 250 --data_skip_ratio 100 
-        --job_type finetune_nuscenes_1percent --extra_tag 250ep_"$EXTRA_TAG" --val_after_epochs 130"
+    FINETUNE_CMD_1perc+="  --epochs 100 --data_skip_ratio 100 
+        --job_type finetune_nuscenes_1percent --extra_tag 100ep_"$EXTRA_TAG" --val_after_epochs 30"
 
-    echo "Running Finetuning 1 perc 250 epochs"
+    echo "Running Finetuning  1 perc 100 epochs" 
+    echo "$FINETUNE_CMD_1perc"
+    eval $FINETUNE_CMD_1perc
+    echo "Done Finetuning  1 perc 100 epochs"
+
+    FINETUNE_CMD_1perc=$FINETUNE_CMD
+    FINETUNE_CMD_1perc+="  --epochs 250 --data_skip_ratio 100 
+        --job_type finetune_nuscenes_1percent --extra_tag 250ep_"$EXTRA_TAG" --val_after_epochs 100"
+
+    echo "Running Finetuning  1 perc 250 epochs" 
     echo "$FINETUNE_CMD_1perc"
     eval $FINETUNE_CMD_1perc
     echo "Done Finetuning  1 perc 250 epochs"
 
-    # FINETUNE_CMD_10perc=$FINETUNE_CMD
-    # FINETUNE_CMD_10perc+="  --epochs 50 --data_skip_ratio 10
-    #     --job_type finetune_nuscenes_10percent --extra_tag 50ep_"$EXTRA_TAG" --val_after_epochs 0"
+    FINETUNE_CMD_1perc=$FINETUNE_CMD
+    FINETUNE_CMD_1perc+="  --epochs 500 --data_skip_ratio 100 
+        --job_type finetune_nuscenes_1percent --extra_tag 500ep_"$EXTRA_TAG" --val_after_epochs 100 --val_interval 5"
 
-    # echo "Running Finetuning"
-    # echo "$FINETUNE_CMD_10perc"
-    # eval $FINETUNE_CMD_10perc
-    # echo "Done Finetuning"
+    echo "Running Finetuning  1 perc 500 epochs" 
+    echo "$FINETUNE_CMD_1perc"
+    eval $FINETUNE_CMD_1perc
+    echo "Done Finetuning  1 perc 500 epochs"
+
+    FINETUNE_CMD_10perc=$FINETUNE_CMD
+    FINETUNE_CMD_10perc+="  --epochs 50 --data_skip_ratio 10
+        --job_type finetune_nuscenes_10percent --extra_tag 50ep_"$EXTRA_TAG" --val_after_epochs 0"
+
+    echo "Running Finetuning 10 perc 50 epochs"
+    echo "$FINETUNE_CMD_10perc"
+    eval $FINETUNE_CMD_10perc
+    echo "Done Finetuning  10 perc 50 epochs"
 
     FINETUNE_CMD_10perc=$FINETUNE_CMD
     FINETUNE_CMD_10perc+="  --epochs 100 --data_skip_ratio 10
