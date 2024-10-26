@@ -19,7 +19,7 @@ VAL_AFTER_EPOCHS=0
 
 MODEL_NAME="default"
 PRETRAIN_EXTRA_TAG="200ep_try0"
-EXTRA_TAG="try0"
+EXTRA_TAG="try0_also"
 
 SING_IMG=/raid/home/nisarbar/singularity/ssl_proposal.sif
 DATA_DIR=/raid/datasets/Waymo
