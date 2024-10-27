@@ -255,23 +255,34 @@ if [[ "$MODE" =~ f ]]; then
         --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU
         
         "
-    # FINETUNE_CMD_1perc=$FINETUNE_CMD
-    # FINETUNE_CMD_1perc+="  --epochs 100 --data_skip_ratio 100 
-    #     --job_type finetune_nuscenes_1percent --extra_tag 100ep_"$EXTRA_TAG" --val_after_epochs 30"
+    #################
+    FINETUNE_CMD_0p1perc=$FINETUNE_CMD
+    FINETUNE_CMD_0p1perc+="  --epochs 500 --data_skip_ratio 1000 
+        --job_type finetune_nuscenes_0p1percent --extra_tag 500ep_"$EXTRA_TAG" --val_interval 5 --val_after_epochs 250"
 
-    # echo "Running Finetuning"
-    # echo "$FINETUNE_CMD_1perc"
-    # eval $FINETUNE_CMD_1perc
-    # echo "Done Finetuning"
+    echo "Running Finetuning  0.1 perc 500 epochs" 
+    echo "$FINETUNE_CMD_0p1perc"
+    eval $FINETUNE_CMD_0p1perc
+    echo "Done Finetuning  0.1 perc 500 epochs"
 
-    FINETUNE_CMD_1perc=$FINETUNE_CMD
-    FINETUNE_CMD_1perc+="  --epochs 100 --data_skip_ratio 100 
-        --job_type finetune_nuscenes_1percent --extra_tag 100ep_"$EXTRA_TAG" --val_after_epochs 30"
+    FINETUNE_CMD_0p1perc=$FINETUNE_CMD
+    FINETUNE_CMD_0p1perc+="  --epochs 750 --data_skip_ratio 1000 
+        --job_type finetune_nuscenes_0p1percent --extra_tag 750ep_"$EXTRA_TAG" --val_interval 5 --val_after_epochs 500"
 
-    echo "Running Finetuning  1 perc 100 epochs" 
-    echo "$FINETUNE_CMD_1perc"
-    eval $FINETUNE_CMD_1perc
-    echo "Done Finetuning  1 perc 100 epochs"
+    echo "Running Finetuning  0.1 perc 750 epochs" 
+    echo "$FINETUNE_CMD_0p1perc"
+    eval $FINETUNE_CMD_0p1perc
+    echo "Done Finetuning  0.1 perc 750 epochs"
+
+    FINETUNE_CMD_0p1perc=$FINETUNE_CMD
+    FINETUNE_CMD_0p1perc+="  --epochs 1000 --data_skip_ratio 1000 
+        --job_type finetune_nuscenes_0p1percent --extra_tag 1000ep_"$EXTRA_TAG" --val_interval 10 --val_after_epochs 500"
+    
+    echo "Running Finetuning  0.1 perc 1000 epochs" 
+    echo "$FINETUNE_CMD_0p1perc"
+    eval $FINETUNE_CMD_0p1perc
+    echo "Done Finetuning  0.1 perc 1000 epochs"
+    #################
 
     FINETUNE_CMD_1perc=$FINETUNE_CMD
     FINETUNE_CMD_1perc+="  --epochs 250 --data_skip_ratio 100 
@@ -282,23 +293,6 @@ if [[ "$MODE" =~ f ]]; then
     eval $FINETUNE_CMD_1perc
     echo "Done Finetuning  1 perc 250 epochs"
 
-    FINETUNE_CMD_1perc=$FINETUNE_CMD
-    FINETUNE_CMD_1perc+="  --epochs 500 --data_skip_ratio 100 
-        --job_type finetune_nuscenes_1percent --extra_tag 500ep_"$EXTRA_TAG" --val_after_epochs 100 --val_interval 5"
-
-    echo "Running Finetuning  1 perc 500 epochs" 
-    echo "$FINETUNE_CMD_1perc"
-    eval $FINETUNE_CMD_1perc
-    echo "Done Finetuning  1 perc 500 epochs"
-
-    FINETUNE_CMD_10perc=$FINETUNE_CMD
-    FINETUNE_CMD_10perc+="  --epochs 50 --data_skip_ratio 10
-        --job_type finetune_nuscenes_10percent --extra_tag 50ep_"$EXTRA_TAG" --val_after_epochs 0"
-
-    echo "Running Finetuning 10 perc 50 epochs"
-    echo "$FINETUNE_CMD_10perc"
-    eval $FINETUNE_CMD_10perc
-    echo "Done Finetuning  10 perc 50 epochs"
 
     FINETUNE_CMD_10perc=$FINETUNE_CMD
     FINETUNE_CMD_10perc+="  --epochs 100 --data_skip_ratio 10
@@ -309,6 +303,23 @@ if [[ "$MODE" =~ f ]]; then
     eval $FINETUNE_CMD_10perc
     echo "Done Finetuning  10 perc 100 epochs"
 
+    FINETUNE_CMD_50perc=$FINETUNE_CMD
+    FINETUNE_CMD_50perc+="  --epochs 50 --data_skip_ratio 2
+        --job_type finetune_nuscenes_50percent --extra_tag 50ep_"$EXTRA_TAG" --val_after_epochs 10"
+
+    echo "Running Finetuning  50 perc 50 epochs"
+    echo "$FINETUNE_CMD_50perc"
+    eval $FINETUNE_CMD_50perc
+    echo "Done Finetuning  50 perc 50 epochs"
+
+    FINETUNE_CMD_100perc=$FINETUNE_CMD
+    FINETUNE_CMD_100perc+="  --epochs 30 --data_skip_ratio 1
+        --job_type finetune_nuscenes_100percent --extra_tag 30ep_"$EXTRA_TAG""
+
+    echo "Running Finetuning  100 perc 30 epochs"
+    echo "$FINETUNE_CMD_100perc"
+    eval $FINETUNE_CMD_100perc
+    echo "Done Finetuning  100 perc 30 epochs"
 
 fi
 

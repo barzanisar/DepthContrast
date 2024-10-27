@@ -1020,16 +1020,16 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
     --workers_per_gpu 8 \
     > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1and10perc_bs8_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# HEREEEEEEEEEEEEEEEEEEEEE - TODO -turing - single gpu, train shuffle on and drop last in val false!
-scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
-    --cuda_visible_devices 2 \
-    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
-    --pretrain_epochs 200 \
-    --pretrain_extra_tag 200ep_try0 \
-    --pretrained_ckpt checkpoint-ep199.pth.tar \
-    --extra_tag bs8_try0 \
-    --workers_per_gpu 8 \
-    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1perc_bs8_250ep_fine10perc_bs8_100ep_$(date +%Y-%m-%d_%H:%M).out 2>&1
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE -turing - single gpu, train shuffle on and drop last in val false!
+# scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
+#     --cuda_visible_devices 2 \
+#     --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
+#     --pretrain_epochs 200 \
+#     --pretrain_extra_tag 200ep_try0 \
+#     --pretrained_ckpt checkpoint-ep199.pth.tar \
+#     --extra_tag bs8_try0 \
+#     --workers_per_gpu 8 \
+#     > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1perc_bs8_250ep_fine10perc_bs8_100ep_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # HEREEEEEEEEEEEEEEEEEEEEE - TODO -turing - ALSO optimizer, single gpu, train shuffle on and drop last in val false!
 scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
@@ -1038,9 +1038,19 @@ scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
     --pretrain_epochs 200 \
     --pretrain_extra_tag 200ep_try0 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
-    --extra_tag bs8_try0 \
+    --extra_tag bs8_try00_also \
     --workers_per_gpu 8 \
-    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1and10perc_bs8_also_optim_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
+    --cuda_visible_devices 3 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast  \
+    --pretrain_epochs 200 \
+    --pretrain_extra_tag 200ep_try0 \
+    --pretrained_ckpt checkpoint-ep199.pth.tar \
+    --extra_tag bs8_try0_also \
+    --workers_per_gpu 8 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # HEREEEEEEEEEEEEEEEEEEEEE - TODO -do the same for segcontrast but choose the best epoch and optimizer and repeat for other percentages in BEVContrast paper
 
@@ -1137,7 +1147,8 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode pf  \
 
 ###############################
 #Hyper param sensitivity on lidar aug prob with eps 0.2:
-# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing! 
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing! pretrain on 2 gpus, 30 epochs on 10% waymo, total_bs 32 - fintune on 1% wns for 15 epochs 2 gpus, total_bs 16 (with drop last and later without) 
+echo "SC lidar+det lidar p32_0p3"
 scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
     --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p3_eps0p2.yaml \
@@ -1147,6 +1158,8 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
     --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p3_eps0p2_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing!
+echo "SC lidar+det lidar p32_0p5"
 scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
     --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p5_eps0p2.yaml \
@@ -1156,6 +1169,8 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
     --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p5_eps0p2_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing!
+echo "SC lidar+det lidar p32_0p6"
 scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
     --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p6_eps0p2.yaml \
