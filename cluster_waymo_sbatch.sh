@@ -7,10 +7,15 @@ frame_sampling_interval=10 #cluster 10 perc waymo train
 # Loop through the ranges
 for ((i = 0; i <= 15; i += 1)); do
     # Execute the command and redirect output to the log file
-    sbatch --time=3:00:00 --job-name=eps${eps_name}_train_${i}_cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_${i} --frame_sampling_interval ${frame_sampling_interval} --eps ${eps}
+    # sbatch --time=3:00:00 --job-name=eps${eps_name}_train_${i}_cluster_waymo scripts/submit_compute_canada_cluster_waymo.sh --split train_${i} --frame_sampling_interval ${frame_sampling_interval} --eps ${eps}
+    scripts/submit_turing_cluster_waymo.sh --split train_${i} --frame_sampling_interval ${frame_sampling_interval} --eps ${eps} > ./output/log/eps${eps_name}_train_${i}_cluster_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
 done
 
-
+#on lovelace
+scripts/submit_turing_cluster_waymo.sh --split train --frame_sampling_interval 10 --eps 0.1 > ./output/log/eps0p1_train_cluster_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_turing_cluster_waymo.sh --split train --frame_sampling_interval 10 --eps 0.2 > ./output/log/eps0p2_train_cluster_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_turing_cluster_waymo.sh --split train --frame_sampling_interval 10 --eps 0.3 > ./output/log/eps0p3_train_cluster_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_turing_cluster_waymo.sh --split train --frame_sampling_interval 10 --eps 0.4 > ./output/log/eps0p4_train_cluster_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # sbatch --time=05:00:00 --array=1-2%1 --job-name=cluster_waymo_0 scripts/submit_compute_canada_cluster_waymo.sh --split train_0 
 # sbatch --time=05:00:00 --array=1-2%1 --job-name=cluster_waymo_1 scripts/submit_compute_canada_cluster_waymo.sh --split train_1

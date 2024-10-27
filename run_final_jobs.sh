@@ -1031,7 +1031,7 @@ scripts/submit_ddp_turing_pretrain_nuscenes.sh --mode f  \
 #     --workers_per_gpu 8 \
 #     > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine1perc_bs8_250ep_fine10perc_bs8_100ep_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# HEREEEEEEEEEEEEEEEEEEEEE - TODO -turing - ALSO optimizer, single gpu, train shuffle on and drop last in val false!
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING -turing - ALSO optimizer, single gpu, train shuffle on and drop last in val false!
 scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
     --cuda_visible_devices 3 \
     --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
@@ -1042,15 +1042,16 @@ scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
     --workers_per_gpu 8 \
     > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
-    --cuda_visible_devices 3 \
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING -turing - ALSO optimizer, single gpu, train shuffle on and drop last in val false!
+scripts/submit_ddp_turing_pretrain_nuscenes_also_wo_0p1.sh --mode f  \
+    --cuda_visible_devices 2 \
     --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast  \
     --pretrain_epochs 200 \
     --pretrain_extra_tag 200ep_try0 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
     --extra_tag bs8_try0_also \
     --workers_per_gpu 8 \
-    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine-1-10-50-100perc_bs8_also_optim_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # HEREEEEEEEEEEEEEEEEEEEEE - TODO -do the same for segcontrast but choose the best epoch and optimizer and repeat for other percentages in BEVContrast paper
 
@@ -1298,7 +1299,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18842 --mode fs --datasets ns --extra_ta
     --val_after_epochs 50 \
     > ./output/log/segcontrast_10perc_waymo_minkunet_fine5_100epochs_ns_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing
+# HEREEEEEEEEEEEEEEEEEEEEE - TODO-turing
 echo "SC+lidar_det  finetuning on 5% waymo, 30 epochs, 2 gpus (drop last)"
 scripts/submit_ddp_turing.sh --tcp_port 18842 --mode f --datasets w --extra_tag try0_2gpus_drop \
     --cuda_visible_devices 0,1  \
