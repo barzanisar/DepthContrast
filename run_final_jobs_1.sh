@@ -67,7 +67,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
     --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p5_eps0p2_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing!
+# HEREEEEEEEEEEEEEEEEEEEEE - DONE-turing!
 echo "SC lidar+det lidar p32_0p6"
 scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
     --cuda_visible_devices 0,1  \
@@ -78,7 +78,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
     --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p6_eps0p2_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-#TODO: repeat these exp again (low priority)
+#TODO: repeat these above exp again (low priority)
 ###############################
 #Hyper param sensitivity on cluster_eps: pretrain on 2 gpus, 30 epochs on 10% waymo, total_bs 32 - fintune on 1% wns for 15 epochs 2 gpus, total_bs 16 (with drop last) 
 # HEREEEEEEEEEEEEEEEEEEEEE - DONE-lovelace! finetuning on lovelace wit drop last
@@ -88,6 +88,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p1  \
     --pretrain_epochs 30 \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
+    --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p1_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # HEREEEEEEEEEEEEEEEEEEEEE - DONE!-turing
@@ -97,6 +98,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2  \
     --pretrain_epochs 30 \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
+    --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # HEREEEEEEEEEEEEEEEEEEEEE - DONE-turing!
@@ -106,18 +108,20 @@ scripts/submit_ddp_turing.sh --tcp_port 18841 --mode pf --datasets wns --extra_t
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p3  \
     --pretrain_epochs 30 \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
+    --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p3_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# HEREEEEEEEEEEEEEEEEEEEEE - TODO-turing!
+# HEREEEEEEEEEEEEEEEEEEEEE - TODO-turing! -> generating clusters in progress on lovelace
 scripts/submit_ddp_turing.sh --tcp_port 18841 --mode pf --datasets wns --extra_tag try0_drop \
-    --cuda_visible_devices 2,3  \
+    --cuda_visible_devices 0,1  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p4.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p4  \
     --pretrain_epochs 30 \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
+    --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p4_fine1_15epochs_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-#TODO: repeat these exp again (low priority)
+#TODO: repeat these above exp again (low priority)
 #####################################################
 ## Rebuttal experiments redo on 2 GPUS!
 # HEREEEEEEEEEEEEEEEEEEEEE - DONE-turing
@@ -129,6 +133,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18842 --mode fs --datasets w --extra_tag
     --model_name segcontrast_10perc_waymo_minkunet  \
     --finetune_epochs 30 \
     --frame_sampling_div 5 \
+    --drop_last_val \
     > ./output/log/segcontrast_10perc_waymo_minkunet_fine5_30epochs_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # HEREEEEEEEEEEEEEEEEEEEEE - DONE-turing
@@ -141,16 +146,18 @@ scripts/submit_ddp_turing.sh --tcp_port 18842 --mode fs --datasets ns --extra_ta
     --frame_sampling_div 5 \
     --data_skip_ratio 20 \
     --val_after_epochs 50 \
+    --drop_last_val \
     > ./output/log/segcontrast_10perc_waymo_minkunet_fine5_100epochs_ns_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-# HEREEEEEEEEEEEEEEEEEEEEE - TODO-turing
+# HEREEEEEEEEEEEEEEEEEEEEE - RUNNING-turing
 echo "SC+lidar_det  finetuning on 5% waymo, 30 epochs, 2 gpus (drop last)"
 scripts/submit_ddp_turing.sh --tcp_port 18842 --mode f --datasets w --extra_tag try0_2gpus_drop \
-    --cuda_visible_devices 0,1  \
+    --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
     --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
     --finetune_epochs 30 \
     --frame_sampling_div 5 \
+    --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_fine5_30epochs_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # HEREEEEEEEEEEEEEEEEEEEEE - DONE-turing
@@ -163,7 +170,8 @@ scripts/submit_ddp_turing.sh --tcp_port 18842 --mode f --datasets ns --extra_tag
     --frame_sampling_div 5 \
     --data_skip_ratio 20 \
     --val_after_epochs 50 \
+    --drop_last_val \
     > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_fine5_100epochs_ns_drop_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-#TODO: repeat these exp again
+#TODO: repeat these above exp again
 ################# HERE
