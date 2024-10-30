@@ -257,14 +257,24 @@ if [[ "$MODE" =~ f ]]; then
         "
     #################
 
-    FINETUNE_CMD_0p1perc=$FINETUNE_CMD
-    FINETUNE_CMD_0p1perc+="  --epochs 750 --data_skip_ratio 1000 
-        --job_type finetune_nuscenes_0p1percent --extra_tag 750ep_"$EXTRA_TAG" --val_interval 5 --val_after_epochs 500"
+    # FINETUNE_CMD_0p1perc=$FINETUNE_CMD
+    # FINETUNE_CMD_0p1perc+="  --epochs 750 --data_skip_ratio 1000 
+    #     --job_type finetune_nuscenes_0p1percent --extra_tag 750ep_"$EXTRA_TAG" --val_interval 5 --val_after_epochs 500"
 
-    echo "Running Finetuning  0.1 perc 750 epochs" 
+    # echo "Running Finetuning  0.1 perc 750 epochs" 
+    # echo "$FINETUNE_CMD_0p1perc"
+    # eval $FINETUNE_CMD_0p1perc
+    # echo "Done Finetuning  0.1 perc 750 epochs"
+
+
+    FINETUNE_CMD_0p1perc=$FINETUNE_CMD
+    FINETUNE_CMD_0p1perc+="  --epochs 1000 --data_skip_ratio 1000 
+        --job_type finetune_nuscenes_0p1percent --extra_tag 1000ep_"$EXTRA_TAG" --val_interval 20"
+
+    echo "Running Finetuning  0.1 perc 1000 epochs" 
     echo "$FINETUNE_CMD_0p1perc"
     eval $FINETUNE_CMD_0p1perc
-    echo "Done Finetuning  0.1 perc 750 epochs"
+    echo "Done Finetuning  0.1 perc 1000 epochs"
 
     #################
 
