@@ -25,20 +25,20 @@ scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
     --pretrain_epochs 200 \
     --pretrain_extra_tag 200ep_try0 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
-    --extra_tag bs8_try4_also \
+    --extra_tag bs8_try5_also \
     --workers_per_gpu 4 \
-    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try4_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try5_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # HEREEEEEEEEEEEEEEEEEEEEE - RUNNING -turing - ALSO optimizer, single gpu, train shuffle on and drop last in val false!
 scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
-    --cuda_visible_devices 2 \
+    --cuda_visible_devices 1 \
     --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast  \
     --pretrain_epochs 200 \
     --pretrain_extra_tag 200ep_try0 \
     --pretrained_ckpt checkpoint-ep199.pth.tar \
-    --extra_tag bs8_try4_also \
+    --extra_tag bs8_try5_also \
     --workers_per_gpu 4 \
-    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try4_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try5_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 #TODO: select best num epochs for 0.1 percent and finetune SC+det 5 times on each perc 0.1,1,10,50,100
 #TODO: finetune SC 5 times on each perc 0.1,1,10,50,100
