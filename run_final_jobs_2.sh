@@ -98,7 +98,28 @@ scripts/submit_ddp_turing_1.sh  --mode f --datasets wns --extra_tag try"$TRY"_fi
 
 ##########################################################################################################################
 
+#finetune our model pretrained on waymo on semantickitti with bs8 using ALSO optimizer and bevcontrast finetuning protocol
+scripts/submit_ddp_turing_finetune_semkitti_also.sh --mode f  \
+    --cuda_visible_devices 0 \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
+    --extra_tag bs8_try"$TRY"_also \
+    --workers_per_gpu 4 \
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+##########################################################################################################################
 
+#finetune SC+det on nusc with bs8 using ALSO optimizer and bevcontrast finetuning protocol
+scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
+    --cuda_visible_devices 3 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
+    --extra_tag bs8_try"$TRY"_also \
+    --workers_per_gpu 4 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-
+#finetune SC on nusc with bs8 using ALSO optimizer and bevcontrast finetuning protocol
+scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
+    --cuda_visible_devices 3 \
+    --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast  \
+    --extra_tag bs8_try"$TRY"_also \
+    --workers_per_gpu 4 \
+    > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1

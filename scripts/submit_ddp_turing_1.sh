@@ -19,8 +19,6 @@ PRETRAIN_BATCHSIZE_PER_GPU=16
 FINETUNE_BATCHSIZE_PER_GPU=8
 PRETRAIN_EPOCHS=200
 FINETUNE_EPOCHS=15
-FRAME_SAMPLING_DIV=1
-DATA_SKIP_RATIO=100 #1% for nuscenes
 DROP_LAST_VAL=false
 
 MODEL_NAME="default"
@@ -109,6 +107,7 @@ while :; do
     -h|--long_finetuning)       # Takes an option argument; ensure it has been specified.
         LONG_FINETUNING=true
         shift
+        ;;
     -i|--pretrain_epochs)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             PRETRAIN_EPOCHS=$2
@@ -302,7 +301,7 @@ if [[ "$MODE" =~ f ]]; then
         if [[ "$LONG_FINETUNING" == "true" ]]; then
             
             FINAL_FINETUNE_CMD_1perc="$FINAL_FINETUNE_CMD --job_type finetune_"$DATASET"_1percent --epochs 100 --extra_tag 100ep_"$EXTRA_TAG" 
-            --frame_sampling_div 1 --data_skip_ratio 100 --val_after_epochs 50"
+            --data_skip_ratio 100 --val_after_epochs 50"
             
             echo "Running Finetuning 1% $DATASET 100 epochs"
             echo "$FINAL_FINETUNE_CMD_1perc"
@@ -310,7 +309,7 @@ if [[ "$MODE" =~ f ]]; then
             echo "Done Finetuning 1% $DATASET 100 epochs"
 
             FINAL_FINETUNE_CMD_5perc="$FINAL_FINETUNE_CMD --job_type finetune_"$DATASET"_5percent --epochs $LONG_EPOCHS --extra_tag "$LONG_EPOCHS"ep_"$EXTRA_TAG" 
-            --frame_sampling_div 5 --data_skip_ratio 20 "
+            --data_skip_ratio 20 "
             
             echo "Running Finetuning 5% $DATASET $LONG_EPOCHS epochs"
             echo "$FINAL_FINETUNE_CMD_5perc"
@@ -318,7 +317,7 @@ if [[ "$MODE" =~ f ]]; then
             echo "Done Finetuning 5% $DATASET $LONG_EPOCHS epochs"
         else
             FINAL_FINETUNE_CMD_1perc="$FINAL_FINETUNE_CMD --job_type finetune_"$DATASET"_1percent --epochs 15 --extra_tag 15ep_"$EXTRA_TAG" 
-            --frame_sampling_div 1 --data_skip_ratio 100 "
+            --data_skip_ratio 100 "
             
             echo "Running Finetuning 1% $DATASET 15 epochs"
             echo "$FINAL_FINETUNE_CMD_1perc"
@@ -378,7 +377,7 @@ if [[ "$MODE" =~ s ]]; then
         if [[ "$LONG_FINETUNING" == "true" ]]; then
             
             FINAL_FINETUNE_CMD_1perc="$FINAL_FINETUNE_CMD --job_type finetune_"$DATASET"_1percent --epochs 100 --extra_tag 100ep_"$EXTRA_TAG" 
-            --frame_sampling_div 1 --data_skip_ratio 100 --val_after_epochs 50"
+            --data_skip_ratio 100 --val_after_epochs 50"
             
             echo "Running Scratch 1% $DATASET 100 epochs"
             echo "$FINAL_FINETUNE_CMD_1perc"
@@ -386,7 +385,7 @@ if [[ "$MODE" =~ s ]]; then
             echo "Done Scratch 1% $DATASET 100 epochs"
 
             FINAL_FINETUNE_CMD_5perc="$FINAL_FINETUNE_CMD --job_type finetune_"$DATASET"_5percent --epochs $LONG_EPOCHS --extra_tag "$LONG_EPOCHS"ep_"$EXTRA_TAG" 
-            --frame_sampling_div 5 --data_skip_ratio 20 "
+            --data_skip_ratio 20 "
             
             echo "Running Scratch 5% $DATASET $LONG_EPOCHS epochs"
             echo "$FINAL_FINETUNE_CMD_5perc"
@@ -394,7 +393,7 @@ if [[ "$MODE" =~ s ]]; then
             echo "Done Scratch 5% $DATASET $LONG_EPOCHS epochs"
         else
             FINAL_FINETUNE_CMD_1perc="$FINAL_FINETUNE_CMD --job_type finetune_"$DATASET"_1percent --epochs 15 --extra_tag 15ep_"$EXTRA_TAG" 
-            --frame_sampling_div 1 --data_skip_ratio 100 "
+            --data_skip_ratio 100 "
             
             echo "Running Scratch 1% $DATASET 15 epochs"
             echo "$FINAL_FINETUNE_CMD_1perc"
