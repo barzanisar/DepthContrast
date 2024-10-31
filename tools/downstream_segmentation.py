@@ -54,10 +54,8 @@ parser.add_argument('--batchsize_per_gpu', default=-1, type=int,
                     help='batchsize_per_gpu')
 parser.add_argument('--epochs', default=-1, type=int,
                     help='num epochs')
-parser.add_argument('--frame_sampling_div', default=-1, type=int,
-                    help='frame_sampling_interval')
 parser.add_argument('--data_skip_ratio', default=-1, type=int,
-                    help='train data scene skip ratio for nuscenes')
+                    help='train data scene skip ratio == frame sampling interval')
 parser.add_argument('--val_interval', default=-1, type=int,
                     help='val interval nuscenes')
 parser.add_argument('--multiprocessing-distributed', action='store_true', default=False,
@@ -81,13 +79,12 @@ def main():
     cfg_from_yaml_file(args.cfg, cfg)
     if args.batchsize_per_gpu > 0:
         cfg['dataset']['BATCHSIZE_PER_REPLICA']=args.batchsize_per_gpu
-    if args.frame_sampling_div > 0:
-        if 'FRAME_SAMPLING_INTERVAL' in cfg['dataset']:
-            cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] /= args.frame_sampling_div
-            cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] = int(cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'])
     if args.data_skip_ratio > 0:
         if 'DATA_SKIP_RATIO' in cfg['dataset']:
             cfg['dataset']['DATA_SKIP_RATIO']['train'] = args.data_skip_ratio
+        if 'FRAME_SAMPLING_INTERVAL' in cfg['dataset']:
+            cfg['dataset']['FRAME_SAMPLING_INTERVAL']['train'] = args.data_skip_ratio
+
     if args.val_interval > 0:
         cfg['val_interval'] = args.val_interval
     if args.drop_last_val:

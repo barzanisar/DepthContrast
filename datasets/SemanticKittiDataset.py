@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+import json
 from utils.data_map import *
 from datasets.depth_dataset import DepthContrastDataset
 
@@ -15,16 +16,15 @@ class SemanticKittiDataset(DepthContrastDataset):
                'val': ['08']}
         self.seq_ids = seq[self.mode]
         self.frame_sampling_interval= cfg["FRAME_SAMPLING_INTERVAL"][self.mode]
+        self.use_also_splits = cfg.get("USE_ALSO_SPLITS", False)
 
         self.points_data_path = []
         self.labels_data_path = []
         self.include_data() 
-        
-    def include_data(self):
+    
+    def get_datapaths(self):
         points_datapath = []
         labels_datapath = []
-        self.logger.add_line('Loading Semantic Kitti dataset')
-
         for seq in self.seq_ids:
             point_seq_path = os.path.join(self.data_root_path, 'dataset', 'sequences', seq, 'velodyne')
             point_seq_bin = os.listdir(point_seq_path)
@@ -35,23 +35,42 @@ class SemanticKittiDataset(DepthContrastDataset):
             point_seq_label = os.listdir(label_seq_path)
             point_seq_label.sort()
             labels_datapath += [ os.path.join(label_seq_path, label_file) for label_file in point_seq_label ]
-            # assert len(point_seq_bin) == len(point_seq_label), f'len(point_seq_bin): {len(point_seq_bin)} not equal to len(point_seq_label) {len(point_seq_label)}: \n point_seq_bin:\n{point_seq_bin} \npoint_seq_label:\n{point_seq_label}'
-            # equal = [True if point_seq_label[i].split('.')[0] == point_seq_bin[i].split('.')[0] else False for i in range(len(point_seq_label))]
-            # assert np.all(equal), f'sort problematic: {point_seq_bin[:10]}, {point_seq_label[:10]}'
-        if self.frame_sampling_interval > 1:
-            for k in range(0, len(points_datapath), self.frame_sampling_interval):
-                # id = points_datapath[k].split('.')[0].split('/')[-1]
-                # seq = points_datapath[k].split('.')[0].split('/')[-3]
-                # assert id == labels_datapath[k].split('.')[0].split('/')[-1]
-                # assert seq == labels_datapath[k].split('.')[0].split('/')[-3]
-                self.points_data_path.append(points_datapath[k])
-                self.labels_data_path.append(labels_datapath[k])
-        else:
-            self.points_data_path = points_datapath
-            self.labels_data_path = labels_datapath
+        
+        return points_datapath, labels_datapath
 
-        self.logger.add_line(f'Total Semantic Kitti samples loaded: {len(self.points_data_path)} / {len(points_datapath)}')
-        b=1
+    def include_data(self):
+
+        self.logger.add_line('Loading Semantic Kitti dataset')
+
+        if self.frame_sampling_interval > 1:
+            if self.use_also_splits:
+                with open("datasets/percentiles_split.json", 'r') as p:
+                    splits = json.load(p)
+                    skip_to_percent = {2:'0.5', 4:'0.25', 10:'0.1', 100:'0.01', 1000:'0.001', 10000:'0.0001'}
+                    if self.frame_sampling_interval not in skip_to_percent:
+                        raise ValueError
+                    percentage = skip_to_percent[self.frame_sampling_interval]
+
+                    for seq in splits[percentage]:
+                        self.points_data_path += splits[percentage][seq]['points']
+                        self.labels_data_path += splits[percentage][seq]['labels']        
+                
+                for i in range(len(self.points_data_path)):
+                    self.points_data_path[i] = self.points_data_path[i].replace("Datasets/SemanticKITTI/", "")
+                    self.points_data_path[i] = os.path.join(self.data_root_path,self.points_data_path[i])
+                    self.labels_data_path[i] = self.labels_data_path[i].replace("Datasets/SemanticKITTI/", "")
+                    self.labels_data_path[i] = os.path.join(self.data_root_path,self.labels_data_path[i])
+
+            else:
+                points_datapath, labels_datapath = self.get_datapaths()
+                for k in range(0, len(points_datapath), self.frame_sampling_interval):
+                    self.points_data_path.append(points_datapath[k])
+                    self.labels_data_path.append(labels_datapath[k])
+                
+        else:
+            self.points_data_path, self.labels_data_path = self.get_datapaths()
+        
+        self.logger.add_line(f'Total Semantic Kitti samples loaded: {len(self.points_data_path)}')
     
     
     def get_lidar(self, sample_path):

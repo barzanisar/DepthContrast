@@ -5,19 +5,20 @@ num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus pe
 load_pretrained_checkpoint: 'all'
 
 log2tb: false
-log2wb: true
+log2wb: false
 
 print_freq: 1 #print progress after processing every <freq> iters or batches
 
 WANDB:
-  ENABLED: True 
+  ENABLED: False 
   PROJECT: SSL3dObject_new
   ENTITY: trailab
   dir: '/DepthContrast/output'
 
 dataset:
   DATASET_NAMES: [SemanticKittiDataset]
-  FRAME_SAMPLING_INTERVAL: {'train': 1000, 'val': 100} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
+  USE_ALSO_SPLITS: true
+  FRAME_SAMPLING_INTERVAL: {'train': 100, 'val': 1} # waymo only has 30 seg labelledframes per sequence so choose 3/200 frames = 1.5% waymo for training
   BATCHSIZE_PER_REPLICA: 2 #Change to 14, if input moco feats is false, use 8
   POINT_CLOUD_RANGE:  [-75.0, -75.0, -3, 75.0, 75.0, 3] # not used, but needed for centerpoint or voxelnet
   CLASS_NAMES: ['Object']
