@@ -328,7 +328,6 @@ if [[ "$MODE" =~ f ]]; then
     --model_name $MODEL_NAME
     --pretrain_extra_tag "$PRETRAIN_EPOCHS"ep_"$PRETRAIN_EXTRA_TAG"
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
-    --frame_sampling_div $FRAME_SAMPLING_DIV 
     --data_skip_ratio $DATA_SKIP_RATIO
     --val_after_epochs $VAL_AFTER_EPOCHS
     "
@@ -398,7 +397,6 @@ if [[ "$MODE" =~ s ]]; then
     --batchsize_per_gpu $FINETUNE_BATCHSIZE_PER_GPU 
     --pretrained_ckpt checkpoint-ep0.pth.tar 
     --workers $WORKERS_PER_GPU 
-    --frame_sampling_div $FRAME_SAMPLING_DIV 
     --data_skip_ratio $DATA_SKIP_RATIO 
     --extra_tag "$FINETUNE_EPOCHS"ep_"$EXTRA_TAG" 
     --val_after_epochs $VAL_AFTER_EPOCHS
