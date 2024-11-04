@@ -312,7 +312,7 @@ if [[ "$MODE" =~ f ]]; then
             eval $FINAL_FINETUNE_CMD_1perc
             echo "Done Finetuning 1% $DATASET 100 epochs"
 
-            FINAL_FINETUNE_CMD_5perc="$FINAL_FINETUNE_CMD --job_type finetune_"$DATASET"_5percent --epochs $LONG_EPOCHS --extra_tag "$LONG_EPOCHS"ep_"$EXTRA_TAG" --data_skip_ratio 20 "
+            FINAL_FINETUNE_CMD_5perc="$FINAL_FINETUNE_CMD --job_type finetune_"$DATASET"_5percent --epochs $LONG_EPOCHS --extra_tag "$LONG_EPOCHS"ep_"$EXTRA_TAG" --data_skip_ratio 20 --val_after_epochs 25"
             
             echo "Running Finetuning 5% $DATASET $LONG_EPOCHS epochs"
             echo "$FINAL_FINETUNE_CMD_5perc"
