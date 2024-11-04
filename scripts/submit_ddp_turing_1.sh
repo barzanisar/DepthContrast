@@ -279,11 +279,16 @@ if [[ "$MODE" =~ f ]]; then
     for (( i=0; i<${#DATASETS}; i++ )); do
         letter="${DATASETS:i:1}"
         LONG_EPOCHS=50
+        # PERC_1_DATA_SKIP=100
+        # PERC_5_DATA_SKIP=20
 
         case "$letter" in
             w)
                 DATASET=waymo
-                LONG_EPOCHS=30
+                # LONG_EPOCHS=30
+                # PERC_1_DATA_SKIP=15
+                # PERC_5_DATA_SKIP=3
+                # EXTRA_TAG="$EXTRA_TAG"_fixed
                 ;;
             n)
                 DATASET=nuscenes
@@ -352,11 +357,17 @@ if [[ "$MODE" =~ s ]]; then
     for (( i=0; i<${#DATASETS}; i++ )); do
         letter="${DATASETS:i:1}"
         LONG_EPOCHS=50
+        # PERC_1_DATA_SKIP=100
+        # PERC_5_DATA_SKIP=20
+        
 
         case "$letter" in
             w)
                 DATASET=waymo
-                LONG_EPOCHS=30
+                #LONG_EPOCHS=30
+                # PERC_1_DATA_SKIP=15
+                # PERC_5_DATA_SKIP=3
+                # EXTRA_TAG="$EXTRA_TAG"_fixed
                 ;;
             n)
                 DATASET=nuscenes
