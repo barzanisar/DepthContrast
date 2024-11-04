@@ -126,7 +126,7 @@ scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_t
 
 # HEREEEEEEEEEEEEEEEEEEEEE - RUNNING!-turing
 scripts/submit_ddp_turing.sh --tcp_port 18840 --mode pf --datasets wns --extra_tag try0_drop \
-    --cuda_visible_devices 0,1  \
+    --cuda_visible_devices 2,3  \
     --cfg_file configs/waymo_minkunet_segcontrast_waymo10_eps0p2.yaml \
     --model_name segcontrast_10perc_waymo_minkunet_eps0p2  \
     --pretrain_epochs 30 \
