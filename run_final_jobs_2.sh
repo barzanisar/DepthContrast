@@ -194,6 +194,20 @@ scripts/submit_ddp_turing_finetune_semkitti_also.sh --mode f  \
 
 ##########################################################################################################################
 
+#pretrain SC+det on nusc 
+scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode p  \
+    --cuda_visible_devices 0,1 \
+    --model_name nuscenes_sweep1_eps0p4_minkunet_segcontrast_det  \
+    > ./output/log/nuscenes_sweep1_eps0p4_minkunet_segcontrast_det_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+#pretrain SC+det on nusc 
+scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode p  \
+    --cuda_visible_devices 2,3 \
+    --model_name nuscenes_sweep1_eps0p7_minkunet_segcontrast_det  \
+    > ./output/log/nuscenes_sweep1_eps0p7_minkunet_segcontrast_det_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+###################################################3
+
 #finetune SC+det on nusc with bs8 using ALSO optimizer and bevcontrast finetuning protocol
 scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
     --cuda_visible_devices 3 \
