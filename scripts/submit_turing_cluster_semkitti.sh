@@ -7,7 +7,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 SING_IMG=/raid/home/nisarbar/singularity/ssl_cluster.sif
 DATA_DIR=/raid/datasets/semantic_kitti:/DepthContrast/data/semantic_kitti
 
-CUDA_VISIBLE_DEVICES=0
+CUDA_VISIBLE_DEVICES=2
 START_IDX=0
 END_IDX=9
 EPS=0.25

@@ -17,9 +17,11 @@ scripts/submit_turing_cluster_waymo.sh --split train --frame_sampling_interval 1
 scripts/submit_turing_cluster_waymo.sh --split train --frame_sampling_interval 10 --eps 0.3 > ./output/log/eps0p3_train_cluster_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
 scripts/submit_turing_cluster_waymo.sh --split train --frame_sampling_interval 10 --eps 0.4 > ./output/log/eps0p4_train_cluster_waymo_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_turing_cluster_semkitti.sh --start_idx 0 --end_idx 3 > ./output/log/cluster_semkitti_0-3_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_turing_cluster_semkitti.sh --start_idx 4 --end_idx 6 > ./output/log/cluster_semkitti_4-6_$(date +%Y-%m-%d_%H:%M).out 2>&1
-scripts/submit_turing_cluster_semkitti.sh --start_idx 7 --end_idx 9 > ./output/log/cluster_semkitti_7-9_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_turing_cluster_semkitti.sh --start_idx 0 --end_idx 1 > ./output/log/cluster_semkitti_0-1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_turing_cluster_semkitti.sh --start_idx 2 --end_idx 3 > ./output/log/cluster_semkitti_2-3_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_turing_cluster_semkitti.sh --start_idx 4 --end_idx 5 > ./output/log/cluster_semkitti_4-5_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_turing_cluster_semkitti.sh --start_idx 6 --end_idx 7 > ./output/log/cluster_semkitti_6-7_$(date +%Y-%m-%d_%H:%M).out 2>&1
+scripts/submit_turing_cluster_semkitti.sh --start_idx 8 --end_idx 9 > ./output/log/cluster_semkitti_8-9_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 # sbatch --time=05:00:00 --array=1-2%1 --job-name=cluster_waymo_0 scripts/submit_compute_canada_cluster_waymo.sh --split train_0 
 # sbatch --time=05:00:00 --array=1-2%1 --job-name=cluster_waymo_1 scripts/submit_compute_canada_cluster_waymo.sh --split train_1
