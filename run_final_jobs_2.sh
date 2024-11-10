@@ -244,9 +244,27 @@ scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
     --workers_per_gpu 4 \
     > ./output/log/nuscenes_sweep1_eps0p4_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-    scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
+scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
     --cuda_visible_devices 3 \
     --model_name nuscenes_sweep1_eps0p7_minkunet_segcontrast_det  \
     --extra_tag bs8_try"$TRY"_also \
     --workers_per_gpu 4 \
     > ./output/log/nuscenes_sweep1_eps0p7_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+###################################################3
+
+scripts/submit_ddp_turing_1.sh --tcp_port 18840 --mode p \
+    --cuda_visible_devices 1,2  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p2_w1.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w1  \
+    --pretrain_epochs 30 \
+    --pretrained_ckpt checkpoint-ep29.pth.tar \
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_1.sh --mode f --datasets wns --extra_tag try"$TRY"_final \
+    --cuda_visible_devices 0  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p2_w1.yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w1  \
+    --pretrain_epochs 30 \
+    --pretrained_ckpt checkpoint-ep29.pth.tar \
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w1_fine1_15epochs_try"$TRY"_final_$(date +%Y-%m-%d_%H:%M).out 2>&1
