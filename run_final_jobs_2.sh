@@ -2,7 +2,7 @@
 try_values=(0 1 2)  #-> turing, lovelace, lovelace
 for TRY in "${try_values[@]}"; do
     echo "scratch long try"$TRY"" #-> turing, turing
-    scripts/submit_ddp_turing_w5perc.sh --mode s --datasets w --extra_tag try"$TRY"_final \
+    scripts/submit_ddp_turing_1.sh --mode s --datasets wns --extra_tag try"$TRY"_final \
         --cuda_visible_devices 2  \
         --long_finetuning \
         > ./output/log/scratch_finetune_long_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
@@ -20,20 +20,10 @@ for TRY in "${try_values[@]}"; do
         > ./output/log/depthcontrast_10perc_waymo_minkunet_long_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
 done
 
-#Run on turing
-TRY=0
-echo "DC long try"$TRY""
-scripts/submit_ddp_turing_w5perc.sh --mode f --datasets w --extra_tag try"$TRY"_final \
-    --cuda_visible_devices 2  \
-    --cfg_file configs/waymo_minkunet_depthcontrast_waymo10.yaml \
-    --model_name depthcontrast_10perc_waymo_minkunet  \
-    --long_finetuning \
-    > ./output/log/depthcontrast_10perc_waymo_minkunet_long_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
-
 try_values=(0 1 2)  #-> lovelace, lovelace
 for TRY in "${try_values[@]}"; do
     echo "DC lidar+det long try"$TRY"" #-> lovelace, lovelace, lovelace
-    scripts/submit_ddp_turing_w5perc.sh --mode f --datasets w --extra_tag try"$TRY"_final \
+    scripts/submit_ddp_turing_1.sh --mode f --datasets wns --extra_tag try"$TRY"_final \
         --cuda_visible_devices 2  \
         --cfg_file configs/waymo_minkunet_depthcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
         --model_name depthcontrast_lidaraug_det_10perc_waymo_minkunet  \
@@ -44,7 +34,7 @@ done
 try_values=(0 1 2)  #-> lovelace, lovelace
 for TRY in "${try_values[@]}"; do
     echo "SC long try"$TRY"" #-> lovelace
-    scripts/submit_ddp_turing_w5perc.sh --mode f --datasets w --extra_tag try"$TRY"_final \
+    scripts/submit_ddp_turing_1.sh --mode f --datasets wns --extra_tag try"$TRY"_final \
         --cuda_visible_devices 2  \
         --cfg_file configs/waymo_minkunet_segcontrast_waymo10.yaml \
         --model_name segcontrast_10perc_waymo_minkunet  \
@@ -56,7 +46,7 @@ done
 try_values=(0 1 2) 
 for TRY in "${try_values[@]}"; do
     echo "SC lidar+det long try"$TRY"" #->turing
-    scripts/submit_ddp_turing_w5perc.sh --mode f --datasets w --extra_tag try"$TRY"_final \
+    scripts/submit_ddp_turing_1.sh --mode f --datasets wns --extra_tag try"$TRY"_final \
         --cuda_visible_devices 0  \
         --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidar_aug_single_randh_dethead_0p5w.yaml \
         --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet  \
@@ -66,8 +56,30 @@ done
 
 try_values=(0 1 2) 
 for TRY in "${try_values[@]}"; do
+    echo "SC lidar+det p32 0p4 long try"$TRY"" #->turing
+    scripts/submit_ddp_turing_1.sh --mode f --datasets wns --extra_tag try"$TRY"_final \
+        --cuda_visible_devices 2  \
+        --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+        --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
+        --long_finetuning \
+        > ./output/log/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_long_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+done
+
+try_values=(0 1 2) 
+for TRY in "${try_values[@]}"; do
+    echo "DC lidar+det p32 0p4 long try"$TRY"" #->turing
+    scripts/submit_ddp_turing_1.sh --mode f --datasets wns --extra_tag try"$TRY"_final \
+        --cuda_visible_devices 3  \
+        --cfg_file configs/waymo_minkunet_depthcontrast_waymo10_lidarplusdet_p32_0p4.yaml \
+        --model_name depthcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4  \
+        --long_finetuning \
+        > ./output/log/waymo_minkunet_depthcontrast_waymo10_lidarplusdet_p32_0p4_long_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+done
+
+try_values=(0 1 2) 
+for TRY in "${try_values[@]}"; do
     echo "SC reghead long try"$TRY"" #->turing
-    scripts/submit_ddp_turing_w5perc.sh --mode f --datasets w --extra_tag try"$TRY"_final \
+    scripts/submit_ddp_turing_1.sh --mode f --datasets wns --extra_tag try"$TRY"_final \
         --cuda_visible_devices 1  \
         --cfg_file configs/waymo_minkunet_segcontrast_waymo10_reghead.yaml \
         --model_name segcontrast_reghead_10perc_waymo_minkunet  \
@@ -78,7 +90,7 @@ done
 try_values=(0 1 2) 
 for TRY in "${try_values[@]}"; do
     echo "SC + attn long try"$TRY"" #->turing
-    scripts/submit_ddp_turing_w5perc.sh --mode f --datasets w --extra_tag try"$TRY"_final \
+    scripts/submit_ddp_turing_1.sh --mode f --datasets wns --extra_tag try"$TRY"_final \
         --cuda_visible_devices 2  \
         --cfg_file configs/waymo_minkunet_proposalcontrast_waymo10.yaml \
         --model_name proposalcontrast_10perc_waymo_minkunet  \
@@ -194,23 +206,23 @@ scripts/submit_ddp_turing_finetune_semkitti_also.sh --mode f  \
 
 ##########################################################################################################################
 
-#pretrain SC+det on nusc 
+#pretrain SC+det eps 0.4 on nusc -> turing
 scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode p  \
     --cuda_visible_devices 0,1 \
     --model_name nuscenes_sweep1_eps0p4_minkunet_segcontrast_det  \
     > ./output/log/nuscenes_sweep1_eps0p4_minkunet_segcontrast_det_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-#pretrain SC+det on nusc 
+#pretrain SC+det eps 0.7 on nusc -> lovelace
 scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode p  \
-    --cuda_visible_devices 2,3 \
+    --cuda_visible_devices 0,2 \
     --model_name nuscenes_sweep1_eps0p7_minkunet_segcontrast_det  \
     > ./output/log/nuscenes_sweep1_eps0p7_minkunet_segcontrast_det_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 ###################################################3
 
 #finetune SC+det on nusc with bs8 using ALSO optimizer and bevcontrast finetuning protocol
-scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
-    --cuda_visible_devices 3 \
+scripts/submit_ddp_turing_pretrain_nuscenes_also_tmp.sh --mode f  \
+    --cuda_visible_devices 2 \
     --model_name nuscenes_sweep1_eps0p3_minkunet_segcontrast_det  \
     --extra_tag bs8_try"$TRY"_also \
     --workers_per_gpu 4 \
@@ -223,3 +235,18 @@ scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
     --extra_tag bs8_try"$TRY"_also \
     --workers_per_gpu 4 \
     > ./output/log/nuscenes_sweep1_eps0p3_minkunet_segcontrast_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+
+scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
+    --cuda_visible_devices 0 \
+    --model_name nuscenes_sweep1_eps0p4_minkunet_segcontrast_det  \
+    --extra_tag bs8_try"$TRY"_also \
+    --workers_per_gpu 4 \
+    > ./output/log/nuscenes_sweep1_eps0p4_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+    scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
+    --cuda_visible_devices 3 \
+    --model_name nuscenes_sweep1_eps0p7_minkunet_segcontrast_det  \
+    --extra_tag bs8_try"$TRY"_also \
+    --workers_per_gpu 4 \
+    > ./output/log/nuscenes_sweep1_eps0p7_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
