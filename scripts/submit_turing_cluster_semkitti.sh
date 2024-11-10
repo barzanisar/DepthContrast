@@ -5,7 +5,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 
 # Default Command line args
 SING_IMG=/raid/home/nisarbar/singularity/ssl_cluster.sif
-NUSCENES_DATA_DIR=/raid/datasets/semantic_kitti:/DepthContrast/data/semantic_kitti
+DATA_DIR=/raid/datasets/semantic_kitti:/DepthContrast/data/semantic_kitti
 
 CUDA_VISIBLE_DEVICES=0
 START_IDX=0
