@@ -12,7 +12,7 @@ class SemanticKittiDataset(DepthContrastDataset):
     def __init__(self, cfg, pretraining=True, mode='train', logger=None):
         super().__init__(cfg, pretraining=pretraining, mode=mode, logger=logger)
         self.data_root_path =  self.root_path / 'data/semantic_kitti' 
-        seq = {'train': [ '00', '01', '02', '03', '04', '05', '06', '07', '09', '10' ],
+        seq = {'train': ['00', '01', '02', '03', '04', '05', '06', '07', '09', '10'],
                'val': ['08']}
         self.seq_ids = seq[self.mode]
         self.frame_sampling_interval= cfg["FRAME_SAMPLING_INTERVAL"][self.mode]
@@ -122,6 +122,49 @@ class SemanticKittiDataset(DepthContrastDataset):
 
         return data_dict
 
+    def get_item_pretrain(self, index):
+        points_path = self.points_data_path[index]
+        points = self.get_lidar(points_path)
+
+        frame_id = points_path.split('/')[-1].split('.')[0]
+        seq_id = points_path.split('/')[-3]
+
+        #Get cluster labels
+        cluster_label_file = self.data_root_path / f'dataset_clustered_eps0p25' / 'sequences' / seq_id / 'velodyne' / f'{frame_id}.npy' 
+        pt_cluster_labels = np.fromfile(cluster_label_file, dtype=np.float16)  
+        assert points.shape[0] == pt_cluster_labels.shape[0], f'Missing cluster labels for {frame_id}!!!!!!!!'
+
+        #Get approx bboxes
+        approx_boxes_file = self.data_root_path / f'dataset_clustered_eps0p25' / 'sequences' / seq_id / 'velodyne' / f'approx_boxes_{frame_id}.npy'
+        approx_boxes = np.fromfile(approx_boxes_file, dtype=np.float32).reshape((-1,16))
+
+        #append class id as 8th entry in gt boxes and cluster label as 9th
+        box_cluster_labels =  approx_boxes[:, -1]
+        gt_classes = np.array([1]*approx_boxes.shape[0])
+        gt_boxes = np.hstack([approx_boxes[:,:7], gt_classes.reshape(-1, 1).astype(np.float32), box_cluster_labels.reshape(-1, 1)])
+        
+        # Set clusters as background if their groundtruth box is not available
+        for lbl in np.unique(pt_cluster_labels):
+            if lbl == -1.0:
+                continue
+            if lbl not in box_cluster_labels:
+                pt_cluster_labels[pt_cluster_labels==lbl] = -1
+
+        points = np.hstack([points, pt_cluster_labels.reshape(-1, 1)]) #xyzil
+
+        input_dict = {
+            'points': points,
+            'gt_boxes':  gt_boxes,
+            'frame_id': frame_id
+            }
+
+        data_dict = self.prepare_data_pretrain(data_dict=input_dict)
+
+        return data_dict
+
     def __getitem__(self, index):
-        data_dict = self.get_item_downstream(index)
+        if self.pretraining:
+            data_dict = self.get_item_pretrain(index)
+        else:
+            data_dict = self.get_item_downstream(index)
         return data_dict
