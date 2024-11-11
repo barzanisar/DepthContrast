@@ -253,18 +253,50 @@ scripts/submit_ddp_turing_pretrain_nuscenes_also.sh --mode f  \
 
 ###################################################3
 
+#IN Progress
+#Sensitivity to det loss weight
+W=0p25 #0p75 -> turing (try w=0.4, w=0.6 as well?)
 scripts/submit_ddp_turing_1.sh --tcp_port 18840 --mode p \
-    --cuda_visible_devices 1,2  \
-    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p2_w1.yaml \
-    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w1  \
+    --cuda_visible_devices 0,1  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p2_w"$W".yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w"$W"  \
     --pretrain_epochs 30 \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
-    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w1_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w"$W"_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
+TRY=0 # 1,2
 scripts/submit_ddp_turing_1.sh --mode f --datasets wns --extra_tag try"$TRY"_final \
     --cuda_visible_devices 0  \
-    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p2_w1.yaml \
-    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w1  \
+    --cfg_file configs/waymo_minkunet_segcontrast_waymo10_lidarplusdet_p32_0p4_eps0p2_w"$W".yaml \
+    --model_name segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w"$W"  \
     --pretrain_epochs 30 \
     --pretrained_ckpt checkpoint-ep29.pth.tar \
-    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w1_fine1_15epochs_try"$TRY"_final_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/segcontrast_lidarplusdet_10perc_waymo_minkunet_p32_0p4_eps0p2_w"$W"_fine1_15epochs_try"$TRY"_final_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+###################################################3
+
+#TODO 
+scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode p  \
+    --cuda_visible_devices 0,1 \
+    --model_name semantickitti_minkunet_segcontrast_det  \
+    > ./output/log/semantickitti_minkunet_segcontrast_det_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+
+scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode p --tcp_port 18889 \
+    --cuda_visible_devices 2,3 \
+    --model_name semantickitti_minkunet_segcontrast_lidarplusdet  \
+    > ./output/log/semantickitti_minkunet_segcontrast_lidarplusdet_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
+    --cuda_visible_devices 0 \
+    --model_name semantickitti_minkunet_segcontrast_det  \
+    --extra_tag bs8_try"$TRY"_also \
+    --workers_per_gpu 4 \
+    > ./output/log/semantickitti_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
+    --cuda_visible_devices 1 \
+    --model_name semantickitti_minkunet_segcontrast_lidarplusdet  \
+    --extra_tag bs8_try"$TRY"_also \
+    --workers_per_gpu 4 \
+    > ./output/log/semantickitti_minkunet_segcontrast_lidarplusdet_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
