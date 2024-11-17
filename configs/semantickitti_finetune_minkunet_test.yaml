@@ -1,7 +1,7 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/downstream_segmentation.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_pointrcnn_lpseg_test.yaml
 # python tools/downstream_segmentation.py --cfg configs/waymo_pointrcnn_lpseg_test.yaml
 resume: true
-num_workers: 4 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
+num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 load_pretrained_checkpoint: 'all'
 
 log2tb: false
@@ -54,7 +54,7 @@ model:
   name: "segcontrast_10perc_waymo_minkunet"
   linear_probe: false #meaning lp vs finetune
   job_type: "finetune_semantickitti_1percent"
-  pretrain_extra_tag: try0 #200ep_try0
+  pretrain_extra_tag: 200ep_try0
   extra_tag: 15ep_try0
 
   MODEL_BASE:

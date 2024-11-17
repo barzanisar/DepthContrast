@@ -111,6 +111,12 @@ class SemanticKittiDataset(DepthContrastDataset):
         points = self.get_lidar(points_path)
         pt_seg_labels = self.get_seglabels(labels_path)
         assert points.shape[0] == pt_seg_labels.shape[0], f'Missing labels for {labels_path}! {points_path}!, {points.shape[0]} points, {pt_seg_labels.shape[0]} labels'
+        
+        # remove unlabeled points
+        unlabeled = pt_seg_labels[:,0] == 0
+        pt_seg_labels = np.delete(pt_seg_labels, unlabeled, axis=0)
+        points = np.delete(points, unlabeled, axis=0)
+
         points = np.hstack([points[:,:4], pt_seg_labels.reshape(-1, 1)]) #xyzi, seglabel
 
         input_dict = {
