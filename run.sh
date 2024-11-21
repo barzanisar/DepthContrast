@@ -78,8 +78,7 @@ docker run -it --env="WANDB_API_KEY=$WANDB_API_KEY" \
         --volume $PROJ_DIR/utils:/DepthContrast/utils \
         --volume $PROJ_DIR/lib:/DepthContrast/lib \
         $PCDET_VOLUMES \
-        --rm \
-        ssl:cluster_nuscenes_fixed bash
+        ssl:cluster_nuscenes_fixed_1 bash
 
 
         # --rm \

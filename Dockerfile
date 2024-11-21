@@ -153,7 +153,8 @@ RUN conda install -c conda-forge/label/gcc7 qhull
 RUN conda install -c conda-forge -c davidcaron pclpy
 RUN pip install torch-scatter==2.0.9 -f https://data.pyg.org/whl/torch-1.9.0+cu111.html
 RUN pip install nuscenes-devkit
-RUN pip install opencv-python-headless
+# RUN pip install opencv-python-headless
+RUN pip install opencv-python==4.3.0.36
 
 RUN mkdir checkpoints &&  \
     mkdir configs &&  \

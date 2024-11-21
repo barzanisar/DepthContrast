@@ -291,12 +291,12 @@ scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode p --tcp_port 188
     --model_name semantickitti_minkunet_segcontrast_lidarplusdet  \
     > ./output/log/semantickitti_minkunet_segcontrast_lidarplusdet_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
-scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
-    --cuda_visible_devices 2 \
-    --model_name semantickitti_minkunet_segcontrast_det  \
-    --extra_tag bs8_try"$TRY"_also \
-    --workers_per_gpu 4 \
-    > ./output/log/semantickitti_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+# scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
+#     --cuda_visible_devices 2 \
+#     --model_name semantickitti_minkunet_segcontrast_det  \
+#     --extra_tag bs8_try"$TRY"_also \
+#     --workers_per_gpu 4 \
+#     > ./output/log/semantickitti_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
     --cuda_visible_devices 3 \
@@ -309,6 +309,12 @@ scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
 scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
     --cuda_visible_devices 1 \
     --model_name semantickitti_minkunet_segcontrast_lidarplusdet  \
-    --extra_tag bs8_try"$TRY"_also \
+    --extra_tag bs2_try"$TRY"_also \
+    --finetune_bs_per_gpu 2 \
     --workers_per_gpu 4 \
-    > ./output/log/semantickitti_minkunet_segcontrast_lidarplusdet_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+    > ./output/log/semantickitti_minkunet_segcontrast_lidarplusdet_ep200_fine-0p1-1-10-50-100perc_bs2_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+    # To see hanging threads
+#ps -ef | grep -i '[p]ython'
+pids=$(ps aux | grep 'nisarbar' | grep 'python' | awk '{print $2}')
+echo "$pids" | xargs kill

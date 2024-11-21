@@ -79,7 +79,8 @@
                 "--split",
                 "train",
                 "--processed_data_tag",
-                "waymo_processed_data_10"
+                "waymo_processed_data_10",
+                "--frame_sampling_interval", "10", "--eps", "0.1"
             ]
         },
         {
@@ -294,6 +295,27 @@
                 "--multiprocessing-distributed",
                 "--cfg",
                 "configs/waymo_pointrcnn_test.yaml"
+            ]
+        },
+        {
+            "name": "Semkitti: pretrain-minkunet",
+            "type": "python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
+            "args": [
+                "--nproc_per_node=1",
+                "--max_restarts=0",
+                "${workspaceFolder}/tools/main_dist.py",
+                "--launcher",
+                "pytorch",
+                "--multiprocessing-distributed",
+                "--cfg",
+                "configs/semantickitti_minkunet_segcontrast_det.yaml"
             ]
         },
         // {
