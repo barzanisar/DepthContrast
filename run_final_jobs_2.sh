@@ -281,6 +281,11 @@ done
 
 #TODO 
 scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode p  \
+    --cuda_visible_devices 0,1 \
+    --model_name semantickitti_minkunet_segcontrast  \
+    > ./output/log/semantickitti_minkunet_segcontrast_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode p  \
     --cuda_visible_devices 2,3 \
     --model_name semantickitti_minkunet_segcontrast_det  \
     > ./output/log/semantickitti_minkunet_segcontrast_det_ep200_$(date +%Y-%m-%d_%H:%M).out 2>&1
@@ -299,7 +304,7 @@ scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode p --tcp_port 188
 #     > ./output/log/semantickitti_minkunet_segcontrast_det_ep200_fine-0p1-1-10-50-100perc_bs8_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
 
 scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
-    --cuda_visible_devices 3 \
+    --cuda_visible_devices 1 \
     --model_name semantickitti_minkunet_segcontrast_det  \
     --extra_tag bs2_try"$TRY"_also \
     --finetune_bs_per_gpu 2 \
@@ -318,3 +323,28 @@ scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
 #ps -ef | grep -i '[p]ython'
 pids=$(ps aux | grep 'nisarbar' | grep 'python' | awk '{print $2}')
 echo "$pids" | xargs kill
+
+scripts/submit_ddp_turing_pretrain_semantickitti_also.sh --mode f  \
+    --cuda_visible_devices 3 \
+    --model_name semantickitti_minkunet_segcontrast  \
+    --extra_tag bs2_try"$TRY"_also \
+    --finetune_bs_per_gpu 2 \
+    --workers_per_gpu 4 \
+    > ./output/log/semantickitti_minkunet_segcontrast_ep200_fine-0p1-1-10-50-100perc_bs2_also_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_finetune_nuscenes_tarl_cfg.sh --mode f  \
+    --cuda_visible_devices 0 \
+    --model_name semantickitti_minkunet_segcontrast_lidarplusdet  \
+    --extra_tag bs2_try"$TRY"_tarlcfg \
+    --finetune_bs_per_gpu 2 \
+    --workers_per_gpu 4 \
+    > ./output/log/semantickitti_minkunet_segcontrast_lidarplusdet_ep200_fine_nusc-100perc_bs2_tarlcfg_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
+
+scripts/submit_ddp_turing_finetune_nuscenes_tarl_cfg.sh --mode f  \
+    --cuda_visible_devices 0 \
+    --model_name semantickitti_minkunet_segcontrast_lidarplusdet  \
+    --extra_tag bs2_try"$TRY"_tarlcfg \
+    --finetune_bs_per_gpu 2 \
+    --workers_per_gpu 4 \
+    --version v1.0-mini \
+    > ./output/log/semantickitti_minkunet_segcontrast_lidarplusdet_ep200_fine_nusc-100perc_bs2_tarlcfg_optim_try"$TRY"_$(date +%Y-%m-%d_%H:%M).out 2>&1
