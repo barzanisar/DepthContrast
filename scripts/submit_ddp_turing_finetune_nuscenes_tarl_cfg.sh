@@ -5,7 +5,7 @@ die() { echo "$*" 1>&2 ; exit 1; }
 
 # Default Command line args
 # main.py script parameters
-FINETUNE_CFG_FILE=nuscenes_fine1lr_minkunet_also_cfg
+FINETUNE_CFG_FILE=nuscenes_fine1lr_minkunet_tarl_cfg
 
 MODE=pfd #pretrain, finetune, scratch, debug
 
@@ -162,7 +162,7 @@ done
 
 
 if [[ "$VERSION" == "v1.0-mini" ]]; then
-    FINETUNE_CFG_FILE=nuscenes_fine1lr_minkunet_also_cfg_mini
+    FINETUNE_CFG_FILE=nuscenes_fine1lr_minkunet_tarl_cfg_mini
 fi
 
 PROJ_DIR=$PWD
@@ -210,8 +210,6 @@ if [[ "$MODE" =~ d ]]; then
     echo "$CMD"
     eval $CMD
 fi
-
-
 
 if [[ "$MODE" =~ f ]]; then
 

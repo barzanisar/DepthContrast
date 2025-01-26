@@ -277,7 +277,8 @@ def eval_one_ckpt(args, cfg, logger,
     if not linear_probe and cfg['resume']:
         if ckp_manager_downstream.checkpoint_exists(last=True):
             start_epoch = ckp_manager_downstream.restore(restore_last=True, model=model, optimizer=optimizer)
-            scheduler.step(start_epoch*len(train_loader))
+            if scheduler is not None:
+                scheduler.step(start_epoch*len(train_loader))
             logger.add_line("Checkpoint loaded: '{}' (epoch {})".format(ckp_manager_downstream.last_checkpoint_fn(), start_epoch))
         else:
             logger.add_line("No checkpoint found at '{}'".format(ckp_manager_downstream.last_checkpoint_fn()))
@@ -296,7 +297,8 @@ def eval_one_ckpt(args, cfg, logger,
         
         # Train for one epoch
         logger.add_line('='*30 + ' Epoch {} '.format(epoch) + '='*30)
-        logger.add_line('LR: {}'.format(scheduler.get_lr()))
+        if scheduler is not None:
+            logger.add_line('LR: {}'.format(scheduler.get_lr()))
         train_eval_metrics_dict_single_downstream_epoch = run_phase('train', train_loader, model, optimizer, scheduler, epoch, args, cfg, logger, tb_writter, evaluator)
         
         # Validate one epoch 
@@ -355,7 +357,7 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
     # switch to train mode
     model.train(phase == 'train')
     end = time.time()
-    lr = scheduler.get_last_lr()
+    lr = scheduler.get_last_lr() if scheduler is not None else optimizer.param_groups[0]['lr']
     for i, sample in enumerate(loader):
         torch.cuda.empty_cache()
 
@@ -383,7 +385,8 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
             loss.backward()
             clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
-            scheduler.step() # fordownstream: reduce LR step every iterations
+            if scheduler is not None:
+                scheduler.step() # fordownstream: reduce LR step every iterations
 
 
         if evaluator is not None:

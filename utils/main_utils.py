@@ -379,6 +379,8 @@ def build_optimizer(params, cfg, total_iters_each_epoch=None, logger=None):
     elif cfg['lr']['name'] == 'cosine':
         ### By default we use a cosine param scheduler
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=total_iters_each_epoch*cfg['num_epochs'], eta_min=cfg['lr']['base_lr']/1000)
+    elif cfg['lr']['name'] == 'none':
+        scheduler = None
     else:
         def linear_warmup_with_cosdecay(cur_step, total_steps, warmup_steps=0, min_scale=1e-5):
             if cur_step < warmup_steps:
