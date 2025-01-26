@@ -424,7 +424,7 @@ def run_phase(phase, loader, model, optimizer, scheduler, epoch, args, cfg, logg
             eval_metrics_dict[f'{prefix}/lr_backbone'] = lr[0] #optimizer.param_groups[0]['lr']
             eval_metrics_dict[f'{prefix}/lr_head'] = lr[1] #optimizer.param_groups[1]['lr']
         else:
-            eval_metrics_dict[f'{prefix}/lr']=lr[0]
+            eval_metrics_dict[f'{prefix}/lr']=lr[0] if isinstance(lr, list) else lr
     for meter in progress.meters:
         eval_metrics_dict[prefix + '/' + meter.name +'-epoch'] = meter.avg
 
