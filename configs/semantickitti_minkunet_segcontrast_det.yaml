@@ -16,7 +16,6 @@ WANDB:
   dir: '/DepthContrast/output'
 
 dataset:
-dataset:
   DATASET_NAMES: [SemanticKittiDataset]
   FRAME_SAMPLING_INTERVAL: {'train': 1}
   BATCHSIZE_PER_REPLICA: 16

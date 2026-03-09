@@ -107,10 +107,6 @@ class NuscenesDataset(DepthContrastDataset):
     def __len__(self):
         return len(self.list_tokens)
     
-    def get_cluster_labels(self, sequence_name, sample_idx):
-        label_file = self.cluster_root_path / sequence_name / ('%04d.npy' % sample_idx)
-        labels = np.fromfile(label_file, dtype=np.float16)
-        return labels
     
     def get_item_pretrain(self, index):
         ref_lidar_token = self.list_tokens[index]

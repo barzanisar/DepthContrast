@@ -1,17 +1,17 @@
 # python -m torch.distributed.launch --nproc_per_node=1 tools/main_dist.py --launcher pytorch --multiprocessing-distributed --cfg configs/waymo_minkunet_test.yaml
 # python tools/main_dist.py --cfg configs/waymo_minkunet_test.yaml
 # wb_extra_tags: ['pointrcnn', 'waymo', 'pretrain_object_detection']
-resume: True
+resume: False
 num_workers: 0 # should be same as (16 --cpus-per-task i.e. per node)/(4 gpus per node)
 
 log2tb: false
-log2wb: true
+log2wb: false
 
 print_freq: 1 #print progress after processing every <freq> iters or batches
 ckpt_save_interval: 0 #save only models to finetune for object detection
 
 WANDB:
-  ENABLED: True 
+  ENABLED: False 
   PROJECT: SSL3dObject_new
   ENTITY: trailab
   dir: '/DepthContrast/output'
@@ -97,7 +97,7 @@ model:
       cluster: True
       use_mlp: True
       mlp_dim: [96, 128, 128]
-      proposal_attn_encoder: True
+      proposal_attn_encoder: False
   
   # MODEL_AUX_HEAD:
   #   NAME: Segmentor
